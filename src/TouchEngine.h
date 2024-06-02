@@ -8,6 +8,7 @@
 #include "TouchEngine/TEGraphicsContext.h"
 #include "TouchEngine/TED3D11.h"
 #include "SpoutDX/SpoutDX.h"
+#include "SpoutGL/SpoutGL.h"
 
 class FFGLTouchEngine : public CFFGLPlugin
 {
@@ -47,7 +48,9 @@ private:
 	TouchObject<TEFloatBuffer> TEAudioInFloatBuffer1;
 	TouchObject<TEFloatBuffer> TEAudioInFloatBuffer2;
 
-	spoutDX spout;
+	std::string SpoutID;
+	spoutGL SpoutReceiver;
+	spoutDX SpoutSender;
 
 
 

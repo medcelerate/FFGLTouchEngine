@@ -26,9 +26,26 @@ std::string GetSeverityString(TESeverity severity) {
 
 }
 
+std::string GenerateRandomString(size_t length)
+{
+	auto randchar = []() -> char
+		{
+			const char charset[] =
+				"0123456789"
+				"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+				"abcdefghijklmnopqrstuvwxyz";
+			const size_t max_index = (sizeof(charset) - 1);
+			return charset[rand() % max_index];
+		};
+	std::string str(length, 0);
+	std::generate_n(str.begin(), length, randchar);
+	return str;
+}
+
 FFGLTouchEngine::FFGLTouchEngine()
 	: CFFGLPlugin()
 {
+	SpoutID = GenerateRandomString(10);
 	// Input properties
 	SetMinInputs(1);
 	SetMaxInputs(100);
@@ -74,6 +91,15 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 		return FF_FAIL;
 	}
 
+
+	SpoutReceiver.SetReceiverName(SpoutID.c_str());
+	SpoutSender.SetSenderName(SpoutID.c_str());
+
+	SpoutReceiver.SetAdapterAuto(true);
+	SpoutSender.SetAdapterAuto(true);
+
+
+
 	// Load the TouchEngine graphics context
 	if (!LoadTEGraphicsContext(false)) {
 		return FF_FAIL;
@@ -100,26 +126,21 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 	FFGLTextureStruct &Texture = *(pGL->inputTextures[0]);
 
-	// Bind the shader
-	shader.Bind();
 
 	// Bind the input texture
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, Texture.Handle);
-	shader.SetTexture(0);
+	
+	// Update the input texture
+	//Write through a shader to the output texture
 
-	// Set the uniforms
-	glUniform4f(rgbLeftLocation, rgba1.red, rgba1.green, rgba1.blue, rgba1.alpha);
-	glUniform4f(rgbRightLocation, hsba2.hue, hsba2.sat, hsba2.bri, hsba2.alpha);
 
 	// Render the quad
-	quad.Render();
+	quad.Draw();
 
 	// Unbind the input texture
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	// Unbind the shader
-	shader.Unbind();
 
 	return FF_SUCCESS;
 }

@@ -42,12 +42,12 @@
 #define PATH_PREFIX
 
 #ifdef PATH_PREFIX
-#include "..\..\SpoutGL\SpoutCommon.h" // for dll build
-#include "..\..\SpoutGL\SpoutSenderNames.h" // for sender creation and update
-#include "..\..\SpoutGL\SpoutDirectX.h" // for creating DX11 textures
-#include "..\..\SpoutGL\SpoutFrameCount.h" // for mutex lock and new frame signal
-#include "..\..\SpoutGL\SpoutCopy.h" // for pixel copy
-#include "..\..\SpoutGL\SpoutUtils.h" // Registry utiities
+#include "SpoutGL\SpoutCommon.h" // for dll build
+#include "SpoutGL\SpoutSenderNames.h" // for sender creation and update
+#include "SpoutGL\SpoutDirectX.h" // for creating DX11 textures
+#include "SpoutGL\SpoutFrameCount.h" // for mutex lock and new frame signal
+#include "SpoutGL\SpoutCopy.h" // for pixel copy
+#include "SpoutGL\SpoutUtils.h" // Registry utiities
 #else
 #include "SpoutCommon.h" // for dll build
 #include "SpoutSenderNames.h" // for sender creation and update

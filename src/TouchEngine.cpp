@@ -13,6 +13,42 @@ static CFFGLPluginInfo PluginInfo(
 	"TouchEngine Loader made by Evan Clark"        // About
 );
 
+static const char _vertexShaderCode[] = R"(#version 410 core
+uniform vec2 MaxUV;
+
+layout( location = 0 ) in vec4 vPosition;
+layout( location = 1 ) in vec2 vUV;
+
+out vec2 uv;
+
+void main()
+{
+	gl_Position = vPosition;
+	uv = vUV * MaxUV;
+}
+)";
+
+static const char _fragmentShaderCode[] = R"(#version 410 core
+uniform sampler2D InputTexture;
+
+in vec2 uv;
+
+out vec4 fragColor;
+
+void main()
+{
+	vec4 color = texture( InputTexture, uv );
+	//The InputTexture contains premultiplied colors, so we need to unpremultiply first to apply our effect on straight colors.
+	if( color.a > 0.0 )
+		color.rgb /= color.a;
+
+	//The plugin has to output premultiplied colors, this is how we're premultiplying our straight color while also
+	//ensuring we aren't going out of the LDR the video engine is working in.
+	color.rgb = clamp( color.rgb * color.a, vec3( 0.0 ), vec3( color.a ) );
+	fragColor = color;
+}
+)";
+
 std::string GetSeverityString(TESeverity severity) {
 	switch (severity)
 	{
@@ -51,6 +87,8 @@ FFGLTouchEngine::FFGLTouchEngine()
 	SetMaxInputs(100);
 
 	// Parameters
+	SetParamInfof(0, "Tox File", FF_TYPE_EVENT);
+
 	/*
 	SetParamInfo(0, "RGBA1 Red", FF_TYPE_STANDARD, 1.0f);
 	SetParamInfo(1, "RGBA1 Green", FF_TYPE_STANDARD, 1.0f);
@@ -92,11 +130,10 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 	}
 
 
-	SpoutReceiver.SetReceiverName(SpoutID.c_str());
-	SpoutSender.SetSenderName(SpoutID.c_str());
+	SPReceiver.SetActiveSender(SpoutID.c_str());
+	SPSender.SetActiveSender(SpoutID.c_str());
 
-	SpoutReceiver.SetAdapterAuto(true);
-	SpoutSender.SetAdapterAuto(true);
+	SPSender.SetAdapterAuto(true);
 
 
 
@@ -116,6 +153,19 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 		return FF_FAIL;
 	}
 
+	if (FilePath.empty())
+	{
+		return FF_SUCCESS;
+	}
+
+	bool Status = LoadTEFile();
+
+	if (!Status)
+	{
+		FFGLLog::LogToHost("Failed to load TE file");
+		return FF_FAIL;
+	}
+
 	return FF_SUCCESS;
 }
 
@@ -124,17 +174,72 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 	if (pGL->numInputTextures < 1)
 		return FF_FAIL;
 
+	if (!isTouchEngineLoaded || !isTouchEngineReady || isTouchFrameBusy)
+	{
+		return FF_FAIL;
+	}
+
+	isTouchFrameBusy = true;
+
 	FFGLTextureStruct &Texture = *(pGL->inputTextures[0]);
 
-
-	// Bind the input texture
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, Texture.Handle);
 	
-	// Update the input texture
-	//Write through a shader to the output texture
 
+	TEResult result = TEInstanceStartFrameAtTime(instance, FrameCount, 60, false);
+	if (result != TEResultSuccess)
+	{
+		isTouchFrameBusy = false;
+		return FF_FAIL;
+	}
+	FrameCount++;
 
+	while (isTouchFrameBusy)
+	{
+
+	}
+
+	if (hasVideoOutput) {
+		TouchObject<TETexture> TETextureToSend;
+		result = TEInstanceLinkGetTextureValue(instance, "op/vdjtextureout", TELinkValueCurrent, TETextureToSend.take());
+		if (result == TEResultSuccess && TETextureToSend != nullptr) {
+			if (TETextureGetType(TETextureToSend) == TETextureTypeD3DShared && result == TEResultSuccess) {
+				TouchObject<TED3D11Texture> D3DTextureToSend;
+				result = TED3D11ContextGetTexture(D3DContext, static_cast<TED3DSharedTexture*>(TETextureToSend.get()), D3DTextureToSend.take());
+				if (result != TEResultSuccess)
+				{
+					return FF_FALSE;
+				}
+				Microsoft::WRL::ComPtr<ID3D11Texture2D> RawTextureToSend = TED3D11TextureGetTexture(D3DTextureToSend);
+
+				if (RawTextureToSend == nullptr) {
+					return FF_FALSE;
+				}
+				Microsoft::WRL::ComPtr <IDXGIKeyedMutex> keyedMutex;
+				RawTextureToSend->QueryInterface<IDXGIKeyedMutex>(&keyedMutex);
+
+				TouchObject<TESemaphore> semaphore;
+				uint64_t waitValue = 0;
+				result = TEInstanceGetTextureTransfer(instance, TETextureToSend, semaphore.take(), &waitValue);
+				if (result != TEResultSuccess)
+				{
+					return FF_FALSE;
+				}
+				keyedMutex->AcquireSync(waitValue, INFINITE);
+			
+				SPSender.SendTexture(RawTextureToSend.Get());
+
+				keyedMutex->ReleaseSync(waitValue + 1);
+
+			}
+		
+		}
+		//Bind and receive the texture
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Texture.Handle);
+		SPReceiver.ReceiveTexture(Texture.Handle, Width, Height);
+	
+	}
+	
 	// Render the quad
 	quad.Draw();
 
@@ -158,11 +263,22 @@ FFResult FFGLTouchEngine::DeInitGL()
 	}
 
 	// Deinitialize the quad
-	quad.FreeGLResources();
+	quad.Release();
 
 	return FF_SUCCESS;
 }
 
+
+FFResult FFGLTouchEngine::SetFloatParameter(unsigned int dwIndex, float value) {
+	switch (dwIndex) {
+		case 0:
+			// Open file dialog
+			OpenFileDialog();
+			LoadTEFile();
+			break;
+	}
+
+}
 
 bool FFGLTouchEngine::LoadTEGraphicsContext(bool reload)
 {
@@ -302,6 +418,37 @@ bool FFGLTouchEngine::LoadTEFile()
 	return true;
 }
 
+bool FFGLTouchEngine::OpenFileDialog()
+{
+	IFileOpenDialog* pFileOpen;
+
+	// Create the FileOpenDialog object.
+	HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL,
+		IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
+
+	if (SUCCEEDED(hr)) {
+		hr = pFileOpen->Show(nullptr);
+
+		if (SUCCEEDED(hr)) {
+			IShellItem* pItem;
+			hr = pFileOpen->GetResult(&pItem);
+			if (SUCCEEDED(hr)) {
+				LPWSTR filePathW;
+				hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &filePathW);
+				if (SUCCEEDED(hr)) {
+					std::wstring filePathWStr(filePathW);
+					FilePath = std::string(filePathWStr.begin(), filePathWStr.end());
+					std::string error = "TouchEngine Error: File Path: " + FilePath;
+					FFGLLog::LogToHost(error.c_str());
+					CoTaskMemFree(filePathW);
+				}
+				pItem->Release();
+			}
+		}
+	}
+	return true;
+}
+
 void FFGLTouchEngine::LoadTouchEngine() {
 
 	if (instance == nullptr) {
@@ -330,7 +477,7 @@ void FFGLTouchEngine::ResumeTouchEngine() {
 		TEVideoInputD3D.take(TED3D11TextureCreate(D3DTextureInput.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, nullptr, nullptr));
 	}
 
-	GetAllParameters();
+	//GetAllParameters();
 	return;
 
 }

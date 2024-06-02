@@ -4,11 +4,15 @@
 #pragma comment(lib, "d3d11.lib")
 #define WIN32_LEAN_AND_MEAN
 #include <wrl.h>
+#include <windows.h>
+#include <shobjidl.h>
 #include "TouchEngine/TouchObject.h"
 #include "TouchEngine/TEGraphicsContext.h"
 #include "TouchEngine/TED3D11.h"
 #include "SpoutDX/SpoutDX.h"
-#include "SpoutGL/SpoutGL.h"
+#include "SpoutGL/SpoutReceiver.h"
+
+
 
 class FFGLTouchEngine : public CFFGLPlugin
 {
@@ -27,12 +31,14 @@ public:
 private:
 	TouchObject<TEInstance> instance;
 	Microsoft::WRL::ComPtr<ID3D11Device> D3DDevice;
+	TouchObject<TED3D11Context> D3DContext;
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureInput = nullptr;
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureOutput = nullptr;
 
 	bool isTouchEngineLoaded = false;
 	bool isTouchEngineReady = false;
 	std::atomic_bool isTouchFrameBusy = false;
+	uint64_t FrameCount = 0;
 
 	//Touch file capabilities
 	bool hasVideoInput = false;
@@ -44,13 +50,12 @@ private:
 	TouchObject<TED3D11Texture> TEVideoOutputD3D;
 	TouchObject<TETexture> TEVideoInputTexture;
 	TouchObject<TETexture> TEVideoOutputTexture;
-	TouchObject<TED3D11Context> D3DContext;
 	TouchObject<TEFloatBuffer> TEAudioInFloatBuffer1;
 	TouchObject<TEFloatBuffer> TEAudioInFloatBuffer2;
 
 	std::string SpoutID;
-	spoutGL SpoutReceiver;
-	spoutDX SpoutSender;
+	SpoutReceiver SPReceiver;
+	spoutDX SPSender;
 
 
 
@@ -85,6 +90,7 @@ private:
 	bool LoadTEGraphicsContext(bool Reload);
 	bool CreateInputTexture(int width, int height);
 	bool LoadTEFile();
+	bool OpenFileDialog();
 	void LoadTouchEngine();
 	void ResumeTouchEngine();
 	void eventCallback(TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale);

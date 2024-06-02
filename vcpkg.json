@@ -8,5 +8,6 @@
     },
     "libpng",
     "zlib"
-  ]
+  ],
+  "builtin-baseline": "a548ef52e5b6b4b92de09fd0efdeaa95c745e2a0"
 }

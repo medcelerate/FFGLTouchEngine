@@ -46,6 +46,7 @@ private:
 	bool hasVideoInput = false;
 	bool hasAudioInput = false;
 	bool hasVideoOutput = false;
+	bool isVideoFX = false;
 
 	//TouchEngine IO objects
 	TouchObject<TED3D11Texture> TEVideoInputD3D;
@@ -54,6 +55,9 @@ private:
 	TouchObject<TETexture> TEVideoOutputTexture;
 	TouchObject<TEFloatBuffer> TEAudioInFloatBuffer1;
 	TouchObject<TEFloatBuffer> TEAudioInFloatBuffer2;
+	
+	//TouchEngine parameters
+	std::vector<std::pair<std::string, FFUInt32>> Parameters;
 
 	std::string SpoutID;
 	SpoutReceiver SPReceiver;
@@ -67,27 +71,9 @@ private:
 
 	std::string FilePath;
 
-	struct RGBA
-	{
-		float red = 1.0f;
-		float green = 1.0f;
-		float blue = 0.0f;
-		float alpha = 1.0f;
-	};
-	struct HSBA
-	{
-		float hue = 0.0f;
-		float sat = 1.0f;
-		float bri = 1.0f;
-		float alpha = 1.0f;
-	};
-	RGBA rgba1;
-	HSBA hsba2;
 
 	ffglex::FFGLShader shader;  //!< Utility to help us compile and link some shaders into a program.
 	ffglex::FFGLScreenQuad quad;//!< Utility to help us render a full screen quad.
-	GLint rgbLeftLocation;
-	GLint rgbRightLocation;
 
 	bool LoadTEGraphicsContext(bool Reload);
 	bool CreateInputTexture(int width, int height);
@@ -95,6 +81,7 @@ private:
 	bool OpenFileDialog();
 	void LoadTouchEngine();
 	void ResumeTouchEngine();
+	void GetAllParameters();
 	void eventCallback(TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale);
 	void linkCallback(TELinkEvent event, const char* identifier);
 

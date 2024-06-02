@@ -13,41 +13,6 @@ static CFFGLPluginInfo PluginInfo(
 	"TouchEngine Loader made by Evan Clark"        // About
 );
 
-static const char _vertexShaderCode[] = R"(#version 410 core
-uniform vec2 MaxUV;
-
-layout( location = 0 ) in vec4 vPosition;
-layout( location = 1 ) in vec2 vUV;
-
-out vec2 uv;
-
-void main()
-{
-	gl_Position = vPosition;
-	uv = vUV * MaxUV;
-}
-)";
-
-static const char _fragmentShaderCode[] = R"(#version 410 core
-uniform sampler2D InputTexture;
-
-in vec2 uv;
-
-out vec4 fragColor;
-
-void main()
-{
-	vec4 color = texture( InputTexture, uv );
-	//The InputTexture contains premultiplied colors, so we need to unpremultiply first to apply our effect on straight colors.
-	if( color.a > 0.0 )
-		color.rgb /= color.a;
-
-	//The plugin has to output premultiplied colors, this is how we're premultiplying our straight color while also
-	//ensuring we aren't going out of the LDR the video engine is working in.
-	color.rgb = clamp( color.rgb * color.a, vec3( 0.0 ), vec3( color.a ) );
-	fragColor = color;
-}
-)";
 
 std::string GetSeverityString(TESeverity severity) {
 	switch (severity)
@@ -83,8 +48,8 @@ FFGLTouchEngine::FFGLTouchEngine()
 {
 	SpoutID = GenerateRandomString(10);
 	// Input properties
-	SetMinInputs(1);
-	SetMaxInputs(100);
+	SetMinInputs(0);
+	SetMaxInputs(0);
 
 	// Parameters
 	SetParamInfof(0, "Tox File", FF_TYPE_EVENT);
@@ -276,8 +241,10 @@ FFResult FFGLTouchEngine::SetFloatParameter(unsigned int dwIndex, float value) {
 			// Open file dialog
 			OpenFileDialog();
 			LoadTEFile();
-			break;
+			return FF_SUCCESS;
 	}
+
+	Parameters[dwIndex - 1].second
 
 	return FF_SUCCESS;
 }
@@ -377,6 +344,128 @@ bool FFGLTouchEngine::CreateInputTexture(int width, int height) {
 	return true;
 
 
+}
+
+void FFGLTouchEngine::GetAllParameters()
+{
+	TouchObject<TEStringArray> groupLinkInfo;
+
+	if (instance == nullptr) {
+		return;
+	}
+
+	TEResult result = TEInstanceGetLinkGroups(instance, TEScopeInput, groupLinkInfo.take());
+
+	if (result != TEResultSuccess)
+	{
+		return;
+	}
+
+	for (int i = 0; i < groupLinkInfo->count; i++)
+	{
+		TouchObject<TEStringArray> links;
+		result = TEInstanceLinkGetChildren(instance, groupLinkInfo->strings[i], links.take());
+
+		if (result != TEResultSuccess)
+		{
+			return;
+		}
+
+		for (int j = 0; j < links->count; j++)
+		{
+			TouchObject<TELinkInfo> linkInfo;
+			result = TEInstanceLinkGetInfo(instance, links->strings[j], linkInfo.take());
+
+			if (result != TEResultSuccess)
+			{
+				continue;
+			}
+
+
+			if (linkInfo->domain == TELinkDomainParameter) {
+				Parameters.push_back(std::make_pair(linkInfo->identifier, j + 1));
+
+
+				switch (linkInfo->type)
+				{
+					case TELinkTypeTexture:
+					{
+						continue;
+					}
+
+					case TELinkTypeDouble:
+					{
+						SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_STANDARD);
+						double max = 0;
+						result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueMaximum, &max, 1);
+						if (result != TEResultSuccess)
+						{
+							continue;
+						}
+						double min = 0;
+						result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueMinimum, &min, 1);
+						if (result != TEResultSuccess)
+						{
+							continue;
+						}
+
+						SetParamRange(Parameters[j].second, min, max);
+
+						break;
+
+					}
+					case TELinkTypeInt:
+					{
+						SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_INTEGER);
+						int32_t max = 0;
+						result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueMaximum, &max, 1);
+						if (result != TEResultSuccess)
+						{
+							continue;
+						}
+
+						int32_t min = 0;
+						result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueMinimum, &min, 1);
+						if (result != TEResultSuccess)
+						{
+							continue;
+						}
+
+						SetParamRange(Parameters[j].second, min, max);
+
+						break;
+					}
+					case TELinkTypeBoolean:
+					{
+
+						if (linkInfo->intent == TELinkIntentMomentary) {
+							SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_EVENT);
+						}
+						else
+						{
+							SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_BOOLEAN);
+						}
+
+						break;
+					}
+				}
+			}
+			else if (linkInfo->domain == TELinkDomainOperator) {
+				if (strcmp(linkInfo->name, "vdjtexturein") == 0 && linkInfo->type == TELinkTypeTexture)
+				{
+					isVideoFX = true;
+					hasVideoInput = true;
+				}
+
+				else if (strcmp(linkInfo->name, "vdjaudioin") == 0 && linkInfo->type == TELinkTypeFloatBuffer)
+				{
+					hasAudioInput = true;
+				}
+
+			}
+
+		}
+	}
 }
 
 bool FFGLTouchEngine::LoadTEFile()

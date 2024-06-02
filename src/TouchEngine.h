@@ -58,6 +58,10 @@ private:
 	
 	//TouchEngine parameters
 	std::vector<std::pair<std::string, FFUInt32>> Parameters;
+	std::unordered_map<FFUInt32, int32_t> ParameterMapInt;
+	std::unordered_map<FFUInt32, double> ParameterMapFloat;
+	std::unordered_map<FFUInt32, std::string> ParameterMapString;
+	std::unordered_map<FFUInt32, bool> ParameterMapBool;
 
 	std::string SpoutID;
 	SpoutReceiver SPReceiver;

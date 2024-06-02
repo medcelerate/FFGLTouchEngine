@@ -148,7 +148,36 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 	FFGLTextureStruct &Texture = *(pGL->inputTextures[0]);
 
-	
+	for (auto& param : ParameterMapFloat)
+	{
+		TEResult result = TEInstanceLinkSetDoubleValue(instance, Parameters[param.first - 1].first.c_str(), &param.second, 1);
+		if (result != TEResultSuccess)
+		{
+			isTouchFrameBusy = false;
+			return FF_FAIL;
+		}
+	}
+	//Need to handle bools
+	for (auto& param : ParameterMapInt)
+	{
+		TEResult result = TEInstanceLinkSetIntValue(instance, Parameters[param.first - 1].first.c_str(), &param.second, 1);
+		if (result != TEResultSuccess)
+		{
+			isTouchFrameBusy = false;
+			return FF_FAIL;
+		}
+	}
+
+	for (auto& param : ParameterMapBool)
+	{
+		TEResult result = TEInstanceLinkSetBooleanValue(instance, Parameters[param.first - 1].first.c_str(), param.second);
+		if (result != TEResultSuccess)
+		{
+			isTouchFrameBusy = false;
+			return FF_FAIL;
+		}
+	}
+
 
 	TEResult result = TEInstanceStartFrameAtTime(instance, FrameCount, 60, false);
 	if (result != TEResultSuccess)
@@ -244,7 +273,7 @@ FFResult FFGLTouchEngine::SetFloatParameter(unsigned int dwIndex, float value) {
 			return FF_SUCCESS;
 	}
 
-	Parameters[dwIndex - 1].second
+	ParameterMapFloat[Parameters[dwIndex - 1].second] = value;
 
 	return FF_SUCCESS;
 }
@@ -396,6 +425,16 @@ void FFGLTouchEngine::GetAllParameters()
 					case TELinkTypeDouble:
 					{
 						SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_STANDARD);
+
+						double value = 0;
+						result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
+						if (result != TEResultSuccess)
+						{
+							continue;
+						}
+
+						ParameterMapFloat[Parameters[j].second] = value;
+
 						double max = 0;
 						result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueMaximum, &max, 1);
 						if (result != TEResultSuccess)
@@ -416,7 +455,19 @@ void FFGLTouchEngine::GetAllParameters()
 					}
 					case TELinkTypeInt:
 					{
+
 						SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_INTEGER);
+
+						int32_t value = 0;
+						result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
+						if (result != TEResultSuccess)
+						{
+							continue;
+						}
+
+						ParameterMapInt[Parameters[j].second] = value;
+
+
 						int32_t max = 0;
 						result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueMaximum, &max, 1);
 						if (result != TEResultSuccess)
@@ -444,6 +495,15 @@ void FFGLTouchEngine::GetAllParameters()
 						else
 						{
 							SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_BOOLEAN);
+
+							bool value = false;
+							result = TEInstanceLinkGetBooleanValue(instance, linkInfo->identifier, TELinkValueCurrent, &value);
+							if (result != TEResultSuccess)
+							{
+								continue;
+							}
+
+							ParameterMapBool[Parameters[j].second] = value;
 						}
 
 						break;

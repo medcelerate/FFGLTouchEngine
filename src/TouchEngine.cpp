@@ -200,6 +200,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 	if (hasVideoOutput) {
 		TouchObject<TETexture> TETextureToSend;
+		//Will need to replace the below value with something more standard
 		result = TEInstanceLinkGetTextureValue(instance, "op/vdjtextureout", TELinkValueCurrent, TETextureToSend.take());
 		if (result == TEResultSuccess && TETextureToSend != nullptr) {
 			if (TETextureGetType(TETextureToSend) == TETextureTypeD3DShared && result == TEResultSuccess) {
@@ -278,6 +279,7 @@ FFResult FFGLTouchEngine::SetFloatParameter(unsigned int dwIndex, float value) {
 			break;
 	}
 
+	return FF_SUCCESS;
 }
 
 bool FFGLTouchEngine::LoadTEGraphicsContext(bool reload)

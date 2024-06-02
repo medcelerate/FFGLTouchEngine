@@ -1,4 +1,5 @@
 #pragma once
+#include <windows.h>
 #include "FFGL/FFGLSDK.h"
 #include <d3d11.h>
 #pragma comment(lib, "d3d11.lib")
@@ -11,7 +12,6 @@
 #include "TouchEngine/TED3D11.h"
 #include "SpoutDX/SpoutDX.h"
 #include "SpoutGL/SpoutReceiver.h"
-
 
 
 class FFGLTouchEngine : public CFFGLPlugin

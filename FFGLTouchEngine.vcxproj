@@ -132,7 +132,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(SolutionDir)lib\TouchEngine\TouchEngine.lib;$(SolutionDir)lib\Spout\Release\Spout_static.lib;$(SolutionDir)lib\Spout\Release\SpoutDX_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(SolutionDir)lib\TouchEngine\TouchEngine.lib;$(SolutionDir)lib\Spout\Spout_static.lib;$(SolutionDir)lib\Spout\Spout.lib;$(SolutionDir)lib\Spout\SpoutDX.lib;$(SolutionDir)lib\Spout\SpoutDX_static.lib;$(SolutionDir)lib\Spout\SpoutLibrary.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -162,7 +162,6 @@
     <ClCompile Include="src\FFGL\ffglquickstart\FFGLRandom.cpp" />
     <ClCompile Include="src\FFGL\ffglquickstart\FFGLSmoothValue.cpp" />
     <ClCompile Include="src\FFGL\ffglquickstart\FFGLSource.cpp" />
-    <ClCompile Include="src\FFGL\FFGLSDK.cpp" />
     <ClCompile Include="src\FFGL\ffgl\FFGL.cpp" />
     <ClCompile Include="src\FFGL\ffgl\FFGLLog.cpp" />
     <ClCompile Include="src\FFGL\ffgl\FFGLPluginInfo.cpp" />

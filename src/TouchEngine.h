@@ -26,7 +26,7 @@ public:
 
 	FFResult SetFloatParameter(unsigned int dwIndex, float value) override;
 
-	float GetFloatParameter(unsigned int index) override;
+	//float GetFloatParameter(unsigned int index) override;
 
 private:
 	TouchObject<TEInstance> instance;

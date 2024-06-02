@@ -54,17 +54,6 @@ FFGLTouchEngine::FFGLTouchEngine()
 	// Parameters
 	SetParamInfof(0, "Tox File", FF_TYPE_EVENT);
 
-	/*
-	SetParamInfo(0, "RGBA1 Red", FF_TYPE_STANDARD, 1.0f);
-	SetParamInfo(1, "RGBA1 Green", FF_TYPE_STANDARD, 1.0f);
-	SetParamInfo(2, "RGBA1 Blue", FF_TYPE_STANDARD, 0.0f);
-	SetParamInfo(3, "RGBA1 Alpha", FF_TYPE_STANDARD, 1.0f);
-
-	SetParamInfo(4, "HSBA2 Hue", FF_TYPE_STANDARD, 0.0f);
-	SetParamInfo(5, "HSBA2 Saturation", FF_TYPE_STANDARD, 1.0f);
-	SetParamInfo(6, "HSBA2 Brightness", FF_TYPE_STANDARD, 1.0f);
-	SetParamInfo(7, "HSBA2 Alpha", FF_TYPE_STANDARD, 1.0f);
-	*/
 }
 
 FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
@@ -157,7 +146,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			return FF_FAIL;
 		}
 	}
-	//Need to handle bools
+
 	for (auto& param : ParameterMapInt)
 	{
 		TEResult result = TEInstanceLinkSetIntValue(instance, Parameters[param.first - 1].first.c_str(), &param.second, 1);

@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{6b3fac13-9ab3-46e8-83a4-cf8c6488252c}</ProjectGuid>
+    <RootNamespace>FFGLTouchEngine</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>$(SolutionDir)lib\TouchEngine\TouchEngine.lib;$(SolutionDir)lib\Spout\Debug\Spout_static.lib;$(SolutionDir)lib\Spout\Debug\SpoutDX_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>$(SolutionDir)lib\TouchEngine\TouchEngine.lib;$(SolutionDir)lib\Spout\Release\Spout_static.lib;$(SolutionDir)lib\Spout\Release\SpoutDX_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="src\FFGL\ffglex\FFGLFBO.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLScopedBufferBinding.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLScopedFBOBinding.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLScopedRenderBufferBinding.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLScopedSamplerActivation.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLScopedShaderBinding.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLScopedTextureBinding.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLScopedVAOBinding.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLScreenQuad.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLShader.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLUtilities.cpp" />
+    <ClCompile Include="src\FFGL\ffglquickstart\FFGLAudio.cpp" />
+    <ClCompile Include="src\FFGL\ffglquickstart\FFGLEffect.cpp" />
+    <ClCompile Include="src\FFGL\ffglquickstart\FFGLMixer.cpp" />
+    <ClCompile Include="src\FFGL\ffglquickstart\FFGLParam.cpp" />
+    <ClCompile Include="src\FFGL\ffglquickstart\FFGLParamBool.cpp" />
+    <ClCompile Include="src\FFGL\ffglquickstart\FFGLParamEvent.cpp" />
+    <ClCompile Include="src\FFGL\ffglquickstart\FFGLParamFFT.cpp" />
+    <ClCompile Include="src\FFGL\ffglquickstart\FFGLParamOption.cpp" />
+    <ClCompile Include="src\FFGL\ffglquickstart\FFGLParamRange.cpp" />
+    <ClCompile Include="src\FFGL\ffglquickstart\FFGLParamText.cpp" />
+    <ClCompile Include="src\FFGL\ffglquickstart\FFGLParamTrigger.cpp" />
+    <ClCompile Include="src\FFGL\ffglquickstart\FFGLPlugin.cpp" />
+    <ClCompile Include="src\FFGL\ffglquickstart\FFGLRandom.cpp" />
+    <ClCompile Include="src\FFGL\ffglquickstart\FFGLSmoothValue.cpp" />
+    <ClCompile Include="src\FFGL\ffglquickstart\FFGLSource.cpp" />
+    <ClCompile Include="src\FFGL\FFGLSDK.cpp" />
+    <ClCompile Include="src\FFGL\ffgl\FFGL.cpp" />
+    <ClCompile Include="src\FFGL\ffgl\FFGLLog.cpp" />
+    <ClCompile Include="src\FFGL\ffgl\FFGLPluginInfo.cpp" />
+    <ClCompile Include="src\FFGL\ffgl\FFGLPluginInfoData.cpp" />
+    <ClCompile Include="src\FFGL\ffgl\FFGLPluginManager.cpp" />
+    <ClCompile Include="src\FFGL\ffgl\FFGLPluginSDK.cpp" />
+    <ClCompile Include="src\FFGL\ffgl\FFGLThumbnailInfo.cpp" />
+    <ClCompile Include="src\TouchEngine.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\FFGL\ffglex\FFGLFBO.h" />
+    <ClInclude Include="src\FFGL\ffglex\FFGLScopedBufferBinding.h" />
+    <ClInclude Include="src\FFGL\ffglex\FFGLScopedFBOBinding.h" />
+    <ClInclude Include="src\FFGL\ffglex\FFGLScopedRenderBufferBinding.h" />
+    <ClInclude Include="src\FFGL\ffglex\FFGLScopedSamplerActivation.h" />
+    <ClInclude Include="src\FFGL\ffglex\FFGLScopedShaderBinding.h" />
+    <ClInclude Include="src\FFGL\ffglex\FFGLScopedTextureBinding.h" />
+    <ClInclude Include="src\FFGL\ffglex\FFGLScopedVAOBinding.h" />
+    <ClInclude Include="src\FFGL\ffglex\FFGLScreenQuad.h" />
+    <ClInclude Include="src\FFGL\ffglex\FFGLShader.h" />
+    <ClInclude Include="src\FFGL\ffglex\FFGLUtilities.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLAudio.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLEffect.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLMixer.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLParam.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLParamBool.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLParamEvent.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLParamFFT.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLParamOption.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLParamRange.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLParamText.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLParamTrigger.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLPlugin.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLRandom.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLSmoothValue.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLSource.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLUtils.h" />
+    <ClInclude Include="src\FFGL\FFGLSDK.h" />
+    <ClInclude Include="src\FFGL\ffgl\FFGL.h" />
+    <ClInclude Include="src\FFGL\ffgl\FFGLLib.h" />
+    <ClInclude Include="src\FFGL\ffgl\FFGLLog.h" />
+    <ClInclude Include="src\FFGL\ffgl\FFGLPlatform.h" />
+    <ClInclude Include="src\FFGL\ffgl\FFGLPluginInfo.h" />
+    <ClInclude Include="src\FFGL\ffgl\FFGLPluginManager.h" />
+    <ClInclude Include="src\FFGL\ffgl\FFGLPluginSDK.h" />
+    <ClInclude Include="src\FFGL\ffgl\FFGLThumbnailInfo.h" />
+    <ClInclude Include="src\TouchEngine.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

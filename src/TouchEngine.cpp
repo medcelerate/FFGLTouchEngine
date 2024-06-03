@@ -267,6 +267,11 @@ FFResult FFGLTouchEngine::SetFloatParameter(unsigned int dwIndex, float value) {
 	return FF_SUCCESS;
 }
 
+FFResult FFGLTouchEngine::SetTextParameter(unsigned int dwIndex, const char* value) {
+	ParameterMapString[Parameters[dwIndex - 1].second] = value;
+	return FF_SUCCESS;
+}
+
 bool FFGLTouchEngine::LoadTEGraphicsContext(bool reload)
 {
 	// Load the TouchEngine graphics context
@@ -421,7 +426,7 @@ void FFGLTouchEngine::GetAllParameters()
 						{
 							continue;
 						}
-
+						SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_STANDARD, static_cast<float>(value));
 						ParameterMapFloat[Parameters[j].second] = value;
 
 						double max = 0;
@@ -445,7 +450,6 @@ void FFGLTouchEngine::GetAllParameters()
 					case TELinkTypeInt:
 					{
 
-						SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_INTEGER);
 
 						int32_t value = 0;
 						result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
@@ -453,8 +457,8 @@ void FFGLTouchEngine::GetAllParameters()
 						{
 							continue;
 						}
-
-						ParameterMapInt[Parameters[j].second] = value;
+						SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_INTEGER, static_cast<float>(value));
+						ParameterMapFloat[Parameters[j].second] = value;
 
 
 						int32_t max = 0;
@@ -492,8 +496,26 @@ void FFGLTouchEngine::GetAllParameters()
 								continue;
 							}
 
+							SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_BOOLEAN, value);
+
 							ParameterMapBool[Parameters[j].second] = value;
 						}
+
+						break;
+					}
+					case TELinkTypeString:
+					{
+
+						TouchObject<TEString> value;
+						result = TEInstanceLinkGetStringValue(instance, linkInfo->identifier, TELinkValueCurrent, value.take());
+						if (result != TEResultSuccess)
+						{
+							continue;
+						}
+
+						SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_TEXT, value);
+
+						ParameterMapString[Parameters[j].second] = value->string;
 
 						break;
 					}

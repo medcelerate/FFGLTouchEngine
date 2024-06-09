@@ -7,12 +7,11 @@
 #pragma comment(lib, "gdi32.lib")
 #define WIN32_LEAN_AND_MEAN
 #include <wrl.h>
-#include <windows.h>
 #include <shobjidl.h>
 #include "TouchEngine/TouchObject.h"
 #include "TouchEngine/TEGraphicsContext.h"
 #include "TouchEngine/TED3D11.h"
-#include "SpoutDX/SpoutDX.h"
+#include "SpoutGL/SpoutDirectX.h"
 #include "SpoutGL/SpoutReceiver.h"
 
 
@@ -66,8 +65,9 @@ private:
 
 	std::string SpoutID;
 	SpoutReceiver SPReceiver;
-	spoutDX SPSender;
-
+	spoutDirectX SPDirectx;
+	spoutSenderNames SPSender;
+	spoutFrameCount SPFrameCount;
 
 
 	int Width = 0;

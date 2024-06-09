@@ -71,7 +71,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Label="Vcpkg">
-    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+    <VcpkgEnableManifest>false</VcpkgEnableManifest>
+    <VcpkgManifestInstall>false</VcpkgManifestInstall>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -128,14 +129,14 @@
       <AdditionalIncludeDirectories>$(SolutionDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc11</LanguageStandard_C>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(SolutionDir)lib\TouchEngine\TouchEngine.lib;$(SolutionDir)lib\Spout\Spout_static.lib;$(SolutionDir)lib\Spout\Spout.lib;$(SolutionDir)lib\Spout\SpoutDX.lib;$(SolutionDir)lib\Spout\SpoutDX_static.lib;$(SolutionDir)lib\Spout\SpoutLibrary.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(SolutionDir)lib\TouchEngine\TouchEngine.lib;opengl32.lib;$(SolutionDir)lib\Spout\Spout_static.lib;$(SolutionDir)lib\Glew\glew32s.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -212,6 +213,9 @@
     <ClInclude Include="src\FFGL\ffgl\FFGLPluginSDK.h" />
     <ClInclude Include="src\FFGL\ffgl\FFGLThumbnailInfo.h" />
     <ClInclude Include="src\TouchEngine.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="glew.props" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

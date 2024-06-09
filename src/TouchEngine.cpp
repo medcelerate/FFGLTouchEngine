@@ -85,9 +85,13 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 
 
 	SPReceiver.SetActiveSender(SpoutID.c_str());
-	SPSender.SetActiveSender(SpoutID.c_str());
 
-	SPSender.SetAdapterAuto(true);
+	HANDLE dxShareHandle = nullptr;
+
+	SPDirectx.CreateSharedDX11Texture(D3DDevice.Get(), Width, Height, DXGI_FORMAT_B8G8R8A8_UNORM, &D3DTextureOutput, dxShareHandle);
+
+	SPSender.CreateSender(SpoutID.c_str(), Width, Height, dxShareHandle);
+
 
 
 
@@ -193,13 +197,13 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				{
 					return FF_FALSE;
 				}
-				Microsoft::WRL::ComPtr<ID3D11Texture2D> RawTextureToSend = TED3D11TextureGetTexture(D3DTextureToSend);
+			//	Microsoft::WRL::ComPtr<ID3D11Texture2D> RawTextureToSend = TED3D11TextureGetTexture(D3DTextureToSend);
 
-				if (RawTextureToSend == nullptr) {
-					return FF_FALSE;
-				}
+			//	if (RawTextureToSend == nullptr) {
+			//		return FF_FALSE;
+			//	}
 				Microsoft::WRL::ComPtr <IDXGIKeyedMutex> keyedMutex;
-				RawTextureToSend->QueryInterface<IDXGIKeyedMutex>(&keyedMutex);
+				D3DTextureOutput->QueryInterface<IDXGIKeyedMutex>(&keyedMutex);
 
 				TouchObject<TESemaphore> semaphore;
 				uint64_t waitValue = 0;
@@ -209,9 +213,9 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 					return FF_FALSE;
 				}
 				keyedMutex->AcquireSync(waitValue, INFINITE);
-			
-				SPSender.SendTexture(RawTextureToSend.Get());
-
+				SPFrameCount.SetNewFrame();
+				SPFrameCount.AllowAccess();
+				//SPSender.SendTexture(RawTextureToSend.Get());
 				keyedMutex->ReleaseSync(waitValue + 1);
 
 			}

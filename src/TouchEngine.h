@@ -19,6 +19,7 @@ class FFGLTouchEngine : public CFFGLPlugin
 {
 public:
 	FFGLTouchEngine();
+	~FFGLTouchEngine();
 
 	//CFFGLPlugin
 	FFResult InitGL(const FFGLViewportStruct* vp) override;

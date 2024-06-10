@@ -46,22 +46,35 @@ std::string GenerateRandomString(size_t length)
 FFGLTouchEngine::FFGLTouchEngine()
 	: CFFGLPlugin()
 {
-	SpoutID = GenerateRandomString(10);
+	SpoutID = GenerateRandomString(15);
 	// Input properties
 	SetMinInputs(0);
 	SetMaxInputs(0);
 
 	// Parameters
-	SetParamInfof(0, "Tox File", FF_TYPE_EVENT);
+	SetParamInfof(0, "Tox File", FF_TYPE_FILE);
+	SetParamInfof(1, "Reload", FF_TYPE_EVENT);
+
+}
+
+FFGLTouchEngine::~FFGLTouchEngine()
+{
+	if (D3DDevice != nullptr) {
+		D3DDevice->Release();
+	}
+
+	if (instance != nullptr)
+	{
+		TEInstanceSuspend(instance);
+		TEInstanceUnload(instance);
+	}
+
+
 
 }
 
 FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 {
-
-	Width = vp->width;
-	Height = vp->height;
-	
 
 	// Create D3D11 device
 	HRESULT hr = D3D11CreateDevice(
@@ -95,8 +108,10 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 
 
 
+
+
 	// Load the TouchEngine graphics context
-	if (!LoadTEGraphicsContext(false)) {
+	if (!LoadTEGraphicsContext(true)) {
 		return FF_FAIL;
 	}
 
@@ -129,9 +144,6 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 
 FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 {
-	if (pGL->numInputTextures < 1)
-		return FF_FAIL;
-
 	if (!isTouchEngineLoaded || !isTouchEngineReady || isTouchFrameBusy)
 	{
 		return FF_FAIL;
@@ -139,7 +151,8 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 	isTouchFrameBusy = true;
 
-	FFGLTextureStruct &Texture = *(pGL->inputTextures[0]);
+	//FFGLTextureStruct &Texture = *(pGL->);
+	//pGL->
 
 	for (auto& param : ParameterMapFloat)
 	{
@@ -197,13 +210,13 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				{
 					return FF_FALSE;
 				}
-			//	Microsoft::WRL::ComPtr<ID3D11Texture2D> RawTextureToSend = TED3D11TextureGetTexture(D3DTextureToSend);
+			Microsoft::WRL::ComPtr<ID3D11Texture2D> RawTextureToSend = TED3D11TextureGetTexture(D3DTextureToSend);
 
-			//	if (RawTextureToSend == nullptr) {
-			//		return FF_FALSE;
-			//	}
+			if (RawTextureToSend == nullptr) {
+				return FF_FALSE;
+			}
 				Microsoft::WRL::ComPtr <IDXGIKeyedMutex> keyedMutex;
-				D3DTextureOutput->QueryInterface<IDXGIKeyedMutex>(&keyedMutex);
+				RawTextureToSend->QueryInterface<IDXGIKeyedMutex>(&keyedMutex);
 
 				TouchObject<TESemaphore> semaphore;
 				uint64_t waitValue = 0;
@@ -213,6 +226,11 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 					return FF_FALSE;
 				}
 				keyedMutex->AcquireSync(waitValue, INFINITE);
+				Microsoft::WRL::ComPtr<ID3D11DeviceContext> devContext; //use smart pointer to automatically release pointer and prevent memory leak
+				D3DDevice->GetImmediateContext(&devContext);
+				devContext->CopyResource(D3DTextureOutput.Get(), RawTextureToSend.Get());
+				devContext->Flush();
+				//D3DContext->CopyResource(D3DTextureOutput.Get(), RawTextureToSend.Get());
 				SPFrameCount.SetNewFrame();
 				SPFrameCount.AllowAccess();
 				//SPSender.SendTexture(RawTextureToSend.Get());
@@ -223,8 +241,8 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		}
 		//Bind and receive the texture
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, Texture.Handle);
-		SPReceiver.ReceiveTexture(Texture.Handle, Width, Height);
+	//	glBindTexture(GL_TEXTURE_2D, Texture.Handle);
+	//	SPReceiver.ReceiveTexture(Texture.Handle, Width, Height);
 	
 	}
 	
@@ -244,10 +262,11 @@ FFResult FFGLTouchEngine::DeInitGL()
 
 	if (instance != nullptr)
 	{
-		TEInstanceSuspend(instance);
-		TEInstanceUnload(instance);
-		D3DContext.reset();
-		D3DDevice->Release();
+		if (isTouchEngineLoaded)
+		{
+			TEInstanceSuspend(instance);
+			TEInstanceUnload(instance);
+		}
 	}
 
 	// Deinitialize the quad
@@ -258,12 +277,10 @@ FFResult FFGLTouchEngine::DeInitGL()
 
 
 FFResult FFGLTouchEngine::SetFloatParameter(unsigned int dwIndex, float value) {
-	switch (dwIndex) {
-		case 0:
-			// Open file dialog
-			OpenFileDialog();
-			LoadTEFile();
-			return FF_SUCCESS;
+
+	if (dwIndex == 1) {
+		LoadTEFile();
+		return FF_SUCCESS;
 	}
 
 	ParameterMapFloat[Parameters[dwIndex - 1].second] = value;
@@ -272,6 +289,13 @@ FFResult FFGLTouchEngine::SetFloatParameter(unsigned int dwIndex, float value) {
 }
 
 FFResult FFGLTouchEngine::SetTextParameter(unsigned int dwIndex, const char* value) {
+	switch (dwIndex) {
+	case 0:
+		// Open file dialog
+		FilePath = std::string(value);
+		LoadTEFile();
+		return FF_SUCCESS;
+	}
 	ParameterMapString[Parameters[dwIndex - 1].second] = value;
 	return FF_SUCCESS;
 }
@@ -279,6 +303,10 @@ FFResult FFGLTouchEngine::SetTextParameter(unsigned int dwIndex, const char* val
 bool FFGLTouchEngine::LoadTEGraphicsContext(bool reload)
 {
 	// Load the TouchEngine graphics context
+
+	if (D3DDevice == nullptr) {
+		FFGLLog::LogToHost("D3D11 Device Not Available, You Probably Failed Somewhere...In Your Life");
+	}
 
 	if (instance == nullptr || reload) {
 		TEResult result = TED3D11ContextCreate(D3DDevice.Get(), D3DContext.take());
@@ -462,7 +490,7 @@ void FFGLTouchEngine::GetAllParameters()
 							continue;
 						}
 						SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_INTEGER, static_cast<float>(value));
-						ParameterMapFloat[Parameters[j].second] = value;
+						ParameterMapInt[Parameters[j].second] = value;
 
 
 						int32_t max = 0;
@@ -537,10 +565,54 @@ void FFGLTouchEngine::GetAllParameters()
 					hasAudioInput = true;
 				}
 
+				else if (strcmp(linkInfo->name, "vdjtextureout") == 0 && linkInfo->type == TELinkTypeTexture)
+				{
+					hasVideoOutput = true;
+				}
+
 			}
 
 		}
 	}
+
+	// Get the texture output if it exists
+	result = TEInstanceGetLinkGroups(instance, TEScopeOutput, groupLinkInfo.take());
+
+	if (result != TEResultSuccess)
+	{
+		return;
+	}
+
+	for (int i = 0; i < groupLinkInfo->count; i++) {
+		TouchObject<TEStringArray> links;
+		result = TEInstanceLinkGetChildren(instance, groupLinkInfo->strings[i], links.take());
+
+		if (result != TEResultSuccess)
+		{
+			return;
+		}
+
+		for (int j = 0; j < links->count; j++)
+		{
+			TouchObject<TELinkInfo> linkInfo;
+			result = TEInstanceLinkGetInfo(instance, links->strings[j], linkInfo.take());
+
+			if (result != TEResultSuccess)
+			{
+				continue;
+			}
+
+			if (linkInfo->domain == TELinkDomainOperator) {
+				if (strcmp(linkInfo->name, "vdjtextureout") == 0 && linkInfo->type == TELinkTypeTexture)
+				{
+					hasVideoOutput = true;
+				}
+			}
+		}
+	
+	}
+
+
 }
 
 bool FFGLTouchEngine::LoadTEFile()
@@ -643,7 +715,7 @@ void FFGLTouchEngine::ResumeTouchEngine() {
 		TEVideoInputD3D.take(TED3D11TextureCreate(D3DTextureInput.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, nullptr, nullptr));
 	}
 
-	//GetAllParameters();
+	GetAllParameters();
 	return;
 
 }

@@ -14,6 +14,33 @@ static CFFGLPluginInfo PluginInfo(
 );
 
 
+static const char vertexShaderCode[] = R"(#version 410 core
+layout( location = 0 ) in vec4 vPosition;
+layout( location = 1 ) in vec2 vUV;
+
+out vec2 uv;
+
+void main()
+{
+	gl_Position = vPosition;
+	uv = vUV;
+}
+)";
+
+static const char fragmentShaderCode[] = R"(#version 410 core
+uniform sampler2D InputTexture;
+
+in vec2 uv;
+out vec4 fragColor;
+
+void main()
+{
+	vec4 color = texture( InputTexture, uv );
+	color.a = 1.0; // full alpha
+	fragColor = color;
+}
+)";
+
 std::string GetSeverityString(TESeverity severity) {
 	switch (severity)
 	{
@@ -47,6 +74,7 @@ FFGLTouchEngine::FFGLTouchEngine()
 	: CFFGLPlugin()
 {
 	SpoutID = GenerateRandomString(15);
+	SpoutTexture = 0;
 	// Input properties
 	SetMinInputs(0);
 	SetMaxInputs(0);
@@ -92,10 +120,26 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 
 	if (FAILED(hr))
 	{
+		DeInitGL();
 		FFGLLog::LogToHost("Failed to create D3D11 device");
 		return FF_FAIL;
 	}
 
+
+	if (!shader.Compile(vertexShaderCode, fragmentShaderCode))
+	{
+		DeInitGL();
+		FFGLLog::LogToHost("Failed to compile shader");
+		return FF_FAIL;
+	}
+
+	// Initialize the quad
+	if (!quad.Initialise())
+	{
+		DeInitGL();
+		FFGLLog::LogToHost("Failed to initialize quad");
+		return FF_FAIL;
+	}
 
 	SPReceiver.SetActiveSender(SpoutID.c_str());
 
@@ -121,7 +165,7 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 
 	if (FilePath.empty())
 	{
-		return FF_SUCCESS;
+		return CFFGLPlugin::InitGL(vp);;
 	}
 
 	bool Status = LoadTEFile();
@@ -132,7 +176,7 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 		return FF_FAIL;
 	}
 
-	return FF_SUCCESS;
+	return CFFGLPlugin::InitGL(vp);
 }
 
 FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
@@ -252,15 +296,24 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			}
 		
 		}
-		//Bind and receive the texture
-		glActiveTexture(GL_TEXTURE0);
-	//	glBindTexture(GL_TEXTURE_2D, Texture.Handle);
-	//	SPReceiver.ReceiveTexture(Texture.Handle, Width, Height);
+
+		//Receiver the texture from spout
+		if (SPReceiver.ReceiveTexture(SpoutTexture, GL_TEXTURE_2D, true, pGL->HostFBO)) {
+			if (SPReceiver.IsUpdated()) {
+				InitializeGlTexture(SpoutTexture, SPReceiver.GetSenderWidth(), SPReceiver.GetSenderHeight());
+			}
+
+			ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
+			ffglex::ScopedSamplerActivation activateSampler(0);
+			ffglex::Scoped2DTextureBinding textureBinding(SpoutTexture);
+			shader.Set("InputTexture", 0);
+			shader.Set("MaxUV", 1.0f, 1.0f);
+			quad.Draw();
+		
+		}
 	
 	}
 	
-	// Render the quad
-	quad.Draw();
 
 	// Unbind the input texture
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -731,6 +784,23 @@ void FFGLTouchEngine::ResumeTouchEngine() {
 	GetAllParameters();
 	return;
 
+}
+
+void FFGLTouchEngine::InitializeGlTexture(GLuint& texture, uint16_t width, uint16_t height)
+{
+	if (texture != 0) {
+		glDeleteTextures(1, &texture);
+		texture = 0;
+	}
+
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 

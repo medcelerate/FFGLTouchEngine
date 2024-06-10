@@ -82,6 +82,9 @@ private:
 
 	ffglex::FFGLShader shader;  //!< Utility to help us compile and link some shaders into a program.
 	ffglex::FFGLScreenQuad quad;//!< Utility to help us render a full screen quad.
+	GLuint SpoutTexture = 0;
+	void InitializeGlTexture(GLuint &texture, uint16_t width, uint16_t height);
+
 
 	bool LoadTEGraphicsContext(bool Reload);
 	bool CreateInputTexture(int width, int height);

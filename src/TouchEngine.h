@@ -64,11 +64,13 @@ private:
 	std::unordered_map<FFUInt32, std::string> ParameterMapString;
 	std::unordered_map<FFUInt32, bool> ParameterMapBool;
 
+	//Spout Configs
 	std::string SpoutID;
 	SpoutReceiver SPReceiver;
 	spoutDirectX SPDirectx;
 	spoutSenderNames SPSender;
 	spoutFrameCount SPFrameCount;
+	bool isSpoutInitialized = false;
 
 
 	int Width = 0;

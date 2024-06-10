@@ -99,13 +99,6 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 
 	SPReceiver.SetActiveSender(SpoutID.c_str());
 
-	HANDLE dxShareHandle = nullptr;
-
-	SPDirectx.CreateSharedDX11Texture(D3DDevice.Get(), Width, Height, DXGI_FORMAT_B8G8R8A8_UNORM, &D3DTextureOutput, dxShareHandle);
-
-	SPSender.CreateSender(SpoutID.c_str(), Width, Height, dxShareHandle);
-
-
 
 
 
@@ -144,10 +137,13 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 
 FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 {
+
 	if (!isTouchEngineLoaded || !isTouchEngineReady || isTouchFrameBusy)
 	{
 		return FF_FAIL;
 	}
+
+
 
 	isTouchFrameBusy = true;
 
@@ -210,11 +206,28 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				{
 					return FF_FALSE;
 				}
-			Microsoft::WRL::ComPtr<ID3D11Texture2D> RawTextureToSend = TED3D11TextureGetTexture(D3DTextureToSend);
+				Microsoft::WRL::ComPtr<ID3D11Texture2D> RawTextureToSend = TED3D11TextureGetTexture(D3DTextureToSend);
 
-			if (RawTextureToSend == nullptr) {
-				return FF_FALSE;
-			}
+				if (RawTextureToSend == nullptr) {
+					return FF_FALSE;
+				}
+
+				D3D11_TEXTURE2D_DESC RawTextureDesc;
+				ZeroMemory(&RawTextureDesc, sizeof(RawTextureDesc));
+
+				RawTextureToSend->GetDesc(&RawTextureDesc);
+
+
+				HANDLE dxShareHandle = nullptr;
+				if (!isSpoutInitialized) {
+					SPDirectx.CreateSharedDX11Texture(D3DDevice.Get(), Width, Height, RawTextureDesc.Format, &D3DTextureOutput, dxShareHandle);
+					isSpoutInitialized = SPSender.CreateSender(SpoutID.c_str(), Width, Height, dxShareHandle, (DWORD)RawTextureDesc.Format);
+					SPFrameCount.CreateAccessMutex(SpoutID.c_str());
+					SPFrameCount.EnableFrameCount(SpoutID.c_str());
+				}
+				//Dynamically change texture size here when wxH changes
+
+
 				Microsoft::WRL::ComPtr <IDXGIKeyedMutex> keyedMutex;
 				RawTextureToSend->QueryInterface<IDXGIKeyedMutex>(&keyedMutex);
 
@@ -228,12 +241,12 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				keyedMutex->AcquireSync(waitValue, INFINITE);
 				Microsoft::WRL::ComPtr<ID3D11DeviceContext> devContext; //use smart pointer to automatically release pointer and prevent memory leak
 				D3DDevice->GetImmediateContext(&devContext);
-				devContext->CopyResource(D3DTextureOutput.Get(), RawTextureToSend.Get());
-				devContext->Flush();
-				//D3DContext->CopyResource(D3DTextureOutput.Get(), RawTextureToSend.Get());
-				SPFrameCount.SetNewFrame();
-				SPFrameCount.AllowAccess();
-				//SPSender.SendTexture(RawTextureToSend.Get());
+				if (SPFrameCount.CheckAccess()) {
+					devContext->CopyResource(D3DTextureOutput.Get(), RawTextureToSend.Get());
+					devContext->Flush();
+					SPFrameCount.SetNewFrame();
+					SPFrameCount.AllowAccess();
+				}
 				keyedMutex->ReleaseSync(waitValue + 1);
 
 			}

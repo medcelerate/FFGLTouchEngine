@@ -722,36 +722,6 @@ bool FFGLTouchEngine::LoadTEFile()
 	return true;
 }
 
-bool FFGLTouchEngine::OpenFileDialog()
-{
-	IFileOpenDialog* pFileOpen;
-
-	// Create the FileOpenDialog object.
-	HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL,
-		IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
-
-	if (SUCCEEDED(hr)) {
-		hr = pFileOpen->Show(nullptr);
-
-		if (SUCCEEDED(hr)) {
-			IShellItem* pItem;
-			hr = pFileOpen->GetResult(&pItem);
-			if (SUCCEEDED(hr)) {
-				LPWSTR filePathW;
-				hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &filePathW);
-				if (SUCCEEDED(hr)) {
-					std::wstring filePathWStr(filePathW);
-					FilePath = std::string(filePathWStr.begin(), filePathWStr.end());
-					std::string error = "TouchEngine Error: File Path: " + FilePath;
-					FFGLLog::LogToHost(error.c_str());
-					CoTaskMemFree(filePathW);
-				}
-				pItem->Release();
-			}
-		}
-	}
-	return true;
-}
 
 void FFGLTouchEngine::LoadTouchEngine() {
 

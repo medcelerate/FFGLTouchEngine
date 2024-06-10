@@ -89,7 +89,7 @@ private:
 	bool LoadTEGraphicsContext(bool Reload);
 	bool CreateInputTexture(int width, int height);
 	bool LoadTEFile();
-	bool OpenFileDialog();
+
 	void LoadTouchEngine();
 	void ResumeTouchEngine();
 	void GetAllParameters();

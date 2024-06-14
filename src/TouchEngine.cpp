@@ -73,8 +73,6 @@ std::string GenerateRandomString(size_t length)
 FFGLTouchEngine::FFGLTouchEngine()
 	: CFFGLPlugin()
 {
-	SpoutID = GenerateRandomString(15);
-	SpoutTexture = 0;
 	// Input properties
 	SetMinInputs(0);
 	SetMaxInputs(0);
@@ -82,6 +80,9 @@ FFGLTouchEngine::FFGLTouchEngine()
 	// Parameters
 	SetParamInfof(0, "Tox File", FF_TYPE_FILE);
 	SetParamInfof(1, "Reload", FF_TYPE_EVENT);
+
+
+
 
 }
 
@@ -98,11 +99,11 @@ FFGLTouchEngine::~FFGLTouchEngine()
 	}
 
 
-
 }
 
 FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 {
+
 
 	// Create D3D11 device
 	HRESULT hr = D3D11CreateDevice(
@@ -117,14 +118,17 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 		nullptr,
 		nullptr
 	);
-
 	if (FAILED(hr))
 	{
-		DeInitGL();
 		FFGLLog::LogToHost("Failed to create D3D11 device");
 		return FF_FAIL;
 	}
+	//Load TouchEngine
+	LoadTouchEngine();
 
+
+	SpoutID = GenerateRandomString(15);
+	SpoutTexture = 0;
 
 	if (!shader.Compile(vertexShaderCode, fragmentShaderCode))
 	{
@@ -145,12 +149,6 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 
 
 
-
-
-	// Load the TouchEngine graphics context
-	if (!LoadTEGraphicsContext(true)) {
-		return FF_FAIL;
-	}
 
 	// Create the input texture
 
@@ -186,7 +184,6 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 	{
 		return FF_FAIL;
 	}
-
 
 
 	isTouchFrameBusy = true;
@@ -268,6 +265,18 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 					isSpoutInitialized = SPSender.CreateSender(SpoutID.c_str(), Width, Height, dxShareHandle, (DWORD)RawTextureDesc.Format);
 					SPFrameCount.CreateAccessMutex(SpoutID.c_str());
 					SPFrameCount.EnableFrameCount(SpoutID.c_str());
+				}
+
+				if (RawTextureDesc.Width != Width || RawTextureDesc.Height != Height) {
+					Width = RawTextureDesc.Width;
+					Height = RawTextureDesc.Height;
+					if (D3DTextureOutput != nullptr)
+					{
+						D3DTextureOutput->Release();
+					}
+
+					SPDirectx.CreateSharedDX11Texture(D3DDevice.Get(), Width, Height, RawTextureDesc.Format, &D3DTextureOutput, dxShareHandle);
+					SPSender.UpdateSender(SpoutID.c_str(), Width, Height, dxShareHandle, (DWORD)RawTextureDesc.Format);
 				}
 				//Dynamically change texture size here when wxH changes
 
@@ -368,26 +377,33 @@ FFResult FFGLTouchEngine::SetTextParameter(unsigned int dwIndex, const char* val
 
 bool FFGLTouchEngine::LoadTEGraphicsContext(bool reload)
 {
+	if (isGraphicsContextLoaded && !reload) {
+		return true;
+	}
+
+	if (instance == nullptr) {
+		return false;
+	}
+	
+
 	// Load the TouchEngine graphics context
 
 	if (D3DDevice == nullptr) {
 		FFGLLog::LogToHost("D3D11 Device Not Available, You Probably Failed Somewhere...In Your Life");
 	}
 
-	if (instance == nullptr || reload) {
-		TEResult result = TED3D11ContextCreate(D3DDevice.Get(), D3DContext.take());
-		if (result != TEResultSuccess) {
-			return false;
-		}
-
-		result = TEInstanceAssociateGraphicsContext(instance, D3DContext);
-		if (result != TEResultSuccess)
-		{
-			return false;
-		}
+	TEResult result = TED3D11ContextCreate(D3DDevice.Get(), D3DContext.take());
+	if (result != TEResultSuccess) {
+		return false;
 	}
 
-	return true;
+	result = TEInstanceAssociateGraphicsContext(instance, D3DContext);
+	if (result != TEResultSuccess)
+	{
+		return false;
+	}
+	isGraphicsContextLoaded = true;
+	return isGraphicsContextLoaded;
 }
 
 bool FFGLTouchEngine::CreateInputTexture(int width, int height) {
@@ -689,16 +705,11 @@ bool FFGLTouchEngine::LoadTEFile()
 
 	if (instance == nullptr)
 	{
-		LoadTouchEngine();
-		if (instance == nullptr)
-		{
-			FFGLLog::LogToHost("Failed to create TouchEngine instance");
-			return false;
-		}
+		return false;
 	}
 
 	// 2. Load the tox file into the TouchEngine
-	TEResult result = TEInstanceConfigure(instance, FilePath.c_str(), TETimeExternal);
+	TEResult result = TEInstanceConfigure(instance, FilePath.c_str(), TETimeInternal);
 	if (result != TEResultSuccess)
 	{
 		return false;

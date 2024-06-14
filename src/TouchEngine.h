@@ -38,8 +38,9 @@ private:
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureInput = nullptr;
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureOutput = nullptr;
 
-	bool isTouchEngineLoaded = false;
-	bool isTouchEngineReady = false;
+	std::atomic_bool isTouchEngineLoaded = false;
+	std::atomic_bool isTouchEngineReady = false;
+	std::atomic_bool isGraphicsContextLoaded = false;
 	std::atomic_bool isTouchFrameBusy = false;
 	uint64_t FrameCount = 0;
 

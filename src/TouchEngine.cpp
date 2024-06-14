@@ -301,7 +301,11 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 					SPFrameCount.AllowAccess();
 				}
 				keyedMutex->ReleaseSync(waitValue + 1);
-
+				result = TEInstanceAddTextureTransfer(instance, TETextureToSend, semaphore, waitValue + 1);
+				if (result != TEResultSuccess)
+				{
+					return FF_FAIL;
+				}
 			}
 		
 		}

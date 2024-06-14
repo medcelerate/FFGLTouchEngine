@@ -237,7 +237,4 @@
       <Filter>Header Files\FFGL</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="glew.props" />
-  </ItemGroup>
 </Project>

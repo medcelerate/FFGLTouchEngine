@@ -207,6 +207,7 @@
 #include <windows.h>
 //If this include cannot be found you may have created a new project but did not add the glew property page yet.
 //Go to the Property Manager window (usually docked with the Solution Explorer) and add {root}/deps/glew.props.
+#define GLEW_STATIC
 #include <GL/glew.h>
 #undef NOGDICAPMASKS
 #undef NOVIRTUALKEYCODES

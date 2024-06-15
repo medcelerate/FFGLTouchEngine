@@ -285,7 +285,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				//This mutex returns empty after the first frame is grabbed.
 				auto y = RawTextureToSend->QueryInterface<IDXGIKeyedMutex>(&keyedMutex);
 
-				TouchObject<TESemaphore> semaphore;
+				TESemaphore* semaphore = nullptr;
 				uint64_t waitValue = 0; 
 				if (TEInstanceHasTextureTransfer(instance, TETextureToSend) == false)
 				{
@@ -295,7 +295,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 						return FF_FAIL;
 					}
 				}
-				result = TEInstanceGetTextureTransfer(instance, TETextureToSend, semaphore.take(), &waitValue);
+				result = TEInstanceGetTextureTransfer(instance, TETextureToSend, &semaphore, &waitValue);
 				if (result != TEResultSuccess)
 				{
 					return FF_FALSE;
@@ -306,17 +306,16 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				D3DDevice->GetImmediateContext(&devContext);
 				if (SPFrameCount.CheckAccess()) {
 					devContext->CopyResource(D3DTextureOutput.Get(), RawTextureToSend);
-					devContext->Flush();
 					SPFrameCount.SetNewFrame();
 					SPFrameCount.AllowAccess();
 				}
 				keyedMutex->ReleaseSync(waitValue + 1);
-				result = TEInstanceAddTextureTransfer(instance, TETextureToSend, nullptr, waitValue + 1);
+				result = TEInstanceAddTextureTransfer(instance, TETextureToSend, semaphore, waitValue + 1);
 				if (result != TEResultSuccess)
 				{
 					return FF_FAIL;
 				}
-
+				devContext->Flush();
 				keyedMutex->Release();
 				devContext->Release();
 

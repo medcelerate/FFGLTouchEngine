@@ -62,6 +62,7 @@ private:
 	//TouchEngine parameters
 	uint32_t MaxParamsByType = 0;
 	uint32_t OffsetParamsByType = 0;
+	std::set<FFUInt32> ActiveParams;
 	std::vector<std::pair<std::string, FFUInt32>> Parameters;
 	std::unordered_map<FFUInt32, int32_t> ParameterMapInt;
 	std::unordered_map<FFUInt32, double> ParameterMapFloat;

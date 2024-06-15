@@ -29,8 +29,8 @@ public:
 	FFResult SetFloatParameter(unsigned int dwIndex, float value) override;
 	FFResult SetTextParameter(unsigned int dwIndex, const char* value) override;
 
-	//float GetFloatParameter(unsigned int index) override;
-
+	float GetFloatParameter(unsigned int index) override;
+	char* GetTextParameter(unsigned int index) override;
 private:
 	TouchObject<TEInstance> instance;
 	Microsoft::WRL::ComPtr<ID3D11Device> D3DDevice;
@@ -59,6 +59,8 @@ private:
 	TouchObject<TEFloatBuffer> TEAudioInFloatBuffer2;
 	
 	//TouchEngine parameters
+	uint32_t MaxParamsByType = 0;
+	uint32_t OffsetParamsByType = 0;
 	std::vector<std::pair<std::string, FFUInt32>> Parameters;
 	std::unordered_map<FFUInt32, int32_t> ParameterMapInt;
 	std::unordered_map<FFUInt32, double> ParameterMapFloat;

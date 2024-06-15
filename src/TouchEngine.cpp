@@ -282,10 +282,10 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 
 				Microsoft::WRL::ComPtr <IDXGIKeyedMutex> keyedMutex;
-				RawTextureToSend->QueryInterface<IDXGIKeyedMutex>(&keyedMutex);
+				auto y = RawTextureToSend->QueryInterface<IDXGIKeyedMutex>(&keyedMutex);
 
 				TouchObject<TESemaphore> semaphore;
-				uint64_t waitValue = 0;
+				uint64_t waitValue = SPFrameCount.GetNewFrame();
 				result = TEInstanceGetTextureTransfer(instance, TETextureToSend, semaphore.take(), &waitValue);
 				if (result != TEResultSuccess)
 				{
@@ -306,6 +306,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				{
 					return FF_FAIL;
 				}
+				keyedMutex->Release();
 			}
 		
 		}
@@ -713,7 +714,7 @@ bool FFGLTouchEngine::LoadTEFile()
 	}
 
 	// 2. Load the tox file into the TouchEngine
-	TEResult result = TEInstanceConfigure(instance, FilePath.c_str(), TETimeInternal);
+	TEResult result = TEInstanceConfigure(instance, FilePath.c_str(), TETimeExternal);
 	if (result != TEResultSuccess)
 	{
 		return false;

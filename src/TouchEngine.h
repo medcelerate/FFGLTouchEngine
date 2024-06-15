@@ -1,7 +1,7 @@
 #pragma once
 #include <windows.h>
 #include "FFGL/FFGLSDK.h"
-#include <d3d11.h>
+#include <d3d11_4.h>
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "user32.lib")   
 #pragma comment(lib, "gdi32.lib")

@@ -94,14 +94,14 @@ FFGLTouchEngine::FFGLTouchEngine()
 
 	for (int i = MaxParamsByType + OffsetParamsByType; i < (MaxParamsByType * 2) + OffsetParamsByType; i++)
 	{
-		SetParamInfof(i, "Parameter", FF_TYPE_INTEGER);
+		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_INTEGER);
 		ParameterMapInt[i] = 0;
 		SetParamVisibility(i, false, false);
 	}
 
 	for (int i = (MaxParamsByType * 2) + OffsetParamsByType; i < (MaxParamsByType * 3) + OffsetParamsByType; i++)
 	{
-		SetParamInfof(i, "Parameter", FF_TYPE_BOOLEAN);
+		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_BOOLEAN);
 		ParameterMapBool[i] = false;
 		SetParamVisibility(i, false, false);
 	}
@@ -109,7 +109,7 @@ FFGLTouchEngine::FFGLTouchEngine()
 
 	for (int i = (MaxParamsByType * 3) + OffsetParamsByType; i < (MaxParamsByType * 4) + OffsetParamsByType; i++)
 	{
-		SetParamInfof(i, "Parameter", FF_TYPE_TEXT);
+		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_TEXT);
 		ParameterMapString[i] = "";
 		SetParamVisibility(i, false, false);
 	}
@@ -117,7 +117,7 @@ FFGLTouchEngine::FFGLTouchEngine()
 
 	for (int i = (MaxParamsByType * 4) + OffsetParamsByType; i < (MaxParamsByType * 5) + OffsetParamsByType; i++)
 	{
-		SetParamInfof(i, "Parameter", FF_TYPE_EVENT);
+		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_EVENT);
 		ParameterMapBool[i] = false;
 		SetParamVisibility(i, false, false);
 	}
@@ -417,7 +417,11 @@ FFResult FFGLTouchEngine::SetFloatParameter(unsigned int dwIndex, float value) {
 		return FF_SUCCESS;
 	}
 
-	ParameterMapFloat[Parameters[dwIndex - 2].second] = value;
+	if (!isTouchEngineLoaded || !isTouchEngineReady) {
+		return FF_SUCCESS;
+	}
+
+	ParameterMapFloat[Parameters[dwIndex - OffsetParamsByType].second] = value;
 
 	return FF_SUCCESS;
 }
@@ -430,6 +434,11 @@ FFResult FFGLTouchEngine::SetTextParameter(unsigned int dwIndex, const char* val
 		LoadTEFile();
 		return FF_SUCCESS;
 	}
+
+	if (!isTouchEngineLoaded || !isTouchEngineReady) {
+		return FF_SUCCESS;
+	}
+
 	ParameterMapString[Parameters[dwIndex - OffsetParamsByType].second] = value;
 	return FF_SUCCESS;
 }

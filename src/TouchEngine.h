@@ -31,6 +31,7 @@ public:
 
 	float GetFloatParameter(unsigned int index) override;
 	char* GetTextParameter(unsigned int index) override;
+
 private:
 	TouchObject<TEInstance> instance;
 	Microsoft::WRL::ComPtr<ID3D11Device> D3DDevice;

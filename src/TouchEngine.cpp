@@ -89,7 +89,7 @@ FFGLTouchEngine::FFGLTouchEngine()
 FFGLTouchEngine::~FFGLTouchEngine()
 {
 	if (D3DDevice != nullptr) {
-		D3DDevice->Release();
+	//	D3DDevice->Release();
 	}
 
 	if (instance != nullptr)
@@ -247,7 +247,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				{
 					return FF_FALSE;
 				}
-				Microsoft::WRL::ComPtr<ID3D11Texture2D> RawTextureToSend = TED3D11TextureGetTexture(D3DTextureToSend);
+				ID3D11Texture2D* RawTextureToSend = TED3D11TextureGetTexture(D3DTextureToSend);
 
 				if (RawTextureToSend == nullptr) {
 					return FF_FALSE;
@@ -282,31 +282,44 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 
 				Microsoft::WRL::ComPtr <IDXGIKeyedMutex> keyedMutex;
+				//This mutex returns empty after the first frame is grabbed.
 				auto y = RawTextureToSend->QueryInterface<IDXGIKeyedMutex>(&keyedMutex);
 
 				TouchObject<TESemaphore> semaphore;
-				uint64_t waitValue = SPFrameCount.GetNewFrame();
+				uint64_t waitValue = 0; 
+				if (TEInstanceHasTextureTransfer(instance, TETextureToSend) == false)
+				{
+					result = TEInstanceAddTextureTransfer(instance, TETextureToSend, semaphore, waitValue);
+					if (result != TEResultSuccess)
+					{
+						return FF_FAIL;
+					}
+				}
 				result = TEInstanceGetTextureTransfer(instance, TETextureToSend, semaphore.take(), &waitValue);
 				if (result != TEResultSuccess)
 				{
 					return FF_FALSE;
 				}
 				keyedMutex->AcquireSync(waitValue, INFINITE);
+				
 				Microsoft::WRL::ComPtr<ID3D11DeviceContext> devContext; //use smart pointer to automatically release pointer and prevent memory leak
 				D3DDevice->GetImmediateContext(&devContext);
 				if (SPFrameCount.CheckAccess()) {
-					devContext->CopyResource(D3DTextureOutput.Get(), RawTextureToSend.Get());
+					devContext->CopyResource(D3DTextureOutput.Get(), RawTextureToSend);
 					devContext->Flush();
 					SPFrameCount.SetNewFrame();
 					SPFrameCount.AllowAccess();
 				}
 				keyedMutex->ReleaseSync(waitValue + 1);
-				result = TEInstanceAddTextureTransfer(instance, TETextureToSend, semaphore, waitValue + 1);
+				result = TEInstanceAddTextureTransfer(instance, TETextureToSend, nullptr, waitValue + 1);
 				if (result != TEResultSuccess)
 				{
 					return FF_FAIL;
 				}
+
 				keyedMutex->Release();
+				devContext->Release();
+
 			}
 		
 		}

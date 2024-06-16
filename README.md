@@ -4,6 +4,7 @@ Simple FFGL plugin that allows loading touchdesigner components (tox) into progr
 
 You will need to build it in release mode only.
 
+Thank you to https://github.com/yannicks-png for the support and guidance.
 ### Current Features
 - [x] Support Tox as Generative FFGL
 - [x] Support Exposed Parameters From Tox

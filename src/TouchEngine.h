@@ -90,6 +90,8 @@ private:
 	ffglex::FFGLScreenQuad quad;//!< Utility to help us render a full screen quad.
 	GLuint SpoutTexture = 0;
 	void InitializeGlTexture(GLuint &texture, uint16_t width, uint16_t height);
+	void ConstructBaseParameters();
+	void ResetBaseParameters();
 
 
 	bool LoadTEGraphicsContext(bool Reload);

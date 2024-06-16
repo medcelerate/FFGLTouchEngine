@@ -86,39 +86,8 @@ FFGLTouchEngine::FFGLTouchEngine()
 	//This is the starting point for the parameters
 	OffsetParamsByType = 2;
 
-	for (int i = OffsetParamsByType; i < MaxParamsByType + OffsetParamsByType; i++)
-	{
-		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_STANDARD);
-		SetParamVisibility(i, false, false);
-	}
 
-
-	for (int i = MaxParamsByType + OffsetParamsByType; i < (MaxParamsByType * 2) + OffsetParamsByType; i++)
-	{
-		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_INTEGER);
-		SetParamVisibility(i, false, false);
-	}
-
-	for (int i = (MaxParamsByType * 2) + OffsetParamsByType; i < (MaxParamsByType * 3) + OffsetParamsByType; i++)
-	{
-		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_BOOLEAN);
-		SetParamVisibility(i, false, false);
-	}
-
-
-	for (int i = (MaxParamsByType * 3) + OffsetParamsByType; i < (MaxParamsByType * 4) + OffsetParamsByType; i++)
-	{
-		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_TEXT);
-		SetParamVisibility(i, false, false);
-	}
-
-
-	for (int i = (MaxParamsByType * 4) + OffsetParamsByType; i < (MaxParamsByType * 5) + OffsetParamsByType; i++)
-	{
-		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_EVENT);
-		SetParamVisibility(i, false, false);
-	}
-
+	ConstructBaseParameters();
 
 }
 
@@ -601,8 +570,61 @@ bool FFGLTouchEngine::CreateInputTexture(int width, int height) {
 
 }
 
+void FFGLTouchEngine::ConstructBaseParameters() {
+	for (int i = OffsetParamsByType; i < MaxParamsByType + OffsetParamsByType; i++)
+	{
+		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_STANDARD);
+		SetParamVisibility(i, false, false);
+	}
+
+
+	for (int i = MaxParamsByType + OffsetParamsByType; i < (MaxParamsByType * 2) + OffsetParamsByType; i++)
+	{
+		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_INTEGER);
+		SetParamVisibility(i, false, false);
+	}
+
+	for (int i = (MaxParamsByType * 2) + OffsetParamsByType; i < (MaxParamsByType * 3) + OffsetParamsByType; i++)
+	{
+		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_BOOLEAN);
+		SetParamVisibility(i, false, false);
+	}
+
+
+	for (int i = (MaxParamsByType * 3) + OffsetParamsByType; i < (MaxParamsByType * 4) + OffsetParamsByType; i++)
+	{
+		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_TEXT);
+		SetParamVisibility(i, false, false);
+	}
+
+
+	for (int i = (MaxParamsByType * 4) + OffsetParamsByType; i < (MaxParamsByType * 5) + OffsetParamsByType; i++)
+	{
+		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_EVENT);
+		SetParamVisibility(i, false, false);
+	}
+	return;
+
+}
+
+void FFGLTouchEngine::ResetBaseParameters() {
+	for (int i = OffsetParamsByType; i < MaxParamsByType + OffsetParamsByType; i++)
+	{
+		SetParamVisibility(i, false, false);
+	}
+	ActiveParams.clear();
+	ParameterMapFloat.clear();
+	ParameterMapInt.clear();
+	ParameterMapString.clear();
+	ParameterMapBool.clear();
+	Parameters.clear();
+	return;
+}
+
 void FFGLTouchEngine::GetAllParameters()
 {
+	ResetBaseParameters();
+
 	TouchObject<TEStringArray> groupLinkInfo;
 
 	if (instance == nullptr) {

@@ -86,7 +86,7 @@ FFGLTouchEngine::FFGLTouchEngine()
 
 	for (int i = OffsetParamsByType; i < MaxParamsByType + OffsetParamsByType; i++)
 	{
-		SetParamInfof(i, "Parameter", FF_TYPE_STANDARD);
+		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_STANDARD);
 		SetParamVisibility(i, false, false);
 	}
 

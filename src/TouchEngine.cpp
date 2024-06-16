@@ -610,7 +610,7 @@ void FFGLTouchEngine::ConstructBaseParameters() {
 void FFGLTouchEngine::ResetBaseParameters() {
 	for (int i = OffsetParamsByType; i < MaxParamsByType + OffsetParamsByType; i++)
 	{
-		SetParamVisibility(i, false, false);
+		SetParamVisibility(i, false, true);
 	}
 	ActiveParams.clear();
 	ParameterMapFloat.clear();

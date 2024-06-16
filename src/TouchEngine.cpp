@@ -1,4 +1,5 @@
 #include "TouchEngine.h"
+#include <map>
 
 static CFFGLPluginInfo PluginInfo(
 	PluginFactory< FFGLTouchEngine >,// Create method
@@ -82,6 +83,7 @@ FFGLTouchEngine::FFGLTouchEngine()
 	SetParamInfof(1, "Reload", FF_TYPE_EVENT);
 
 	MaxParamsByType = 30;
+	//This is the starting point for the parameters
 	OffsetParamsByType = 2;
 
 	for (int i = OffsetParamsByType; i < MaxParamsByType + OffsetParamsByType; i++)
@@ -211,6 +213,8 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 	return CFFGLPlugin::InitGL(vp);
 }
 
+//static std::map<ID3D11Texture2D*, IDXGIKeyedMutex*> g_mutexMap;
+
 FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 {
 
@@ -295,7 +299,6 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 				RawTextureToSend->GetDesc(&RawTextureDesc);
 
-
 				HANDLE dxShareHandle = nullptr;
 				if (!isSpoutInitialized) {
 					SPDirectx.CreateSharedDX11Texture(D3DDevice.Get(), Width, Height, RawTextureDesc.Format, &D3DTextureOutput, dxShareHandle);
@@ -308,23 +311,27 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 					Width = RawTextureDesc.Width;
 					Height = RawTextureDesc.Height;
 					if (D3DTextureOutput != nullptr)
-					{
 						D3DTextureOutput->Release();
-					}
 
 					SPDirectx.CreateSharedDX11Texture(D3DDevice.Get(), Width, Height, RawTextureDesc.Format, &D3DTextureOutput, dxShareHandle);
 					SPSender.UpdateSender(SpoutID.c_str(), Width, Height, dxShareHandle, (DWORD)RawTextureDesc.Format);
 				}
-				//Dynamically change texture size here when wxH changes
 
-
-				Microsoft::WRL::ComPtr <IDXGIKeyedMutex> keyedMutex;
-
-				//This mutex returns empty after the first frame is grabbed.
-				auto y = RawTextureToSend->QueryInterface<IDXGIKeyedMutex>(&keyedMutex);
-				if (keyedMutex == nullptr) {
-					return FF_FAIL;
+				IDXGIKeyedMutex* keyedMutex;
+				auto mapIt = TextureMutexMap.find(RawTextureToSend);
+				if (mapIt == TextureMutexMap.end())
+				{
+					auto y = RawTextureToSend->QueryInterface<IDXGIKeyedMutex>(&keyedMutex);
+					if (keyedMutex == nullptr) {
+						return FF_FAIL;
+					}
+					TextureMutexMap[RawTextureToSend] = keyedMutex;
 				}
+				else
+				{
+					keyedMutex = mapIt->second;
+				}
+				//Dynamically change texture size here when wxH changes
 
 				TESemaphore* semaphore = nullptr;
 				uint64_t waitValue = 0; 
@@ -356,7 +363,6 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 					return FF_FAIL;
 				}
 				devContext->Flush();
-				keyedMutex->Release();
 				devContext->Release();
 
 			}
@@ -391,6 +397,11 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 FFResult FFGLTouchEngine::DeInitGL()
 {
+
+	for (auto it : TextureMutexMap)
+		it.second->Release();
+
+	TextureMutexMap.clear();
 
 	if (instance != nullptr)
 	{

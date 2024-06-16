@@ -38,6 +38,7 @@ private:
 	TouchObject<TED3D11Context> D3DContext;
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureInput = nullptr;
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureOutput = nullptr;
+	std::map<ID3D11Texture2D*, IDXGIKeyedMutex*> TextureMutexMap;
 
 	std::atomic_bool isTouchEngineLoaded = false;
 	std::atomic_bool isTouchEngineReady = false;

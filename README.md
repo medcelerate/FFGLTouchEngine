@@ -8,7 +8,6 @@ Thank you to  [@yannicks-png](github.com/yannicks-png) for the support and guida
 ### Current Features
 - [x] Support Tox as Generative FFGL
 - [x] Support Exposed Parameters From Tox
-- [ ] Support FFT Input
 - [ ] Support Texture Input
 - [ ] Dynamic allocation of touchengine processes
 - [ ] Drag & Drop of Tox Into Resolume

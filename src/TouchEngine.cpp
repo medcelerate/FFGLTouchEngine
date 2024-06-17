@@ -13,6 +13,7 @@ static CFFGLPluginInfo PluginInfo(
 	"TouchEngine Loader made by Evan Clark"        // About
 );
 
+static CFFGLThumbnailInfo ThumbnailInfo(160, 120, thumbnail);
 
 static const char vertexShaderCode[] = R"(#version 410 core
 layout( location = 0 ) in vec4 vPosition;

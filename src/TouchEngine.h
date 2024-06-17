@@ -8,6 +8,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <wrl.h>
 #include <shobjidl.h>
+#include <map>
 #include "TouchEngine/TouchObject.h"
 #include "TouchEngine/TEGraphicsContext.h"
 #include "TouchEngine/TED3D11.h"

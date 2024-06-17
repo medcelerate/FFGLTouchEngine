@@ -1,5 +1,4 @@
 #include "TouchEngine.h"
-#include <map>
 
 static CFFGLPluginInfo PluginInfo(
 	PluginFactory< FFGLTouchEngine >,// Create method
@@ -367,7 +366,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 FFResult FFGLTouchEngine::DeInitGL()
 {
 
-	for (auto it : TextureMutexMap)
+	for (auto it : TextureMutexMap) 
 		it.second->Release();
 
 	TextureMutexMap.clear();

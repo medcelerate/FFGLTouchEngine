@@ -236,5 +236,8 @@
     <ClInclude Include="src\FFGL\ffgl\FFGLThumbnailInfo.h">
       <Filter>Header Files\FFGL</Filter>
     </ClInclude>
+    <ClInclude Include="src\Thumbnail.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

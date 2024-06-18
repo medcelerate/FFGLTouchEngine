@@ -66,6 +66,7 @@ private:
 	uint32_t OffsetParamsByType = 0;
 	std::set<FFUInt32> ActiveParams;
 	std::vector<std::pair<std::string, FFUInt32>> Parameters;
+	std::unordered_map<FFUInt32, FFUInt32> ParameterMapType;
 	std::unordered_map<FFUInt32, int32_t> ParameterMapInt;
 	std::unordered_map<FFUInt32, double> ParameterMapFloat;
 	std::unordered_map<FFUInt32, std::string> ParameterMapString;

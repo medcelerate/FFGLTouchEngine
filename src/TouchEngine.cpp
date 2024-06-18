@@ -197,11 +197,51 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 	//FFGLTextureStruct &Texture = *(pGL->);
 	//pGL->
 
-	auto v = ParameterMapFloat.size();
 
+	for (auto& param : Parameters) {
+		FFUInt32 type = ParameterMapType[param.second];
+		
+		if (type == FF_TYPE_STANDARD) {
+			TEResult result = TEInstanceLinkSetDoubleValue(instance, param.first.c_str(), &ParameterMapFloat[param.second], 1);
+			if (result != TEResultSuccess)
+			{
+				isTouchFrameBusy = false;
+				return FF_FAIL;
+			}
+		}
+
+		if (type == FF_TYPE_INTEGER) {
+			TEResult result = TEInstanceLinkSetIntValue(instance, param.first.c_str(), &ParameterMapInt[param.second], 1);
+			if (result != TEResultSuccess)
+			{
+				isTouchFrameBusy = false;
+				return FF_FAIL;
+			}
+		}
+
+
+		if (type == FF_TYPE_BOOLEAN || type == FF_TYPE_EVENT) {
+			TEResult result = TEInstanceLinkSetBooleanValue(instance, param.first.c_str(), ParameterMapBool[param.second]);
+			if (result != TEResultSuccess)
+			{
+				isTouchFrameBusy = false;
+				return FF_FAIL;
+			}
+		}
+
+		if (type == FF_TYPE_TEXT) {
+			TEResult result = TEInstanceLinkSetStringValue(instance, param.first.c_str(), ParameterMapString[param.second].c_str());
+			if (result != TEResultSuccess)
+			{
+				isTouchFrameBusy = false;
+				return FF_FAIL;
+			}
+		}
+
+	}
+	/*
 	for (auto& param : ParameterMapFloat)
 	{
-		auto y = Parameters[param.first - OffsetParamsByType];
 		TEResult result = TEInstanceLinkSetDoubleValue(instance, Parameters[param.first - OffsetParamsByType].first.c_str(), &param.second, 1);
 		if (result != TEResultSuccess)
 		{
@@ -229,7 +269,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			return FF_FAIL;
 		}
 	}
-
+	*/
 
 	TEResult result = TEInstanceStartFrameAtTime(instance, FrameCount, 60, false);
 	if (result != TEResultSuccess)
@@ -402,6 +442,19 @@ FFResult FFGLTouchEngine::SetFloatParameter(unsigned int dwIndex, float value) {
 		return FF_SUCCESS;
 	}
 
+	FFUInt32 type = ParameterMapType[dwIndex];
+
+	if (type == FF_TYPE_INTEGER) {
+		ParameterMapInt[Parameters[dwIndex - OffsetParamsByType].second] = static_cast<int32_t>(value);
+		return FF_SUCCESS;
+	}
+
+	if (type == FF_TYPE_BOOLEAN || type == FF_TYPE_EVENT) {
+		ParameterMapBool[Parameters[dwIndex - OffsetParamsByType].second] = value;
+		return FF_SUCCESS;
+	}
+
+
 	ParameterMapFloat[Parameters[dwIndex - OffsetParamsByType].second] = value;
 
 	return FF_SUCCESS;
@@ -428,9 +481,9 @@ FFResult FFGLTouchEngine::SetTextParameter(unsigned int dwIndex, const char* val
 	return FF_SUCCESS;
 }
 
-float FFGLTouchEngine::GetFloatParameter(unsigned int index) {
+float FFGLTouchEngine::GetFloatParameter(unsigned int dwIndex) {
 
-	if (index == 1) {
+	if (dwIndex == 1) {
 		return 0;
 	}
 	if (!isTouchEngineLoaded || !isTouchEngineReady) {
@@ -438,11 +491,22 @@ float FFGLTouchEngine::GetFloatParameter(unsigned int index) {
 	
 	}
 
-	if (ActiveParams.find(index) == ActiveParams.end()) {
+	if (ActiveParams.find(dwIndex) == ActiveParams.end()) {
 		return 0;
 	}
 
-	return ParameterMapFloat[Parameters[index - OffsetParamsByType].second];
+	FFUInt32 type = ParameterMapType[dwIndex];
+
+	if (type == FF_TYPE_INTEGER) {
+		return ParameterMapInt[Parameters[dwIndex - OffsetParamsByType].second];
+	}
+
+	if (type == FF_TYPE_BOOLEAN || type == FF_TYPE_EVENT) {
+		return ParameterMapBool[Parameters[dwIndex - OffsetParamsByType].second];
+	}
+
+
+	return ParameterMapFloat[Parameters[dwIndex - OffsetParamsByType].second];
 }
 
 char* FFGLTouchEngine::GetTextParameter(unsigned int index) {
@@ -673,6 +737,7 @@ void FFGLTouchEngine::GetAllParameters()
 						uint32_t ParamID = Parameters.size() + OffsetParamsByType;
 						Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
 						ActiveParams.insert(ParamID);
+						ParameterMapType[ParamID] = FF_TYPE_STANDARD;
 
 						//SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_STANDARD);
 
@@ -712,6 +777,7 @@ void FFGLTouchEngine::GetAllParameters()
 						uint32_t ParamID = (ParameterMapInt.size() + OffsetParamsByType) + MaxParamsByType;
 						Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
 						ActiveParams.insert(ParamID);
+						ParameterMapType[ParamID] = FF_TYPE_INTEGER;
 
 						int32_t value = 0;
 						result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
@@ -748,9 +814,10 @@ void FFGLTouchEngine::GetAllParameters()
 					{
 
 						if (linkInfo->intent == TELinkIntentMomentary) {
-							uint32_t ParamID = (ParameterMapBool.size() + OffsetParamsByType) + (MaxParamsByType * 5);
+							uint32_t ParamID = (ParameterMapBool.size() + OffsetParamsByType) + (MaxParamsByType * 4);
 							Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
 							ActiveParams.insert(ParamID);
+							ParameterMapType[ParamID] = FF_TYPE_EVENT;
 
 							//SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_EVENT);
 
@@ -761,9 +828,10 @@ void FFGLTouchEngine::GetAllParameters()
 						else
 						{
 							//SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_BOOLEAN);
-							uint32_t ParamID = (ParameterMapBool.size() + OffsetParamsByType) + MaxParamsByType * 3;
+							uint32_t ParamID = (ParameterMapBool.size() + OffsetParamsByType) + MaxParamsByType * 2;
 							Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
 							ActiveParams.insert(ParamID);
+							ParameterMapType[ParamID] = FF_TYPE_BOOLEAN;
 
 							bool value = false;
 							result = TEInstanceLinkGetBooleanValue(instance, linkInfo->identifier, TELinkValueCurrent, &value);
@@ -783,9 +851,10 @@ void FFGLTouchEngine::GetAllParameters()
 					}
 					case TELinkTypeString:
 					{
-						uint32_t ParamID = (ParameterMapString.size() + OffsetParamsByType) + MaxParamsByType * 4;
+						uint32_t ParamID = (ParameterMapString.size() + OffsetParamsByType) + MaxParamsByType * 3; //(MaxParamsByType * 3) + OffsetParamsByType
 						Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
 						ActiveParams.insert(ParamID);
+						ParameterMapType[ParamID] = FF_TYPE_TEXT;
 
 						TouchObject<TEString> value;
 						result = TEInstanceLinkGetStringValue(instance, linkInfo->identifier, TELinkValueCurrent, value.take());

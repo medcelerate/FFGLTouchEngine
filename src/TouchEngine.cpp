@@ -288,7 +288,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 	if (hasVideoOutput) {
 		TouchObject<TETexture> TETextureToSend;
 		//Will need to replace the below value with something more standard
-		result = TEInstanceLinkGetTextureValue(instance, "op/vdjtextureout", TELinkValueCurrent, TETextureToSend.take());
+		result = TEInstanceLinkGetTextureValue(instance, "op/ResolumeSource", TELinkValueCurrent, TETextureToSend.take());
 		if (result == TEResultSuccess && TETextureToSend != nullptr) {
 			if (TETextureGetType(TETextureToSend) == TETextureTypeD3DShared && result == TEResultSuccess) {
 				TouchObject<TED3D11Texture> D3DTextureToSend;
@@ -876,7 +876,7 @@ void FFGLTouchEngine::GetAllParameters()
 				}
 			}
 			else if (linkInfo->domain == TELinkDomainOperator) {
-				if (strcmp(linkInfo->name, "vdjtexturein") == 0 && linkInfo->type == TELinkTypeTexture)
+				if (strcmp(linkInfo->name, "ResolumeSource") == 0 && linkInfo->type == TELinkTypeTexture)
 				{
 					isVideoFX = true;
 					hasVideoInput = true;
@@ -887,7 +887,7 @@ void FFGLTouchEngine::GetAllParameters()
 					hasAudioInput = true;
 				}
 
-				else if (strcmp(linkInfo->name, "vdjtextureout") == 0 && linkInfo->type == TELinkTypeTexture)
+				else if (strcmp(linkInfo->name, "ResolumeDestination") == 0 && linkInfo->type == TELinkTypeTexture)
 				{
 					hasVideoOutput = true;
 				}

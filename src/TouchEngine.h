@@ -14,6 +14,7 @@
 #include "TouchEngine/TED3D11.h"
 #include "SpoutGL/SpoutDirectX.h"
 #include "SpoutGL/SpoutReceiver.h"
+#include "Thumbnail.h"
 
 
 class FFGLTouchEngine : public CFFGLPlugin

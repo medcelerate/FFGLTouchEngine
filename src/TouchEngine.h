@@ -50,7 +50,6 @@ private:
 
 	//Touch file capabilities
 	bool hasVideoInput = false;
-	bool hasAudioInput = false;
 	bool hasVideoOutput = false;
 	bool isVideoFX = false;
 

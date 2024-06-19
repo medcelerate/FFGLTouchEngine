@@ -93,9 +93,6 @@ FFGLTouchEngine::FFGLTouchEngine()
 
 FFGLTouchEngine::~FFGLTouchEngine()
 {
-	if (D3DDevice != nullptr) {
-	//	D3DDevice->Release();
-	}
 
 	if (instance != nullptr)
 	{

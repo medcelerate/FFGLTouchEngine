@@ -882,11 +882,6 @@ void FFGLTouchEngine::GetAllParameters()
 					hasVideoInput = true;
 				}
 
-				else if (strcmp(linkInfo->name, "vdjaudioin") == 0 && linkInfo->type == TELinkTypeFloatBuffer)
-				{
-					hasAudioInput = true;
-				}
-
 				else if (strcmp(linkInfo->name, "vdjtextureout") == 0 && linkInfo->type == TELinkTypeTexture)
 				{
 					hasVideoOutput = true;

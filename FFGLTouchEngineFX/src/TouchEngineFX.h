@@ -14,6 +14,7 @@
 #include "TouchEngine/TED3D11.h"
 #include "SpoutGL/SpoutDirectX.h"
 #include "SpoutGL/SpoutReceiver.h"
+#include "SpoutGL/SpoutSender.h"
 #include "Thumbnail.h"
 
 
@@ -73,12 +74,20 @@ private:
 	std::unordered_map<FFUInt32, bool> ParameterMapBool;
 
 	//Spout Configs
-	std::string SpoutID;
-	SpoutReceiver SPReceiver;
-	spoutDirectX SPDirectx;
-	spoutSenderNames SPSender;
-	spoutFrameCount SPFrameCount;
-	bool isSpoutInitialized = false;
+	std::string SpoutIDDest;
+	SpoutReceiver SPReceiverDest;
+	spoutDirectX SPDirectxDest;
+	spoutSenderNames SPSenderDest;
+	spoutFrameCount SPFrameCountDest;
+
+	std::string SpoutIDSource;
+	SpoutSender SPSenderSource;
+	spoutDirectX SPDirectxSource;
+	spoutSenderNames SPReceiverSource;
+	spoutFrameCount SPFrameCountSource;
+
+	bool isSpoutInitializedDest = false;
+	bool isSpoutInitializedSource = false;
 
 
 	int Width = 0;
@@ -90,7 +99,8 @@ private:
 
 	ffglex::FFGLShader shader;  //!< Utility to help us compile and link some shaders into a program.
 	ffglex::FFGLScreenQuad quad;//!< Utility to help us render a full screen quad.
-	GLuint SpoutTexture = 0;
+	GLuint SpoutTextureDest = 0;
+	GLuint SpoutTextureSource = 0;
 	void InitializeGlTexture(GLuint &texture, uint16_t width, uint16_t height);
 	void ConstructBaseParameters();
 	void ResetBaseParameters();

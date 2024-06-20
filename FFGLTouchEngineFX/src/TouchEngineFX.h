@@ -55,12 +55,10 @@ private:
 	bool isVideoFX = false;
 
 	//TouchEngine IO objects
-	TouchObject<TED3D11Texture> TEVideoInputD3D;
-	TouchObject<TED3D11Texture> TEVideoOutputD3D;
-	TouchObject<TETexture> TEVideoInputTexture;
-	TouchObject<TETexture> TEVideoOutputTexture;
-	TouchObject<TEFloatBuffer> TEAudioInFloatBuffer1;
-	TouchObject<TEFloatBuffer> TEAudioInFloatBuffer2;
+//	TouchObject<TED3D11Texture> TEVideoInputD3D;
+//	TouchObject<TED3D11Texture> TEVideoOutputD3D;
+//	TouchObject<TETexture> TEVideoInputTexture;
+//	TouchObject<TETexture> TEVideoOutputTexture;
 	
 	//TouchEngine parameters
 	uint32_t MaxParamsByType = 0;

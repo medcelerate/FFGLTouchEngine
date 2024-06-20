@@ -250,15 +250,6 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 	if (hasVideoInput) {
 		TouchObject<TETexture> TETextureToReceive;
 
-		if (!isSpoutInitializedSource) {
-
-			SPSenderSource.SetSenderName(SpoutIDSource.c_str());
-			HANDLE handle = nullptr;
-			DWORD senderFormat = 0;
-			uint16_t SWidth = 0;
-			uint16_t SHeight = 0;
-			SPReceiverSource.FindSender("ggg", SWidth, SHeight, handle, senderFormat);
-		}
 
 		ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
 		ffglex::ScopedSamplerActivation activateSampler(0);
@@ -269,7 +260,38 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		shader.Set("MaxUV", maxCoords.s, maxCoords.t);
 		quad.Draw();
 
+		if (!isSpoutInitializedSource) {
+
+			SPSenderSource.SetSenderName(SpoutIDSource.c_str());
+			SPSenderSource.SendFbo(pGL->HostFBO, pGL->inputTextures[0]->Width, pGL->inputTextures[0]->Height);
+			DXGI_FORMAT texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
+
+			D3D11_TEXTURE2D_DESC desc;
+			ZeroMemory(&desc, sizeof(desc));
+			desc.Width = Width;
+			desc.Height = Height;
+			// Bind flag for creating a shader resource view
+			desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+			desc.MiscFlags = 0; // This texture will not be shared
+			desc.Format = texformat; // Default DXGI_FORMAT_B8G8R8A8_UNORM
+			desc.Usage = D3D11_USAGE_DEFAULT;
+			desc.SampleDesc.Quality = 0;
+			desc.SampleDesc.Count = 1;
+			desc.MipLevels = 1;
+			desc.ArraySize = 1;
+
+			HRESULT hr = D3DDevice->CreateTexture2D(&desc, nullptr, &D3DTextureInput);
+
+			if (FAILED(hr))
+			{
+				FFGLLog::LogToHost("Failed to create texture input");
+				return FF_FAIL;
+			}
+		}
+
 		SPSenderSource.SendFbo(pGL->HostFBO, pGL->inputTextures[0]->Width, pGL->inputTextures[0]->Height);
+
+
 	
 	}
 

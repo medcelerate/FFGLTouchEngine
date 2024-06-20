@@ -93,9 +93,6 @@ FFGLTouchEngine::FFGLTouchEngine()
 
 FFGLTouchEngine::~FFGLTouchEngine()
 {
-	if (D3DDevice != nullptr) {
-	//	D3DDevice->Release();
-	}
 
 	if (instance != nullptr)
 	{
@@ -851,11 +848,6 @@ void FFGLTouchEngine::GetAllParameters()
 				{
 					isVideoFX = true;
 					hasVideoInput = true;
-				}
-
-				else if (strcmp(linkInfo->name, "vdjaudioin") == 0 && linkInfo->type == TELinkTypeFloatBuffer)
-				{
-					hasAudioInput = true;
 				}
 
 				else if (strcmp(linkInfo->name, "vdjtextureout") == 0 && linkInfo->type == TELinkTypeTexture)

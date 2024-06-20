@@ -83,6 +83,7 @@ FFGLTouchEngine::FFGLTouchEngine()
 	SetParamInfof(1, "Reload", FF_TYPE_EVENT);
 
 	MaxParamsByType = 30;
+
 	//This is the starting point for the parameters
 	OffsetParamsByType = 2;
 
@@ -125,6 +126,7 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 		FFGLLog::LogToHost("Failed to create D3D11 device");
 		return FF_FAIL;
 	}
+
 	//Load TouchEngine
 	LoadTouchEngine();
 
@@ -179,7 +181,6 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 	return CFFGLPlugin::InitGL(vp);
 }
 
-//static std::map<ID3D11Texture2D*, IDXGIKeyedMutex*> g_mutexMap;
 
 FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 {
@@ -192,8 +193,6 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 	isTouchFrameBusy = true;
 
-	//FFGLTextureStruct &Texture = *(pGL->);
-	//pGL->
 
 
 	for (auto& param : Parameters) {
@@ -238,7 +237,6 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 	}
 
-	*/
 
 	TEResult result = TEInstanceStartFrameAtTime(instance, FrameCount, 60, false);
 	if (result != TEResultSuccess)

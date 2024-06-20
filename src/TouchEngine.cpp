@@ -240,36 +240,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		}
 
 	}
-	/*
-	for (auto& param : ParameterMapFloat)
-	{
-		TEResult result = TEInstanceLinkSetDoubleValue(instance, Parameters[param.first - OffsetParamsByType].first.c_str(), &param.second, 1);
-		if (result != TEResultSuccess)
-		{
-			isTouchFrameBusy = false;
-			return FF_FAIL;
-		}
-	}
 
-	for (auto& param : ParameterMapInt)
-	{
-		TEResult result = TEInstanceLinkSetIntValue(instance, Parameters[param.first - OffsetParamsByType].first.c_str(), &param.second, 1);
-		if (result != TEResultSuccess)
-		{
-			isTouchFrameBusy = false;
-			return FF_FAIL;
-		}
-	}
-
-	for (auto& param : ParameterMapBool)
-	{
-		TEResult result = TEInstanceLinkSetBooleanValue(instance, Parameters[param.first - OffsetParamsByType].first.c_str(), param.second);
-		if (result != TEResultSuccess)
-		{
-			isTouchFrameBusy = false;
-			return FF_FAIL;
-		}
-	}
 	*/
 
 	TEResult result = TEInstanceStartFrameAtTime(instance, FrameCount, 60, false);

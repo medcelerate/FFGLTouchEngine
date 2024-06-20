@@ -266,6 +266,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			SPSenderSource.SendFbo(pGL->HostFBO, pGL->inputTextures[0]->Width, pGL->inputTextures[0]->Height);
 			DXGI_FORMAT texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
 
+			//Need to add a check for Gl texture format
 			D3D11_TEXTURE2D_DESC desc;
 			ZeroMemory(&desc, sizeof(desc));
 			desc.Width = Width;

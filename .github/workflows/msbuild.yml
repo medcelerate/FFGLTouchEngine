@@ -40,11 +40,11 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
-      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /O2 ${{env.SOLUTION_FILE_PATH}}
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /O2 ${{env.SOLUTION_FILE_PATH}} -target:FFGLTouchEngine:Release
 
     - name: Generate Zip
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Compress-Archive -Path FFGLTouchEngine/Build/x64/Release/FFGLTouchEngine.dll, FFGLTouchEngineFX/Build/x64/Release/FFGLTouchEngineFX.dll, lib/TouchEngine/TouchEngine.dll -Destination "FFGLTouchEngine-${{ github.ref_name }}.zip"
+      run: Compress-Archive -Path FFGLTouchEngine/Build/x64/Release/FFGLTouchEngine.dll, lib/TouchEngine/TouchEngine.dll -Destination "FFGLTouchEngine-${{ github.ref_name }}.zip"
     - name: Generate Release
       uses: ncipollo/release-action@v1
       with:

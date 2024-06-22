@@ -37,7 +37,6 @@ out vec4 fragColor;
 void main()
 {
 	vec4 color = texture( InputTexture, uv );
-	color.a = 1.0; // full alpha
 	fragColor = color;
 }
 )";
@@ -310,6 +309,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 				TESemaphore* semaphore = nullptr;
 				uint64_t waitValue = 0; 
+				/*
 				if (TEInstanceHasTextureTransfer(instance, TETextureToSend) == false)
 				{
 					result = TEInstanceAddTextureTransfer(instance, TETextureToSend, semaphore, waitValue);
@@ -317,7 +317,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 					{
 						return FF_FAIL;
 					}
-				}
+				}*/
 				result = TEInstanceGetTextureTransfer(instance, TETextureToSend, &semaphore, &waitValue);
 				if (result != TEResultSuccess)
 				{
@@ -642,6 +642,7 @@ void FFGLTouchEngine::ResetBaseParameters() {
 	{
 		SetParamVisibility(i, false, true);
 	}
+	hasVideoOutput = false;
 	ActiveParams.clear();
 	ParameterMapFloat.clear();
 	ParameterMapInt.clear();

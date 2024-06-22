@@ -638,7 +638,7 @@ void FFGLTouchEngine::ConstructBaseParameters() {
 
 	for (int i = (MaxParamsByType * 4) + OffsetParamsByType; i < (MaxParamsByType * 5) + OffsetParamsByType; i++)
 	{
-		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_EVENT);
+		SetParamInfof(i, (std::string("Pulse")).c_str(), FF_TYPE_EVENT);
 		SetParamVisibility(i, false, false);
 	}
 	return;

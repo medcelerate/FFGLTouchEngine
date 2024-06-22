@@ -14,6 +14,7 @@ This plugin is provided AS-IS from this repository, bug fixes and feature reques
 [If you like this tool please consider support my other venture and there will be many more tools to come.](https://www.kickstarter.com/projects/cvalt/help-build-new-york-citys-newest-zero-proof-cocktail-bar?ref=fhrd79)
 
 Thank you to  ([@yannicks-png](https://github.com/yannicksengstock)) for the support and guidance.
+
 ### Current Features
 - [x] Support Tox as Generative FFGL
 - [x] Support Exposed Parameters From Tox
@@ -22,4 +23,8 @@ Thank you to  ([@yannicks-png](https://github.com/yannicksengstock)) for the sup
 - [ ] Drag & Drop of Tox Into Resolume
 - [ ] MacOS Support
 
+
+### Guides
+
+To output video from TouchDesigner you need to create an out TOP and set the name to `output`, make sure to hit `yes to all`.
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Q5Q6YUGIA)

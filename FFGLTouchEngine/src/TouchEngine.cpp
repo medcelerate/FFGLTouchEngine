@@ -234,6 +234,15 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			}
 		}
 
+		if (type == FF_TYPE_EVENT) {
+			TEResult result = TEInstanceLinkSetBooleanValue(instance, param.first.c_str(), ParameterMapBool[param.second]);
+			if (result != TEResultSuccess)
+			{
+				isTouchFrameBusy = false;
+				return FF_FAIL;
+			}
+		}
+
 	}
 
 
@@ -412,17 +421,17 @@ FFResult FFGLTouchEngine::SetFloatParameter(unsigned int dwIndex, float value) {
 	FFUInt32 type = ParameterMapType[dwIndex];
 
 	if (type == FF_TYPE_INTEGER) {
-		ParameterMapInt[Parameters[dwIndex - OffsetParamsByType].second] = static_cast<int32_t>(value);
+		ParameterMapInt[dwIndex] = static_cast<int32_t>(value);
 		return FF_SUCCESS;
 	}
 
 	if (type == FF_TYPE_BOOLEAN || type == FF_TYPE_EVENT) {
-		ParameterMapBool[Parameters[dwIndex - OffsetParamsByType].second] = value;
+		ParameterMapBool[dwIndex] = value;
 		return FF_SUCCESS;
 	}
 
 
-	ParameterMapFloat[Parameters[dwIndex - OffsetParamsByType].second] = value;
+	ParameterMapFloat[dwIndex] = value;
 
 	return FF_SUCCESS;
 }
@@ -443,8 +452,7 @@ FFResult FFGLTouchEngine::SetTextParameter(unsigned int dwIndex, const char* val
 	if (ActiveParams.find(dwIndex) == ActiveParams.end()) {
 		return FF_SUCCESS;
 	}
-
-	ParameterMapString[Parameters[dwIndex - OffsetParamsByType].second] = value;
+	ParameterMapString[dwIndex] = value;
 	return FF_SUCCESS;
 }
 
@@ -476,8 +484,8 @@ float FFGLTouchEngine::GetFloatParameter(unsigned int dwIndex) {
 	return ParameterMapFloat[Parameters[dwIndex - OffsetParamsByType].second];
 }
 
-char* FFGLTouchEngine::GetTextParameter(unsigned int index) {
-	if (index == 0) {
+char* FFGLTouchEngine::GetTextParameter(unsigned int dwIndex) {
+	if (dwIndex == 0) {
 		return (char*)FilePath.c_str();
 	}
 
@@ -485,11 +493,11 @@ char* FFGLTouchEngine::GetTextParameter(unsigned int index) {
 		return nullptr;
 	}
 
-	if (ActiveParams.find(index) == ActiveParams.end()) {
+	if (ActiveParams.find(dwIndex) == ActiveParams.end()) {
 		return nullptr;
 	}
 
-	return (char*)ParameterMapString[Parameters[index - OffsetParamsByType].second].c_str();
+	return (char*)ParameterMapString[dwIndex].c_str();
 }
 
 bool FFGLTouchEngine::LoadTEGraphicsContext(bool reload)

@@ -473,15 +473,15 @@ float FFGLTouchEngine::GetFloatParameter(unsigned int dwIndex) {
 	FFUInt32 type = ParameterMapType[dwIndex];
 
 	if (type == FF_TYPE_INTEGER) {
-		return ParameterMapInt[Parameters[dwIndex - OffsetParamsByType].second];
+		return ParameterMapInt[dwIndex];
 	}
 
 	if (type == FF_TYPE_BOOLEAN || type == FF_TYPE_EVENT) {
-		return ParameterMapBool[Parameters[dwIndex - OffsetParamsByType].second];
+		return ParameterMapBool[dwIndex];
 	}
 
 
-	return ParameterMapFloat[Parameters[dwIndex - OffsetParamsByType].second];
+	return ParameterMapFloat[dwIndex];
 }
 
 char* FFGLTouchEngine::GetTextParameter(unsigned int dwIndex) {
@@ -765,7 +765,7 @@ void FFGLTouchEngine::GetAllParameters()
 						SetParamDisplayName(ParamID, linkInfo->name, true);
 						ParameterMapInt[ParamID] = value;
 
-
+						// Need to fix ints not being given the max
 						int32_t max = 0;
 						result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueMaximum, &max, 1);
 						if (result != TEResultSuccess)
@@ -780,7 +780,7 @@ void FFGLTouchEngine::GetAllParameters()
 							continue;
 						}
 
-						SetParamRange(ParamID, min, max);
+						SetParamRange(ParamID, 0, 1000);
 						RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
 						SetParamVisibility(ParamID, true, true);
 
@@ -796,8 +796,15 @@ void FFGLTouchEngine::GetAllParameters()
 							ParameterMapType[ParamID] = FF_TYPE_EVENT;
 
 							//SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_EVENT);
+							bool value = false;
+							result = TEInstanceLinkGetBooleanValue(instance, linkInfo->identifier, TELinkValueCurrent, &value);
+							if (result != TEResultSuccess)
+							{
+								continue;
+							}
 
 							SetParamDisplayName(ParamID, linkInfo->name, true);
+							ParameterMapBool[ParamID] = value;
 							RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
 							SetParamVisibility(ParamID, true, true);
 						}
@@ -851,13 +858,8 @@ void FFGLTouchEngine::GetAllParameters()
 				}
 			}
 			else if (linkInfo->domain == TELinkDomainOperator) {
-				if (strcmp(linkInfo->name, "vdjtexturein") == 0 && linkInfo->type == TELinkTypeTexture)
-				{
-					isVideoFX = true;
-					hasVideoInput = true;
-				}
 
-				else if (strcmp(linkInfo->name, "vdjtextureout") == 0 && linkInfo->type == TELinkTypeTexture)
+				if (strcmp(linkInfo->name, "output") == 0 && linkInfo->type == TELinkTypeTexture)
 				{
 					hasVideoOutput = true;
 				}

@@ -157,6 +157,8 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 	}
 
 	SPReceiverOutput.SetActiveSender(SpoutIDOutput.c_str());
+	SPReceiverInput.SetActiveSender(SpoutIDInput.c_str());
+
 
 
 
@@ -280,7 +282,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				FFGLLog::LogToHost("Failed to create shared texture");
 				return FF_FAIL;
 			}
-			SPReceiverInput.SetActiveSender(SpoutIDInput.c_str());
+			SPSenderInput.CreateSender(SpoutIDOutput.c_str(), Width, Height);
 
 			SPFrameCountInput.CreateAccessMutex(SpoutIDInput.c_str());
 			SPFrameCountInput.EnableFrameCount(SpoutIDInput.c_str());

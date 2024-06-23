@@ -314,7 +314,6 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 		SPSenderInput.SendFbo(pGL->HostFBO, pGL->inputTextures[0]->Width, pGL->inputTextures[0]->Height);
 
-		SPFrameCountInput.SetNewFrame();
 		if (!SPFrameCountInput.CheckAccess()) {
 			SPFrameCountInput.AllowAccess();
 		}
@@ -334,6 +333,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		}
 
 		SPFrameCountInput.AllowAccess();
+		SPFrameCountInput.SetNewFrame();
 
 	}
 

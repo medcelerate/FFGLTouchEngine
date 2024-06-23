@@ -17,11 +17,11 @@
 #include "Thumbnail.h"
 
 
-class FFGLTouchEngine : public CFFGLPlugin
+class FFGLTouchEngineFX : public CFFGLPlugin
 {
 public:
-	FFGLTouchEngine();
-	~FFGLTouchEngine();
+	FFGLTouchEngineFX();
+	~FFGLTouchEngineFX();
 
 	//CFFGLPlugin
 	FFResult InitGL(const FFGLViewportStruct* vp) override;

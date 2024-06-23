@@ -68,7 +68,7 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseTest|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -98,6 +98,10 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseTest|x64'">
+    <OutDir>$(ProjectDir)Build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)Build\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -180,12 +184,16 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)include</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>$(SolutionDir)lib\TouchEngine\TouchEngine.lib;$(SolutionDir)lib\Spout\Spout_static.lib;$(SolutionDir)lib\Glew\glew32s.lib;opengl32.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -200,6 +208,22 @@
     <ClInclude Include="src\FFGL\ffglex\FFGLScreenQuad.h" />
     <ClInclude Include="src\FFGL\ffglex\FFGLShader.h" />
     <ClInclude Include="src\FFGL\ffglex\FFGLUtilities.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLAudio.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLEffect.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLMixer.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLParam.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLParamBool.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLParamEvent.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLParamFFT.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLParamOption.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLParamRange.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLParamText.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLParamTrigger.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLPlugin.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLRandom.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLSmoothValue.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLSource.h" />
+    <ClInclude Include="src\FFGL\ffglquickstart\FFGLUtils.h" />
     <ClInclude Include="src\FFGL\FFGLSDK.h" />
     <ClInclude Include="src\FFGL\ffgl\FFGL.h" />
     <ClInclude Include="src\FFGL\ffgl\FFGLLib.h" />
@@ -212,6 +236,24 @@
     <ClInclude Include="src\TouchEngineFX.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\FFGL\ffglex\FFGLFBO.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLScopedBufferBinding.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLScopedFBOBinding.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLScopedRenderBufferBinding.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLScopedSamplerActivation.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLScopedShaderBinding.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLScopedTextureBinding.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLScopedVAOBinding.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLScreenQuad.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLShader.cpp" />
+    <ClCompile Include="src\FFGL\ffglex\FFGLUtilities.cpp" />
+    <ClCompile Include="src\FFGL\ffgl\FFGL.cpp" />
+    <ClCompile Include="src\FFGL\ffgl\FFGLLog.cpp" />
+    <ClCompile Include="src\FFGL\ffgl\FFGLPluginInfo.cpp" />
+    <ClCompile Include="src\FFGL\ffgl\FFGLPluginInfoData.cpp" />
+    <ClCompile Include="src\FFGL\ffgl\FFGLPluginManager.cpp" />
+    <ClCompile Include="src\FFGL\ffgl\FFGLPluginSDK.cpp" />
+    <ClCompile Include="src\FFGL\ffgl\FFGLThumbnailInfo.cpp" />
     <ClCompile Include="src\TouchEngineFX.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

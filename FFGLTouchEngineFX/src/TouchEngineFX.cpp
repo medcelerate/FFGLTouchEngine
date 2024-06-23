@@ -1,9 +1,9 @@
 #include "TouchEngineFX.h"
 
 static CFFGLPluginInfo PluginInfo(
-	PluginFactory< FFGLTouchEngine >,// Create method
-	"TE01",                        // Plugin unique ID
-	"TouchEngine",            // Plugin name
+	PluginFactory< FFGLTouchEngineFX >,// Create method
+	"TEFX",                        // Plugin unique ID
+	"TouchEngineFX",            // Plugin name
 	2,                             // API major version number
 	1,                             // API minor version number
 	1,                             // Plugin major version number
@@ -75,7 +75,7 @@ void textureCallback(TED3D11Texture* texture, TEObjectEvent event, void* info)
 	// Do nothing
 }
 
-FFGLTouchEngine::FFGLTouchEngine()
+FFGLTouchEngineFX::FFGLTouchEngineFX()
 	: CFFGLPlugin()
 {
 	// Input properties
@@ -96,7 +96,7 @@ FFGLTouchEngine::FFGLTouchEngine()
 
 }
 
-FFGLTouchEngine::~FFGLTouchEngine()
+FFGLTouchEngineFX::~FFGLTouchEngineFX()
 {
 
 	if (instance != nullptr)
@@ -108,7 +108,7 @@ FFGLTouchEngine::~FFGLTouchEngine()
 
 }
 
-FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
+FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 {
 
 
@@ -189,7 +189,7 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 }
 
 
-FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
+FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 {
 
 	if (!isTouchEngineLoaded || !isTouchEngineReady || isTouchFrameBusy)
@@ -319,7 +319,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			return FF_FAIL;	
 		}
 
-		TEResult result = TEInstanceLinkSetTextureValue(instance, "op/input", TETextureToSend.take(), D3DContext);
+		TEResult result = TEInstanceLinkSetTextureValue(instance, "op/input", TETextureToSend, D3DContext);
 
 		if (result != TEResultSuccess)
 		{
@@ -463,7 +463,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 }
 
 
-FFResult FFGLTouchEngine::DeInitGL()
+FFResult FFGLTouchEngineFX::DeInitGL()
 {
 
 	for (auto it : TextureMutexMap) 
@@ -487,7 +487,7 @@ FFResult FFGLTouchEngine::DeInitGL()
 }
 
 
-FFResult FFGLTouchEngine::SetFloatParameter(unsigned int dwIndex, float value) {
+FFResult FFGLTouchEngineFX::SetFloatParameter(unsigned int dwIndex, float value) {
 
 	if (dwIndex == 1) {
 		LoadTEFile();
@@ -520,7 +520,7 @@ FFResult FFGLTouchEngine::SetFloatParameter(unsigned int dwIndex, float value) {
 	return FF_SUCCESS;
 }
 
-FFResult FFGLTouchEngine::SetTextParameter(unsigned int dwIndex, const char* value) {
+FFResult FFGLTouchEngineFX::SetTextParameter(unsigned int dwIndex, const char* value) {
 	switch (dwIndex) {
 	case 0:
 		// Open file dialog
@@ -540,7 +540,7 @@ FFResult FFGLTouchEngine::SetTextParameter(unsigned int dwIndex, const char* val
 	return FF_SUCCESS;
 }
 
-float FFGLTouchEngine::GetFloatParameter(unsigned int dwIndex) {
+float FFGLTouchEngineFX::GetFloatParameter(unsigned int dwIndex) {
 
 	if (dwIndex == 1) {
 		return 0;
@@ -568,7 +568,7 @@ float FFGLTouchEngine::GetFloatParameter(unsigned int dwIndex) {
 	return ParameterMapFloat[dwIndex];
 }
 
-char* FFGLTouchEngine::GetTextParameter(unsigned int dwIndex) {
+char* FFGLTouchEngineFX::GetTextParameter(unsigned int dwIndex) {
 	if (dwIndex == 0) {
 		return (char*)FilePath.c_str();
 	}
@@ -584,7 +584,7 @@ char* FFGLTouchEngine::GetTextParameter(unsigned int dwIndex) {
 	return (char*)ParameterMapString[dwIndex].c_str();
 }
 
-bool FFGLTouchEngine::LoadTEGraphicsContext(bool reload)
+bool FFGLTouchEngineFX::LoadTEGraphicsContext(bool reload)
 {
 	if (isGraphicsContextLoaded && !reload) {
 		return true;
@@ -615,7 +615,7 @@ bool FFGLTouchEngine::LoadTEGraphicsContext(bool reload)
 	return isGraphicsContextLoaded;
 }
 
-bool FFGLTouchEngine::CreateInputTexture(int width, int height) {
+bool FFGLTouchEngineFX::CreateInputTexture(int width, int height) {
 	// Create the input texture
 
 	if (D3DTextureInput != nullptr)
@@ -692,7 +692,7 @@ bool FFGLTouchEngine::CreateInputTexture(int width, int height) {
 
 }
 
-void FFGLTouchEngine::ConstructBaseParameters() {
+void FFGLTouchEngineFX::ConstructBaseParameters() {
 	for (int i = OffsetParamsByType; i < MaxParamsByType + OffsetParamsByType; i++)
 	{
 		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_STANDARD);
@@ -730,7 +730,7 @@ void FFGLTouchEngine::ConstructBaseParameters() {
 
 }
 
-void FFGLTouchEngine::ResetBaseParameters() {
+void FFGLTouchEngineFX::ResetBaseParameters() {
 	for (int i = OffsetParamsByType; i < MaxParamsByType + OffsetParamsByType; i++)
 	{
 		SetParamVisibility(i, false, true);
@@ -744,7 +744,7 @@ void FFGLTouchEngine::ResetBaseParameters() {
 	return;
 }
 
-void FFGLTouchEngine::GetAllParameters()
+void FFGLTouchEngineFX::GetAllParameters()
 {
 	ResetBaseParameters();
 
@@ -997,7 +997,7 @@ void FFGLTouchEngine::GetAllParameters()
 
 }
 
-bool FFGLTouchEngine::LoadTEFile()
+bool FFGLTouchEngineFX::LoadTEFile()
 {
 	// Load the tox file into the TouchEngine
 	// 1. Create a TouchEngine object
@@ -1034,7 +1034,7 @@ bool FFGLTouchEngine::LoadTEFile()
 }
 
 
-void FFGLTouchEngine::LoadTouchEngine() {
+void FFGLTouchEngineFX::LoadTouchEngine() {
 
 	if (instance == nullptr) {
 
@@ -1051,7 +1051,7 @@ void FFGLTouchEngine::LoadTouchEngine() {
 
 }
 
-void FFGLTouchEngine::ResumeTouchEngine() {
+void FFGLTouchEngineFX::ResumeTouchEngine() {
 	TEResult result = TEInstanceResume(instance);
 	if (result != TEResultSuccess)
 	{
@@ -1064,7 +1064,7 @@ void FFGLTouchEngine::ResumeTouchEngine() {
 
 }
 
-void FFGLTouchEngine::InitializeGlTexture(GLuint& texture, uint16_t width, uint16_t height)
+void FFGLTouchEngineFX::InitializeGlTexture(GLuint& texture, uint16_t width, uint16_t height)
 {
 	if (texture != 0) {
 		glDeleteTextures(1, &texture);
@@ -1082,7 +1082,7 @@ void FFGLTouchEngine::InitializeGlTexture(GLuint& texture, uint16_t width, uint1
 }
 
 
-void FFGLTouchEngine::eventCallback(TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale)
+void FFGLTouchEngineFX::eventCallback(TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale)
 {
 
 
@@ -1133,7 +1133,7 @@ void FFGLTouchEngine::eventCallback(TEEvent event, TEResult result, int64_t star
 	}
 }
 
-void FFGLTouchEngine::linkCallback(TELinkEvent event, const char* identifier)
+void FFGLTouchEngineFX::linkCallback(TELinkEvent event, const char* identifier)
 {
 	switch (event) {
 	case TELinkEventAdded:
@@ -1144,12 +1144,12 @@ void FFGLTouchEngine::linkCallback(TELinkEvent event, const char* identifier)
 	}
 }
 
-void FFGLTouchEngine::eventCallbackStatic(TEInstance* instance, TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale, void* info)
+void FFGLTouchEngineFX::eventCallbackStatic(TEInstance* instance, TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale, void* info)
 {
-	static_cast<FFGLTouchEngine*>(info)->eventCallback(event, result, start_time_value, start_time_scale, end_time_value, end_time_scale);
+	static_cast<FFGLTouchEngineFX*>(info)->eventCallback(event, result, start_time_value, start_time_scale, end_time_value, end_time_scale);
 }
 
-void FFGLTouchEngine::linkCallbackStatic(TEInstance* instance, TELinkEvent event, const char* identifier, void* info)
+void FFGLTouchEngineFX::linkCallbackStatic(TEInstance* instance, TELinkEvent event, const char* identifier, void* info)
 {
-	static_cast<FFGLTouchEngine*>(info)->linkCallback(event, identifier);
+	static_cast<FFGLTouchEngineFX*>(info)->linkCallback(event, identifier);
 }

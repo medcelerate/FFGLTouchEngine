@@ -78,6 +78,10 @@ void textureCallback(TED3D11Texture* texture, TEObjectEvent event, void* info)
 FFGLTouchEngineFX::FFGLTouchEngineFX()
 	: CFFGLPlugin()
 {
+
+	srand(time(0));
+
+
 	// Input properties
 	SetMinInputs(0);
 	SetMaxInputs(1);
@@ -274,7 +278,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			Width = pGL->inputTextures[0]->Width;
 			Height = pGL->inputTextures[0]->Height;
 
-			SPSenderInput.SetSenderName(SpoutIDInput.c_str());
+
 			DXGI_FORMAT texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
 			HANDLE dxShareHandle = nullptr;
 
@@ -282,7 +286,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				FFGLLog::LogToHost("Failed to create shared texture");
 				return FF_FAIL;
 			}
-			SPSenderInput.CreateSender(SpoutIDOutput.c_str(), Width, Height);
+			SPSenderInput.CreateSender(SpoutIDInput.c_str(), Width, Height);
 
 			SPFrameCountInput.CreateAccessMutex(SpoutIDInput.c_str());
 			SPFrameCountInput.EnableFrameCount(SpoutIDInput.c_str());

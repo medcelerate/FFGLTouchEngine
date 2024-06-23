@@ -8,7 +8,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <wrl.h>
 #include <shobjidl.h>
-#include <map>
 #include "TouchEngine/TouchObject.h"
 #include "TouchEngine/TEGraphicsContext.h"
 #include "TouchEngine/TED3D11.h"
@@ -41,7 +40,7 @@ private:
 	TouchObject<TED3D11Context> D3DContext;
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureInput = nullptr;
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureOutput = nullptr;
-	std::map<ID3D11Texture2D*, IDXGIKeyedMutex*> TextureMutexMap;
+	std::unordered_map<ID3D11Texture2D*, IDXGIKeyedMutex*> TextureMutexMap;
 
 	std::atomic_bool isTouchEngineLoaded = false;
 	std::atomic_bool isTouchEngineReady = false;
@@ -72,20 +71,22 @@ private:
 	std::unordered_map<FFUInt32, bool> ParameterMapBool;
 
 	//Spout Configs
-	std::string SpoutIDDest;
-	SpoutReceiver SPReceiverDest;
-	spoutDirectX SPDirectxDest;
-	spoutSenderNames SPSenderDest;
-	spoutFrameCount SPFrameCountDest;
+	std::string SpoutIDOutput;
+	SpoutReceiver SPReceiverOutput;
+	spoutDirectX SPDirectxOutput;
+	spoutSenderNames SPSenderOutput;
+	spoutFrameCount SPFrameCountOutput;
 
-	std::string SpoutIDSource;
-	SpoutSender SPSenderSource;
-	spoutDirectX SPDirectxSource;
-	spoutSenderNames SPReceiverSource;
-	spoutFrameCount SPFrameCountSource;
+	std::string SpoutIDInput;
+	SpoutSender SPSenderInput;
+	spoutDirectX SPDirectxInput;
+	spoutSenderNames SPReceiverInput;
+	spoutFrameCount SPFrameCountInput;
 
-	bool isSpoutInitializedDest = false;
-	bool isSpoutInitializedSource = false;
+	uint32_t SpoutSenderID = 0;
+
+	bool isSpoutInitializedOutput = false;
+	bool isSpoutInitializedInput = false;
 
 
 	int Width = 0;
@@ -97,8 +98,8 @@ private:
 
 	ffglex::FFGLShader shader;  //!< Utility to help us compile and link some shaders into a program.
 	ffglex::FFGLScreenQuad quad;//!< Utility to help us render a full screen quad.
-	GLuint SpoutTextureDest = 0;
-	GLuint SpoutTextureSource = 0;
+	GLuint SpoutTextureOutput = 0;
+	GLuint SpoutTextureInput = 0;
 	void InitializeGlTexture(GLuint &texture, uint16_t width, uint16_t height);
 	void ConstructBaseParameters();
 	void ResetBaseParameters();

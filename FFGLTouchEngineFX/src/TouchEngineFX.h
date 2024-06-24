@@ -89,8 +89,10 @@ private:
 	bool isSpoutInitializedInput = false;
 
 
-	int Width = 0;
-	int Height = 0;
+	int InputWidth = 0;
+	int InputHeight = 0;
+	int OutputWidth = 0;
+	int OutputHeight = 0;
 
 
 	std::string FilePath;

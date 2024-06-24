@@ -160,8 +160,7 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 		return FF_FAIL;
 	}
 
-	SPReceiverOutput.SetActiveSender(SpoutIDOutput.c_str());
-	SPReceiverInput.SetActiveSender(SpoutIDInput.c_str());
+	SPReceiverOutput.SetReceiverName(SpoutIDOutput.c_str());
 
 
 
@@ -171,13 +170,13 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 
 	// Set the viewport size
 
-	Width = vp->width;
-	Height = vp->height;
-
+	OutputWidth = vp->width;
+	OutputHeight = vp->height;
+/*
 	if (!CreateInputTexture(Width, Height)) {
 		return FF_FAIL;
 	}
-
+	*/
 	if (FilePath.empty())
 	{
 		return CFFGLPlugin::InitGL(vp);;
@@ -273,56 +272,63 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		shader.Set("MaxUV", maxCoords.s, maxCoords.t);
 		quad.Draw();
 
-		if (!isSpoutInitializedInput || !isSpoutInitializedOutput) {
+		if (!isSpoutInitializedInput) {
 
-			Width = pGL->inputTextures[0]->Width;
-			Height = pGL->inputTextures[0]->Height;
+			InputWidth = pGL->inputTextures[0]->Width;
+			InputHeight = pGL->inputTextures[0]->Height;
 
 
 			DXGI_FORMAT texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
 			HANDLE dxShareHandle = nullptr;
 
-			if (!SPDirectxInput.CreateSharedDX11Texture(D3DDevice.Get(), Width, Height, texformat, &D3DTextureInput, dxShareHandle)) {
+			if (!SPDirectxInput.CreateSharedDX11Texture(D3DDevice.Get(), InputWidth, InputHeight, texformat, &D3DTextureInput, dxShareHandle)) {
 				FFGLLog::LogToHost("Failed to create shared texture");
 				return FF_FAIL;
 			}
-			SPSenderInput.CreateSender(SpoutIDInput.c_str(), Width, Height);
+			bool Initialized = SPSenderInput.CreateSender(SpoutIDInput.c_str(), InputWidth, InputHeight);
+			if (!Initialized) {
+				FFGLLog::LogToHost("Failed to create sender");
+				return FF_FAIL;
+			}
+
+			isSpoutInitializedInput = Initialized;
+
 
 			SPFrameCountInput.CreateAccessMutex(SpoutIDInput.c_str());
 			SPFrameCountInput.EnableFrameCount(SpoutIDInput.c_str());
 
-			isSpoutInitializedInput = true;
-			isSpoutInitializedOutput = true;
-			TETextureToSend.take(TED3D11TextureCreate(D3DTextureInput.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
+			//TETextureToSend.take(TED3D11TextureCreate(D3DTextureInput.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
 
 		}
 
-		if (Width != pGL->inputTextures[0]->Width || Height != pGL->inputTextures[0]->Height) {
+		if (InputWidth != pGL->inputTextures[0]->Width || InputHeight != pGL->inputTextures[0]->Height) {
 
-			Width = pGL->inputTextures[0]->Width;
-			Height = pGL->inputTextures[0]->Height;
+			InputWidth = pGL->inputTextures[0]->Width;
+			InputHeight = pGL->inputTextures[0]->Height;
 
 			if (D3DTextureOutput != nullptr) {
 				D3DTextureOutput->Release();
 			}
 			DXGI_FORMAT texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
 			HANDLE dxShareHandle = nullptr;
-			SPDirectxInput.CreateSharedDX11Texture(D3DDevice.Get(), Width, Height, DXGI_FORMAT_B8G8R8A8_UNORM, &D3DTextureInput, dxShareHandle);
-			TETextureToSend.take(TED3D11TextureCreate(D3DTextureInput.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
-			SPSenderInput.UpdateSender(SpoutIDInput.c_str(), Width, Height);
+			SPDirectxInput.CreateSharedDX11Texture(D3DDevice.Get(), InputWidth, InputHeight, DXGI_FORMAT_B8G8R8A8_UNORM, &D3DTextureInput, dxShareHandle);
+			SPSenderInput.UpdateSender(SpoutIDInput.c_str(), InputWidth, InputHeight);
 		}
 
+
+		//SPSenderInput.SendTexture(pGL->inputTextures[0]->Handle, GL_TEXTURE_2D, InputWidth, InputHeight);
 		SPSenderInput.SendFbo(pGL->HostFBO, pGL->inputTextures[0]->Width, pGL->inputTextures[0]->Height);
 
-		if (!SPFrameCountInput.CheckAccess()) {
-			SPFrameCountInput.AllowAccess();
+		TETextureToSend.take(TED3D11TextureCreate(D3DTextureInput.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
+
+		if (SPFrameCountInput.CheckAccess()) {
+			if (SPFrameCountInput.GetNewFrame()) {
+				isTouchFrameBusy = false;
+				SPFrameCountInput.SetNewFrame();
+				SPFrameCountInput.AllowAccess();
+			}
 		}
 
-		if (!SPFrameCountInput.GetNewFrame()) {
-			isTouchFrameBusy = false;
-			SPFrameCountInput.AllowAccess();
-			return FF_FAIL;	
-		}
 
 		TEResult result = TEInstanceLinkSetTextureValue(instance, "op/input", TETextureToSend, D3DContext);
 
@@ -332,8 +338,6 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			return FF_FAIL;
 		}
 
-		SPFrameCountInput.AllowAccess();
-		SPFrameCountInput.SetNewFrame();
 
 	}
 
@@ -375,20 +379,20 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 				HANDLE dxShareHandle = nullptr;
 				if (!isSpoutInitializedOutput) {
-					SPDirectxOutput.CreateSharedDX11Texture(D3DDevice.Get(), Width, Height, RawTextureDesc.Format, &D3DTextureOutput, dxShareHandle);
-					isSpoutInitializedOutput = SPSenderOutput.CreateSender(SpoutIDOutput.c_str(), Width, Height, dxShareHandle, (DWORD)RawTextureDesc.Format);
+					SPDirectxOutput.CreateSharedDX11Texture(D3DDevice.Get(), OutputWidth, OutputHeight, RawTextureDesc.Format, &D3DTextureOutput, dxShareHandle);
+					isSpoutInitializedOutput = SPSenderOutput.CreateSender(SpoutIDOutput.c_str(), OutputWidth, OutputHeight, dxShareHandle, (DWORD)RawTextureDesc.Format);
 					SPFrameCountOutput.CreateAccessMutex(SpoutIDOutput.c_str());
 					SPFrameCountOutput.EnableFrameCount(SpoutIDOutput.c_str());
 				}
 
-				if (RawTextureDesc.Width != Width || RawTextureDesc.Height != Height) {
-					Width = RawTextureDesc.Width;
-					Height = RawTextureDesc.Height;
+				if (RawTextureDesc.Width != OutputWidth || RawTextureDesc.Height != OutputHeight) {
+					OutputWidth = RawTextureDesc.Width;
+					OutputHeight = RawTextureDesc.Height;
 					if (D3DTextureOutput != nullptr)
 						D3DTextureOutput->Release();
 
-					SPDirectxOutput.CreateSharedDX11Texture(D3DDevice.Get(), Width, Height, RawTextureDesc.Format, &D3DTextureOutput, dxShareHandle);
-					SPSenderOutput.UpdateSender(SpoutIDOutput.c_str(), Width, Height, dxShareHandle, (DWORD)RawTextureDesc.Format);
+					SPDirectxOutput.CreateSharedDX11Texture(D3DDevice.Get(), OutputWidth, OutputHeight, RawTextureDesc.Format, &D3DTextureOutput, dxShareHandle);
+					SPSenderOutput.UpdateSender(SpoutIDOutput.c_str(), OutputWidth, OutputHeight, dxShareHandle, (DWORD)RawTextureDesc.Format);
 				}
 
 				IDXGIKeyedMutex* keyedMutex;

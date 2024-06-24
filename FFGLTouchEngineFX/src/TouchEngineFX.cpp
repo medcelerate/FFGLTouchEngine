@@ -16,6 +16,8 @@ static CFFGLPluginInfo PluginInfo(
 static CFFGLThumbnailInfo ThumbnailInfo(160, 120, thumbnail);
 
 static const char vertexShaderCode[] = R"(#version 410 core
+uniform vec2 MaxUV;
+
 layout( location = 0 ) in vec4 vPosition;
 layout( location = 1 ) in vec2 vUV;
 
@@ -24,7 +26,7 @@ out vec2 uv;
 void main()
 {
 	gl_Position = vPosition;
-	uv = vUV;
+	uv = vUV * MaxUV;
 }
 )";
 
@@ -261,7 +263,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 	}
 
 	if (hasVideoInput) {
-		TouchObject<TETexture> TETextureToSend;
+		TouchObject<TETexture> TETextureToReceive;
 
 		ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
 		ffglex::ScopedSamplerActivation activateSampler(0);
@@ -319,7 +321,8 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		//SPSenderInput.SendTexture(pGL->inputTextures[0]->Handle, GL_TEXTURE_2D, InputWidth, InputHeight);
 		SPSenderInput.SendFbo(pGL->HostFBO, pGL->inputTextures[0]->Width, pGL->inputTextures[0]->Height);
 
-		TETextureToSend.take(TED3D11TextureCreate(D3DTextureInput.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
+
+		Microsoft::WRL::ComPtr<ID3D11Texture2D> texture;
 
 		if (SPFrameCountInput.CheckAccess()) {
 			if (SPFrameCountInput.GetNewFrame()) {
@@ -329,8 +332,10 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			}
 		}
 
+		TETextureToReceive.take(TED3D11TextureCreate(D3DTextureInput.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
 
-		TEResult result = TEInstanceLinkSetTextureValue(instance, "op/input", TETextureToSend, D3DContext);
+
+		TEResult result = TEInstanceLinkSetTextureValue(instance, "op/input", TETextureToReceive, D3DContext);
 
 		if (result != TEResultSuccess)
 		{

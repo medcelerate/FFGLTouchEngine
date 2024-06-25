@@ -3,7 +3,7 @@
 Simple FFGL plugin that allows loading touchdesigner components (tox) into programs like resolume. 
 
 ### Notice
-Nightly builds will be published to the releases page in due time.
+Nightly builds will be published to the releases page.
 
 This plugin is provided AS-IS from this repository, bug fixes and feature requests will be serviced best based on the time of the developers. If you intend to use this in production, please fill out the form below to discuss with the developers support options to ensure stability for live. 
 

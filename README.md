@@ -30,6 +30,12 @@ Thank you to  ([@yannicks-png](https://github.com/yannicksengstock)) for the sup
 
 ### Guides
 
+**Textures**
+
 To output video from TouchDesigner you need to create an out TOP and set the name to `output`, make sure to hit `yes to all`.
+
+**Parameters**
+
+Due to FFGL limits, you can have at most 30 of each type of parameter. If you use more it could at the moment cause undefined behavior.
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Q5Q6YUGIA)

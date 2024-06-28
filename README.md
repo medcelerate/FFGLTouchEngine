@@ -15,6 +15,8 @@ This plugin is provided AS-IS from this repository, bug fixes and feature reques
 
 Thank you to  ([@yannicks-png](https://github.com/yannicksengstock)) for the support and guidance.
 
+[Download Latest Release Here](https://github.com/medcelerate/FFGLTouchEngine/releases)
+
 ## Important!
 
 ### You need at least a touchdesigner commercial license for this to work!

@@ -74,7 +74,18 @@ std::string GenerateRandomString(size_t length)
 
 void textureCallback(TED3D11Texture* texture, TEObjectEvent event, void* info)
 {
-	// Do nothing
+	FFGLLog::LogToHost("Texture callback");
+	switch (event)
+	{
+	case TEObjectEventBeginUse:
+		break;
+	case TEObjectEventEndUse:
+		break;
+	case TEObjectEventRelease:
+		break;
+	default:
+		break;
+	}
 }
 
 FFGLTouchEngineFX::FFGLTouchEngineFX()
@@ -174,11 +185,8 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 
 	OutputWidth = vp->width;
 	OutputHeight = vp->height;
-/*
-	if (!CreateInputTexture(Width, Height)) {
-		return FF_FAIL;
-	}
-	*/
+
+
 	if (FilePath.empty())
 	{
 		return CFFGLPlugin::InitGL(vp);;
@@ -296,8 +304,12 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			isSpoutInitializedInput = Initialized;
 
 
+
+
+
 			SPFrameCountInput.CreateAccessMutex(SpoutIDInput.c_str());
 			SPFrameCountInput.EnableFrameCount(SpoutIDInput.c_str());
+
 
 			//TETextureToSend.take(TED3D11TextureCreate(D3DTextureInput.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
 
@@ -322,26 +334,22 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		SPSenderInput.SendFbo(pGL->HostFBO, pGL->inputTextures[0]->Width, pGL->inputTextures[0]->Height);
 
 
-		Microsoft::WRL::ComPtr<ID3D11Texture2D> texture;
-
 		if (SPFrameCountInput.CheckAccess()) {
 			if (SPFrameCountInput.GetNewFrame()) {
-				isTouchFrameBusy = false;
-				SPFrameCountInput.SetNewFrame();
-				SPFrameCountInput.AllowAccess();
+				TETextureToReceive.take(TED3D11TextureCreate(D3DTextureInput.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
+
+
+				TEResult result = TEInstanceLinkSetTextureValue(instance, "op/input", TETextureToReceive, D3DContext);
+
+				if (result != TEResultSuccess)
+				{
+					isTouchFrameBusy = false;
+					return FF_FAIL;
+				}
 			}
 		}
 
-		TETextureToReceive.take(TED3D11TextureCreate(D3DTextureInput.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
-
-
-		TEResult result = TEInstanceLinkSetTextureValue(instance, "op/input", TETextureToReceive, D3DContext);
-
-		if (result != TEResultSuccess)
-		{
-			isTouchFrameBusy = false;
-			return FF_FAIL;
-		}
+	
 
 
 	}
@@ -468,6 +476,8 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		}
 	
 	}
+
+	SPFrameCountInput.AllowAccess();
 	
 
 	// Unbind the input texture

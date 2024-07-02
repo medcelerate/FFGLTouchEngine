@@ -9,6 +9,10 @@ This plugin is provided AS-IS from this repository, bug fixes and feature reques
 
 [Support Form](https://forms.gle/QNSKGjdMsX1ptbvh7)
 
+### Tests
+
+- Currently known to work with TouchDesigner 2023.
+
 ---
 
 [If you like this tool please consider support my other venture and there will be many more tools to come.](https://www.kickstarter.com/projects/cvalt/help-build-new-york-citys-newest-zero-proof-cocktail-bar?ref=fhrd79)

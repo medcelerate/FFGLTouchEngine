@@ -810,6 +810,10 @@ void FFGLTouchEngineFX::GetAllParameters()
 
 			if (linkInfo->domain == TELinkDomainParameter) {
 
+				if (ActiveParams.size() > MaxParamsByType * 5) {
+					FFGLLog::LogToHost("Too many parameters, skipping");
+					continue;
+				}
 
 				switch (linkInfo->type)
 				{
@@ -1019,6 +1023,7 @@ void FFGLTouchEngineFX::GetAllParameters()
 		}
 	
 	}
+
 
 
 }

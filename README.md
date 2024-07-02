@@ -21,6 +21,8 @@ Thank you to  ([@yannicks-png](https://github.com/yannicksengstock)) for the sup
 
 ### You need at least a touchdesigner commercial license for this to work!
 
+---
+
 ### Current Features
 - [x] Support Tox as Generative FFGL
 - [x] Support Exposed Parameters From Tox
@@ -29,7 +31,7 @@ Thank you to  ([@yannicks-png](https://github.com/yannicksengstock)) for the sup
 - [ ] Drag & Drop of Tox Into Resolume
 - [ ] MacOS Support
 
-
+---
 ### Guides
 
 **Textures**

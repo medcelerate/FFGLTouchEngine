@@ -40,7 +40,7 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
-      run: msbuild /m /t:FFGLTouchEngine /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
     - name: Insert Instructions
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: echo "Copy FFGLTouchEngine.dll to your Resolume plugins folder;\n See Examples folder for setup" > FFGLTouchEngine/Build/x64/Release/README.txt
@@ -50,7 +50,7 @@ jobs:
 
     - name: Generate Zip
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Compress-Archive -Path FFGLTouchEngine/Build/x64/Release/FFGLTouchEngine.dll, lib/TouchEngine/TouchEngine.dll, FFGLTouchEngine/Build/x64/Release/README.txt, FFGLTouchEngine/Build/x64/Release/VERSION.txt -Destination "FFGLTouchEngine-${{ github.ref_name }}.zip"
+      run: Compress-Archive -Path FFGLTouchEngine/Build/x64/Release/FFGLTouchEngine.dll, FFGLTouchEngineFX/Build/x64/Release/FFGLTouchEngine.dll, lib/TouchEngine/TouchEngine.dll, FFGLTouchEngine/Build/x64/Release/README.txt, FFGLTouchEngine/Build/x64/Release/VERSION.txt -Destination "FFGLTouchEngine-${{ github.ref_name }}.zip"
     - name: Generate Release
       uses: ncipollo/release-action@v1
       with:

@@ -50,7 +50,7 @@ jobs:
 
     - name: Generate Zip
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Compress-Archive -Path FFGLTouchEngine/Build/x64/Release/FFGLTouchEngine.dll, FFGLTouchEngineFX/Build/x64/Release/FFGLTouchEngine.dll, lib/TouchEngine/TouchEngine.dll, FFGLTouchEngine/Build/x64/Release/README.txt, FFGLTouchEngine/Build/x64/Release/VERSION.txt -Destination "FFGLTouchEngine-${{ github.ref_name }}.zip"
+      run: Compress-Archive -Path FFGLTouchEngine/Build/x64/Release/FFGLTouchEngineFX.dll, FFGLTouchEngineFX/Build/x64/Release/FFGLTouchEngine.dll, lib/TouchEngine/TouchEngine.dll, FFGLTouchEngine/Build/x64/Release/README.txt, FFGLTouchEngine/Build/x64/Release/VERSION.txt -Destination "FFGLTouchEngine-${{ github.ref_name }}.zip"
     - name: Generate Release
       uses: ncipollo/release-action@v1
       with:

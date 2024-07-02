@@ -34,7 +34,7 @@ Thank you to  ([@yannicks-png](https://github.com/yannicksengstock)) for the sup
 
 **Textures**
 
-To output video from TouchDesigner you need to create an out TOP and set the name to `output`, make sure to hit `yes to all`.
+To output video from TouchDesigner you need to create an out TOP and set the name to `output`, make sure to hit `yes to all`. The same goes for inputs. If using the FX version make sure to create an in top named `input`.
 
 **Parameters**
 

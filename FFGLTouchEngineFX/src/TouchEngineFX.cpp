@@ -344,47 +344,17 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 				if (SPReceiverInput.GetSenderInfo(SpoutIDInput.c_str(), width, height, sharedHandle, dwFormat)) {
 
-					ID3D11Resource* tempResource11 = nullptr;
-					HRESULT openResult = D3DDevice->OpenSharedResource(sharedHandle, __uuidof(ID3D11Resource), (void**)(&tempResource11));
+					Microsoft::WRL::ComPtr<ID3D11Texture2D> TextureResource;
+					//ID3D11Resource* tempResource11 = nullptr;
+					HRESULT openResult = D3DDevice->OpenSharedResource(sharedHandle, __uuidof(ID3D11Resource), (void**)(&TextureResource));
 					if (openResult != S_OK) {
 						FFGLLog::LogToHost("Failed to open shared resource");
 						return FF_FAIL;
 					}
-					D3D11_RESOURCE_DIMENSION aa;
-					tempResource11->GetType(&aa);
-					//printf("tipo de recurso: %d", aa);
-
-					ID3D11Texture2D* tex = (ID3D11Texture2D*)tempResource11;
-
-					D3D11_TEXTURE2D_DESC description;
-					tex->GetDesc(&description);
-					description.BindFlags = 0;
-					description.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-					description.Usage = D3D11_USAGE_STAGING;
-
-					ID3D11Texture2D* texTemp = nullptr;
-
-					HRESULT hr = D3DDevice->CreateTexture2D(&description, NULL, &texTemp);
-					if (FAILED(hr))
-					{
-						if (texTemp)
-						{
-							texTemp->Release();
-							texTemp = NULL;
-						}
-						return NULL;
-					}
-
-					Microsoft::WRL::ComPtr<ID3D11DeviceContext> g_pImmediateContext;
-
-					D3DDevice->GetImmediateContext(&g_pImmediateContext);
-
-					g_pImmediateContext->CopyResource(texTemp, tex);
-					TETextureToReceive.take(TED3D11TextureCreate(texTemp, TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
+					TETextureToReceive.take(TED3D11TextureCreate(TextureResource.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
 
 				}
 				
-
 
 				TEResult result = TEInstanceLinkSetTextureValue(instance, "op/input", TETextureToReceive, D3DContext);
 
@@ -393,11 +363,9 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 					isTouchFrameBusy = false;
 					return FF_FAIL;
 				}
+				SPFrameCountInput.AllowAccess();
 			}
 		}
-
-	
-
 
 	}
 
@@ -523,8 +491,6 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		}
 	
 	}
-
-	SPFrameCountInput.AllowAccess();
 	
 
 	// Unbind the input texture

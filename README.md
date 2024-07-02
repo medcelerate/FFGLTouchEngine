@@ -3,7 +3,7 @@
 Simple FFGL plugin that allows loading touchdesigner components (tox) into programs like resolume. 
 
 ### Notice
-Nightly builds will be published to the releases page.
+Nightly builds will be published to the releases page. [Download Here](https://github.com/medcelerate/FFGLTouchEngine/releases/latest)
 
 This plugin is provided AS-IS from this repository, bug fixes and feature requests will be serviced best based on the time of the developers. If you intend to use this in production, please fill out the form below to discuss with the developers support options to ensure stability for live. 
 
@@ -24,7 +24,7 @@ Thank you to  ([@yannicks-png](https://github.com/yannicksengstock)) for the sup
 ### Current Features
 - [x] Support Tox as Generative FFGL
 - [x] Support Exposed Parameters From Tox
-- [ ] Support Texture Input
+- [x] Support Texture Input
 - [ ] Dynamic allocation of touchengine processes
 - [ ] Drag & Drop of Tox Into Resolume
 - [ ] MacOS Support

@@ -74,18 +74,7 @@ std::string GenerateRandomString(size_t length)
 
 void textureCallback(TED3D11Texture* texture, TEObjectEvent event, void* info)
 {
-	FFGLLog::LogToHost("Texture callback");
-	switch (event)
-	{
-	case TEObjectEventBeginUse:
-		break;
-	case TEObjectEventEndUse:
-		break;
-	case TEObjectEventRelease:
-		break;
-	default:
-		break;
-	}
+	return;
 }
 
 FFGLTouchEngineFX::FFGLTouchEngineFX()
@@ -1160,11 +1149,13 @@ void FFGLTouchEngineFX::eventCallback(TEEvent event, TEResult result, int64_t st
 		break;
 	}
 	case TEEventInstanceReady:
+		FFGLLog::LogToHost("TouchEngine Ready");
 		isTouchEngineReady = true;
 		// The TouchEngine is ready to start rendering frames
 		break;
 
 	case TEEventInstanceDidUnload:
+		FFGLLog::LogToHost("TouchEngine Unloaded");
 		isTouchEngineLoaded = false;
 		break;
 	}

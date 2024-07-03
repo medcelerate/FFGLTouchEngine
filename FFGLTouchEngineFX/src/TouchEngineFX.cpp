@@ -1153,16 +1153,17 @@ void FFGLTouchEngineFX::eventCallback(TEEvent event, TEResult result, int64_t st
 		// A frame has finished rendering
 		break;
 	}
-	case TEEventInstanceReady:
+	case TEEventInstanceReady: {
 		FFGLLog::LogToHost("TouchEngine Ready");
 		isTouchEngineReady = true;
 		// The TouchEngine is ready to start rendering frames
 		break;
-
-	case TEEventInstanceDidUnload:
+	}
+	case TEEventInstanceDidUnload: {
 		FFGLLog::LogToHost("TouchEngine Unloaded");
 		isTouchEngineLoaded = false;
 		break;
+	}
 	}
 }
 

@@ -5,9 +5,17 @@ Simple FFGL plugin that allows loading touchdesigner components (tox) into progr
 ### Notice
 Nightly builds will be published to the releases page. [Download Here](https://github.com/medcelerate/FFGLTouchEngine/releases/latest)
 
-This plugin is provided AS-IS from this repository, bug fixes and feature requests will be serviced best based on the time of the developers. If you intend to use this in production, please fill out the form below to discuss with the developers support options to ensure stability for live. 
+This plugin is provided AS-IS from this repository, bug fixes and feature requests will be serviced best based on the time of the developers. If you intend to use this in production, please fill out the form below to discuss with the developers support options to ensure stability for live.
 
-[Support Form](https://forms.gle/QNSKGjdMsX1ptbvh7)
+[Production Use Support Form](https://forms.gle/QNSKGjdMsX1ptbvh7)
+
+### Issues
+Please file issues here on github.
+- Attach a tox that has issues.
+- Describe steps to reproduce.
+- Describe the issue you are seeing.
+- Attach screenshot of license.
+- Describe OS and environment, i.e windows 11, Nvidia GPU etc.
 
 ### Tests
 

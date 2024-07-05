@@ -80,8 +80,7 @@ void textureCallback(TED3D11Texture* texture, TEObjectEvent event, void* info)
 FFGLTouchEngineFX::FFGLTouchEngineFX()
 	: CFFGLPlugin()
 {
-
-	srand(time(0));
+	srand(static_cast<long int>(time(0)));
 
 
 	// Input properties
@@ -583,7 +582,7 @@ float FFGLTouchEngineFX::GetFloatParameter(unsigned int dwIndex) {
 	FFUInt32 type = ParameterMapType[dwIndex];
 
 	if (type == FF_TYPE_INTEGER) {
-		return ParameterMapInt[dwIndex];
+		return static_cast<float>(ParameterMapInt[dwIndex]);
 	}
 
 	if (type == FF_TYPE_BOOLEAN || type == FF_TYPE_EVENT) {
@@ -591,7 +590,7 @@ float FFGLTouchEngineFX::GetFloatParameter(unsigned int dwIndex) {
 	}
 
 
-	return ParameterMapFloat[dwIndex];
+	return static_cast<float>(ParameterMapFloat[dwIndex]);
 }
 
 char* FFGLTouchEngineFX::GetTextParameter(unsigned int dwIndex) {
@@ -719,35 +718,35 @@ bool FFGLTouchEngineFX::CreateInputTexture(int width, int height) {
 }
 
 void FFGLTouchEngineFX::ConstructBaseParameters() {
-	for (int i = OffsetParamsByType; i < MaxParamsByType + OffsetParamsByType; i++)
+	for (uint32_t i = OffsetParamsByType; i < MaxParamsByType + OffsetParamsByType; i++)
 	{
 		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_STANDARD);
 		SetParamVisibility(i, false, false);
 	}
 
 
-	for (int i = MaxParamsByType + OffsetParamsByType; i < (MaxParamsByType * 2) + OffsetParamsByType; i++)
+	for (uint32_t i = MaxParamsByType + OffsetParamsByType; i < (MaxParamsByType * 2) + OffsetParamsByType; i++)
 	{
 		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_INTEGER);
 		SetParamRange(i, -1000, 1000);
 		SetParamVisibility(i, false, false);
 	}
 
-	for (int i = (MaxParamsByType * 2) + OffsetParamsByType; i < (MaxParamsByType * 3) + OffsetParamsByType; i++)
+	for (uint32_t i = (MaxParamsByType * 2) + OffsetParamsByType; i < (MaxParamsByType * 3) + OffsetParamsByType; i++)
 	{
 		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_BOOLEAN);
 		SetParamVisibility(i, false, false);
 	}
 
 
-	for (int i = (MaxParamsByType * 3) + OffsetParamsByType; i < (MaxParamsByType * 4) + OffsetParamsByType; i++)
+	for (uint32_t i = (MaxParamsByType * 3) + OffsetParamsByType; i < (MaxParamsByType * 4) + OffsetParamsByType; i++)
 	{
 		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_TEXT);
 		SetParamVisibility(i, false, false);
 	}
 
 
-	for (int i = (MaxParamsByType * 4) + OffsetParamsByType; i < (MaxParamsByType * 5) + OffsetParamsByType; i++)
+	for (uint32_t i = (MaxParamsByType * 4) + OffsetParamsByType; i < (MaxParamsByType * 5) + OffsetParamsByType; i++)
 	{
 		SetParamInfof(i, (std::string("Pulse")).c_str(), FF_TYPE_EVENT);
 		SetParamVisibility(i, false, false);
@@ -757,7 +756,7 @@ void FFGLTouchEngineFX::ConstructBaseParameters() {
 }
 
 void FFGLTouchEngineFX::ResetBaseParameters() {
-	for (int i = OffsetParamsByType; i < MaxParamsByType + OffsetParamsByType; i++)
+	for (uint32_t i = OffsetParamsByType; i < MaxParamsByType + OffsetParamsByType; i++)
 	{
 		SetParamVisibility(i, false, true);
 	}
@@ -856,7 +855,7 @@ void FFGLTouchEngineFX::GetAllParameters()
 							continue;
 						}
 
-						SetParamRange(ParamID, min, max);
+						SetParamRange(ParamID, static_cast<float>(min), static_cast<float>(max));
 						RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
 						SetParamVisibility(ParamID, true, true);
 
@@ -895,7 +894,7 @@ void FFGLTouchEngineFX::GetAllParameters()
 							continue;
 						}
 
-						SetParamRange(ParamID, min, max);
+						SetParamRange(ParamID, static_cast<float>(min), static_cast<float>(max));
 						RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
 						SetParamVisibility(ParamID, true, true);
 

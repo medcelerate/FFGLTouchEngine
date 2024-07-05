@@ -11,8 +11,6 @@
 #include "TouchEngine/TouchObject.h"
 #include "TouchEngine/TEGraphicsContext.h"
 #include "TouchEngine/TED3D11.h"
-#include "SpoutGL/SpoutDirectX.h"
-#include "SpoutGL/SpoutReceiver.h"
 #include "SpoutGL/SpoutSender.h"
 #include "Thumbnail.h"
 
@@ -53,11 +51,6 @@ private:
 	bool hasVideoOutput = false;
 	bool isVideoFX = false;
 
-	//TouchEngine IO objects
-//	TouchObject<TED3D11Texture> TEVideoInputD3D;
-//	TouchObject<TED3D11Texture> TEVideoOutputD3D;
-//	TouchObject<TETexture> TEVideoInputTexture;
-//	TouchObject<TETexture> TEVideoOutputTexture;
 	
 	//TouchEngine parameters
 	uint32_t MaxParamsByType = 0;
@@ -71,22 +64,13 @@ private:
 	std::unordered_map<FFUInt32, bool> ParameterMapBool;
 
 	//Spout Configs
-	std::string SpoutIDOutput;
-	SpoutReceiver SPReceiverOutput;
-	spoutDirectX SPDirectxOutput;
-	spoutSenderNames SPSenderOutput;
-	spoutFrameCount SPFrameCountOutput;
+	std::string SpoutID;
 
-	std::string SpoutIDInput;
-	SpoutSender SPSenderInput;
-	spoutDirectX SPDirectxInput;
-	spoutSenderNames SPReceiverInput;
-	spoutFrameCount SPFrameCountInput;
+	Spout Interop;
 
 	uint32_t SpoutSenderID = 0;
 
-	bool isSpoutInitializedOutput = false;
-	bool isSpoutInitializedInput = false;
+	bool InteropInitialized = false;
 
 
 	int InputWidth = 0;
@@ -108,7 +92,8 @@ private:
 
 
 	bool LoadTEGraphicsContext(bool Reload);
-	bool CreateInputTexture(int width, int height);
+	bool CreateInputTexture(int width, int height, DXGI_FORMAT dxformat);
+	bool CreateOutputTexture(int width, int height, DXGI_FORMAT dxformat);
 	bool LoadTEFile();
 
 	void LoadTouchEngine();

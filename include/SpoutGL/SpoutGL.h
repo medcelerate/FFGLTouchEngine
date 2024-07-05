@@ -285,6 +285,9 @@ class SPOUT_DLLEXP spoutGL {
 	// For external access
 	//
 
+	bool CreateInterop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive);
+	bool WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
+
 	// DirectX 11 texture sharing
 	spoutDirectX spoutdx;
 	// Pixel buffer copying
@@ -300,7 +303,7 @@ protected :
 	SpoutSharedMemory memoryshare;
 
 	// GL/DX functions
-	bool CreateInterop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive);
+
 	HRESULT LockInteropObject(HANDLE hDevice, HANDLE *hObject);
 	HRESULT UnlockInteropObject(HANDLE hDevice, HANDLE *hObject);
 	void CleanupGL(); // Free OpenGL resources
@@ -309,7 +312,7 @@ protected :
 	void CheckOpenGLTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height);
 
 	// OpenGL texture copy
-	bool WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
+
 	bool ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
 	bool SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
 	

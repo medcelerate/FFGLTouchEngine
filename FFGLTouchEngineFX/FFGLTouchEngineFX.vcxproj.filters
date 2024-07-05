@@ -19,6 +19,9 @@
     <Filter Include="Source Files\FFGL">
       <UniqueIdentifier>{26a9cb56-3056-40d5-8f48-e7a1f0cfcac9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Spout">
+      <UniqueIdentifier>{a0389c9a-b56f-44b1-8432-cfb232e866f3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\FFGL\ffgl\FFGLThumbnailInfo.h">

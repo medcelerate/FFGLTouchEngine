@@ -719,7 +719,7 @@ void FFGLTouchEngine::GetAllParameters()
 
 						//SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_STANDARD);
 
-						SetParamDisplayName(ParamID, linkInfo->name, true);
+						SetParamDisplayName(ParamID, linkInfo->label, true);
 
 						double value = 0;
 						result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
@@ -764,7 +764,7 @@ void FFGLTouchEngine::GetAllParameters()
 							continue;
 						}
 						//SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_INTEGER, static_cast<float>(value));
-						SetParamDisplayName(ParamID, linkInfo->name, true);
+						SetParamDisplayName(ParamID, linkInfo->label, true);
 						ParameterMapInt[ParamID] = value;
 
 						// Need to fix ints not being given the max
@@ -805,7 +805,7 @@ void FFGLTouchEngine::GetAllParameters()
 								continue;
 							}
 
-							SetParamDisplayName(ParamID, linkInfo->name, true);
+							SetParamDisplayName(ParamID, linkInfo->label, true);
 							ParameterMapBool[ParamID] = value;
 							RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
 							SetParamVisibility(ParamID, true, true);
@@ -826,7 +826,7 @@ void FFGLTouchEngine::GetAllParameters()
 							}
 
 							//SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_BOOLEAN, value);
-							SetParamDisplayName(ParamID, linkInfo->name, true);
+							SetParamDisplayName(ParamID, linkInfo->label, true);
 							ParameterMapBool[ParamID] = value;
 							RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
 							SetParamVisibility(ParamID, true, true);
@@ -847,7 +847,7 @@ void FFGLTouchEngine::GetAllParameters()
 						{
 							continue;
 						}
-						SetParamDisplayName(ParamID, linkInfo->name, true);
+						SetParamDisplayName(ParamID, linkInfo->label, true);
 						ParameterMapString[ParamID] = value->string;
 						RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
 						SetParamVisibility(ParamID, true, true);

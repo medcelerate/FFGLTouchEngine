@@ -822,6 +822,7 @@ void FFGLTouchEngineFX::GetAllParameters()
 						continue;
 					}
 
+
 					case TELinkTypeDouble:
 					{
 						uint32_t ParamID = Parameters.size() + OffsetParamsByType;

@@ -844,13 +844,13 @@ void FFGLTouchEngineFX::GetAllParameters()
 						ParameterMapFloat[ParamID] = value;
 
 						double max = 0;
-						result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueMaximum, &max, 1);
+						result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueUIMaximum, &max, 1);
 						if (result != TEResultSuccess)
 						{
 							continue;
 						}
 						double min = 0;
-						result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueMinimum, &min, 1);
+						result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueUIMinimum, &min, 1);
 						if (result != TEResultSuccess)
 						{
 							continue;
@@ -882,14 +882,14 @@ void FFGLTouchEngineFX::GetAllParameters()
 
 
 						int32_t max = 0;
-						result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueMaximum, &max, 1);
+						result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueUIMaximum, &max, 1);
 						if (result != TEResultSuccess)
 						{
 							continue;
 						}
 
 						int32_t min = 0;
-						result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueMinimum, &min, 1);
+						result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueUIMinimum, &min, 1);
 						if (result != TEResultSuccess)
 						{
 							continue;

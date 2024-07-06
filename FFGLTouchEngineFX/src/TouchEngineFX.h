@@ -36,9 +36,19 @@ private:
 	TouchObject<TEInstance> instance;
 	Microsoft::WRL::ComPtr<ID3D11Device> D3DDevice;
 	TouchObject<TED3D11Context> D3DContext;
+
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureInput = nullptr;
+	HANDLE InputSharedHandle = nullptr;
+	HANDLE dxInteropInputHandle = 0;
+	HANDLE dxInteropInputObject = 0;
+
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureOutput = nullptr;
+	HANDLE OutputSharedHandle = nullptr;
+	HANDLE dxInteropOutputHandle = 0;
+	HANDLE dxInteropOutputObject = 0;
+
 	std::unordered_map<ID3D11Texture2D*, IDXGIKeyedMutex*> TextureMutexMap;
+	std::unordered_map<int, IDXGIKeyedMutex*> MutexMap;
 
 	std::atomic_bool isTouchEngineLoaded = false;
 	std::atomic_bool isTouchEngineReady = false;
@@ -66,11 +76,13 @@ private:
 	//Spout Configs
 	std::string SpoutID;
 
-	Spout Interop;
+	Spout InputInterop;
+	Spout OutputInterop;
 
 	uint32_t SpoutSenderID = 0;
 
-	bool InteropInitialized = false;
+	bool InputInteropInitialized = false;
+	bool OutputInteropInitialized = false;
 
 
 	int InputWidth = 0;

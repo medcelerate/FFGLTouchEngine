@@ -37,14 +37,14 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11Device> D3DDevice;
 	TouchObject<TED3D11Context> D3DContext;
 
+	HANDLE dxInteropHandle = 0;
+
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureInput = nullptr;
 	HANDLE InputSharedHandle = nullptr;
-	HANDLE dxInteropInputHandle = 0;
 	HANDLE dxInteropInputObject = 0;
 
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureOutput = nullptr;
 	HANDLE OutputSharedHandle = nullptr;
-	HANDLE dxInteropOutputHandle = 0;
 	HANDLE dxInteropOutputObject = 0;
 
 	std::unordered_map<ID3D11Texture2D*, IDXGIKeyedMutex*> TextureMutexMap;

@@ -390,11 +390,6 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 FFResult FFGLTouchEngine::DeInitGL()
 {
 
-	for (auto it : TextureMutexMap) 
-		it.second->Release();
-
-	TextureMutexMap.clear();
-
 	if (instance != nullptr)
 	{
 		if (isTouchEngineLoaded)
@@ -402,6 +397,11 @@ FFResult FFGLTouchEngine::DeInitGL()
 			TEInstanceSuspend(instance);
 			TEInstanceUnload(instance);
 		}
+	}
+
+	if (isInteropInitialized) {
+		OutputInterop.CleanupInterop();
+		OutputInterop.CloseDirectX();
 	}
 
 	// Deinitialize the quad

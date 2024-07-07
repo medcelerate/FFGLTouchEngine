@@ -217,6 +217,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(SolutionDir)lib\TouchEngine\TouchEngine.lib;$(SolutionDir)lib\Spout\Spout_static.lib;$(SolutionDir)lib\Glew\glew32s.lib;opengl32.lib</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>copy /Y "$(ProjectDir)Build\$(Platform)\$(Configuration)\FFGLTouchEngine.dll" "$(SolutionDir)..\..\Resolume Arena\Plugins\FFGLTouchEngine.dll"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\FFGL\ffglex\FFGLFBO.cpp" />

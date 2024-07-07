@@ -12,8 +12,7 @@
 #include "TouchEngine/TouchObject.h"
 #include "TouchEngine/TEGraphicsContext.h"
 #include "TouchEngine/TED3D11.h"
-#include "SpoutGL/SpoutDirectX.h"
-#include "SpoutGL/SpoutReceiver.h"
+#include "SpoutGL/SpoutSender.h"
 #include "Thumbnail.h"
 
 
@@ -74,15 +73,12 @@ private:
 
 	//Spout Configs
 	std::string SpoutID;
-	SpoutReceiver SPReceiver;
-	spoutDirectX SPDirectx;
-	spoutSenderNames SPSender;
-	spoutFrameCount SPFrameCount;
-	bool isSpoutInitialized = false;
+	Spout OutputInterop;
+	bool isInteropInitialized = false;
 
 
-	int Width = 0;
-	int Height = 0;
+	int OutputWidth = 0;
+	int OutputHeight = 0;
 
 
 	std::string FilePath;

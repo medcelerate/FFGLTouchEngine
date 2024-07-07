@@ -141,8 +141,8 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 	//Load TouchEngine
 	LoadTouchEngine();
 
-	SpoutID = GenerateRandomString(15);
-	SpoutID2 = GenerateRandomString(15);
+	SpoutIDInput = GenerateRandomString(15);
+	SpoutIDOutput = GenerateRandomString(15);
 
 	SpoutTextureOutput = 0;
 	SpoutTextureInput = 0;
@@ -284,7 +284,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			}
 			*/
 
-			InputInterop.SetSenderName(SpoutID.c_str());
+			InputInterop.SetSenderName(SpoutIDInput.c_str());
 
 			if (!InputInterop.OpenDirectX11(D3DDevice.Get())) {
 				FFGLLog::LogToHost("Failed to open DirectX11");
@@ -388,7 +388,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 				if (!OutputInteropInitialized) {
 
-					OutputInterop.SetSenderName(SpoutID2.c_str());
+					OutputInterop.SetSenderName(SpoutIDOutput.c_str());
 
 					OutputInterop.OpenDirectX11(D3DDevice.Get());
 
@@ -431,6 +431,11 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 
 				IDXGIKeyedMutex* keyedMutex;
+				RawTextureToSend->QueryInterface<IDXGIKeyedMutex>(&keyedMutex);
+				if (keyedMutex == nullptr) {
+					return FF_FAIL;
+				}
+				/*
 				auto mapIt = TextureMutexMap.find(RawTextureToSend);
 				if (mapIt == TextureMutexMap.end())
 				{
@@ -444,6 +449,8 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				{
 					keyedMutex = mapIt->second;
 				}
+				
+				*/
 				//Dynamically change texture size here when wxH changes
 
 				TESemaphore* semaphore = nullptr;
@@ -476,6 +483,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				}
 				devContext->Flush();
 			    devContext->Release();
+				keyedMutex->Release();
 			}
 		
 		}

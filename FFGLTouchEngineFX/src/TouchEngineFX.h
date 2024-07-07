@@ -74,8 +74,8 @@ private:
 	std::unordered_map<FFUInt32, bool> ParameterMapBool;
 
 	//Spout Configs
-	std::string SpoutID;
-	std::string SpoutID2;
+	std::string SpoutIDInput;
+	std::string SpoutIDOutput;
 
 	Spout InputInterop;
 	Spout OutputInterop;

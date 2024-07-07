@@ -75,6 +75,7 @@ private:
 
 	//Spout Configs
 	std::string SpoutID;
+	std::string SpoutID2;
 
 	Spout InputInterop;
 	Spout OutputInterop;

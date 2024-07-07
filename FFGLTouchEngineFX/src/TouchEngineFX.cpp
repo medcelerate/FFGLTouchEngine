@@ -142,6 +142,7 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 	LoadTouchEngine();
 
 	SpoutID = GenerateRandomString(15);
+	SpoutID2 = GenerateRandomString(15);
 
 	SpoutTextureOutput = 0;
 	SpoutTextureInput = 0;
@@ -168,21 +169,6 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 	OutputWidth = vp->width;
 	OutputHeight = vp->height;
 
-	if (!CreateOutputTexture(OutputWidth, OutputHeight, DXGI_FORMAT_B8G8R8A8_UNORM)) {
-		FFGLLog::LogToHost("Failed to create textures");
-		return FF_FAIL;
-	}
-
-
-	if (!OutputInterop.OpenDirectX11(D3DDevice.Get())) {
-		FFGLLog::LogToHost("Failed to open DirectX11 OOP");
-		return FF_FAIL;
-	}
-
-	if (!InputInterop.OpenDirectX11(D3DDevice.Get())) {
-		FFGLLog::LogToHost("Failed to open DirectX11 IOP");
-		return FF_FAIL;
-	}
 
 	if (FilePath.empty())
 	{
@@ -297,112 +283,57 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				return FF_FAIL;
 			}
 			*/
-			if (!CreateInputTexture(InputWidth, InputHeight, DXGI_FORMAT_B8G8R8A8_UNORM)) {
-				FFGLLog::LogToHost("Failed to create input texture");
-				isTouchFrameBusy = false;
+
+			InputInterop.SetSenderName(SpoutID.c_str());
+
+			if (!InputInterop.OpenDirectX11(D3DDevice.Get())) {
+				FFGLLog::LogToHost("Failed to open DirectX11");
 				return FF_FAIL;
 			}
 
-			//InitializeGlTexture(SpoutTextureInput, InputWidth, InputHeight);
+			if (!InputInterop.CreateInterop(InputWidth, InputHeight, DXGI_FORMAT_B8G8R8A8_UNORM, false)) {
+				FFGLLog::LogToHost("Failed to create interop");
+				return FF_FAIL;
+			}
+
+			InputInterop.frame.CreateAccessMutex("mutex1");
+
+			if (!InputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), InputWidth, InputHeight, DXGI_FORMAT_B8G8R8A8_UNORM, &D3DTextureInput)) {
+				FFGLLog::LogToHost("Failed to create DX11 texture");
+				return FF_FAIL;
+			}
+
+			InitializeGlTexture(SpoutTextureInput, InputWidth, InputHeight);
 
 			InputInteropInitialized = true;
 
 		}
+
+		if (InputWidth != pGL->inputTextures[0]->Width || InputHeight != pGL->inputTextures[0]->Height) {
+			InputWidth = pGL->inputTextures[0]->Width;
+			InputHeight = pGL->inputTextures[0]->Height;
+
+			if (!InputInterop.CleanupInterop()) {
+				FFGLLog::LogToHost("Failed to cleanup interop");
+				return FF_FAIL;
+			}
+
+			if (!InputInterop.CreateInterop(InputWidth, InputHeight, DXGI_FORMAT_B8G8R8A8_UNORM, false)) {
+				FFGLLog::LogToHost("Failed to create interop");
+				return FF_FAIL;
+			}
+
+			InputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), InputWidth, InputHeight, DXGI_FORMAT_B8G8R8A8_UNORM, &D3DTextureInput);
+
+			InitializeGlTexture(SpoutTextureInput, InputWidth, InputHeight);
+		}
 	
-
-
-		IDXGIKeyedMutex* keyedMutex;
-
-		D3DTextureInput->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&keyedMutex);
-
-		if (keyedMutex == nullptr) {
-			FFGLLog::LogToHost("Failed to get keyed mutex");
-			isTouchFrameBusy = false;
-			return FF_FAIL;
-		}
-
-		HRESULT hr = keyedMutex->AcquireSync(0, INFINITE);
-
-		if (FAILED(hr)) {
-			FFGLLog::LogToHost("Failed to acquire sync");
-			isTouchFrameBusy = false;
-			return FF_FAIL;
-		}
-
-		if (!wglDXLockObjectsNV(dxInteropHandle, 1, &dxInteropInputObject)) {
-			FFGLLog::LogToHost("Failed to lock objects");
-			isTouchFrameBusy = false;
-			return FF_FAIL;
-		}
-
-		glBindFramebuffer(GL_FRAMEBUFFER, pGL->HostFBO);
-
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pGL->inputTextures[0]->Handle, 0);
-		glReadBuffer(GL_COLOR_ATTACHMENT0);
-
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, SpoutTextureInput, 0);
-		glDrawBuffer(GL_COLOR_ATTACHMENT1);
-
-		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE)
-		{
-			glBlitFramebuffer(0, 0, pGL->inputTextures[0]->Width, pGL->inputTextures[0]->Height, 0, 0, InputWidth, InputHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-		}
-
-		else {
-			glBindTexture(GL_TEXTURE_2D, SpoutTextureInput);
-			glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, InputWidth, InputHeight);
-			glBindTexture(GL_TEXTURE_2D, 0);
-		}
-
-		glDrawBuffer(GL_COLOR_ATTACHMENT0);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, 0, 0);
-
-		glFlush();
-
-		wglDXUnlockObjectsNV(dxInteropHandle, 1, &dxInteropInputObject);
-
-		//Write a loop for glGetError
-
-		GLenum err;
-		while ((err = glGetError()) != GL_NO_ERROR) {
-			// Process or log the error code
-			std::string e = std::string("GL ERROR: ") + std::to_string(err);
-			FFGLLog::LogToHost(e.c_str());
-		}
-
-		Microsoft::WRL::ComPtr<ID3D11Texture2D> RawTextureToSend;
-
-		D3D11_TEXTURE2D_DESC RawTextureDesc;
-
-		ZeroMemory(&RawTextureDesc, sizeof(RawTextureDesc));
-
-		D3DTextureInput->GetDesc(&RawTextureDesc);
-
-		D3DDevice->CreateTexture2D(&RawTextureDesc, nullptr, &RawTextureToSend);
-
-		Microsoft::WRL::ComPtr<ID3D11DeviceContext> devContext;
-		D3DDevice->GetImmediateContext(&devContext);
-		devContext->CopyResource(RawTextureToSend.Get(), D3DTextureInput.Get());
-		keyedMutex->ReleaseSync(0);
-		devContext->Flush();
-
-		keyedMutex->Release();
-
-		Microsoft::WRL::ComPtr<ID3D11Texture2D> TextureResource;
-		//ID3D11Resource* tempResource11 = nullptr;
-		HRESULT openResult = D3DDevice->OpenSharedResource(InputSharedHandle, __uuidof(ID3D11Resource), (void**)(&TextureResource));
-		if (openResult != S_OK) {
-			FFGLLog::LogToHost("Failed to open shared resource");
-			return FF_FAIL;
-		}
-
-		//Writes the openGL texture to a shared texture for D3D11
-		//InputInterop.WriteGLDXtexture(pGL->inputTextures[0]->Handle, GL_TEXTURE_2D, InputWidth, InputHeight);
-		//InputInterop.ReadTexture(D3DTextureInput.GetAddressOf());
+		InputInterop.WriteGLDXtexture(pGL->inputTextures[0]->Handle, GL_TEXTURE_2D, InputWidth, InputHeight, false, pGL->HostFBO);
 		
+		InputInterop.ReadTexture(D3DTextureInput.GetAddressOf());
+
 		//Creates a TETexture from the D3D11 texture
-		TETextureToReceive.take(TED3D11TextureCreate(TextureResource.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
+		TETextureToReceive.take(TED3D11TextureCreate(D3DTextureInput.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
 		//TEResult result = TEInstanceAddTextureTransfer(instance, TETextureToReceive, nullptr, 0);
 
 		//Sets the texture to the input of the TouchEngine instance
@@ -455,48 +386,47 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 				RawTextureToSend->GetDesc(&RawTextureDesc);
 
-				HANDLE dxShareHandle = nullptr;
 				if (!OutputInteropInitialized) {
-					DXGI_FORMAT texformat = DXGI_FORMAT_B8G8R8A8_UNORM;
 
-					/*
-					if (!OutputInterop.CreateInterop(OutputWidth, OutputHeight, texformat, false)) {
+					OutputInterop.SetSenderName(SpoutID2.c_str());
+
+					OutputInterop.OpenDirectX11(D3DDevice.Get());
+
+					if (!OutputInterop.CreateInterop(OutputWidth, OutputHeight, DXGI_FORMAT_B8G8R8A8_UNORM, false)) {
 						FFGLLog::LogToHost("Failed to create interop");
+						return FF_FAIL;
+					}
+
+					OutputInterop.frame.CreateAccessMutex("mutex2");
+
+					if (!OutputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), OutputWidth, OutputHeight, DXGI_FORMAT_B8G8R8A8_UNORM, &D3DTextureOutput)) {
+						FFGLLog::LogToHost("Failed to create DX11 texture");
 						return FF_FAIL;
 					}
 
 					InitializeGlTexture(SpoutTextureOutput, OutputWidth, OutputHeight);
 
-					OutputInterop.frame.CreateAccessMutex(SpoutID.c_str());
-					*/
-
-					if (!CreateOutputTexture(OutputWidth, OutputHeight, DXGI_FORMAT_B8G8R8A8_UNORM)) {
-						FFGLLog::LogToHost("Failed to create output texture");
-						return FF_FAIL;
-					}
 					OutputInteropInitialized = true;
 				}
 
 				if (RawTextureDesc.Width != OutputWidth || RawTextureDesc.Height != OutputHeight) {
-					if (!CreateOutputTexture(RawTextureDesc.Width, RawTextureDesc.Height, DXGI_FORMAT_B8G8R8A8_UNORM)) {
-						FFGLLog::LogToHost("Failed to create output texture");
-						return FF_FAIL;
-					}
+					OutputWidth = RawTextureDesc.Width;
+					OutputHeight = RawTextureDesc.Height;
 
 					if (!OutputInterop.CleanupInterop()) {
 						FFGLLog::LogToHost("Failed to cleanup interop");
 						return FF_FAIL;
 					}
 
-					if (!OutputInterop.CreateInterop(RawTextureDesc.Width, RawTextureDesc.Height, DXGI_FORMAT_B8G8R8A8_UNORM, false)) {
+					if (!OutputInterop.CreateInterop(OutputWidth, OutputHeight, DXGI_FORMAT_B8G8R8A8_UNORM, false)) {
 						FFGLLog::LogToHost("Failed to create interop");
 						return FF_FAIL;
 					}
 
-					InitializeGlTexture(SpoutTextureOutput, RawTextureDesc.Width, RawTextureDesc.Height);
+					OutputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), OutputWidth, OutputHeight, DXGI_FORMAT_B8G8R8A8_UNORM, &D3DTextureOutput);
 
-					OutputWidth = RawTextureDesc.Width;
-					OutputHeight = RawTextureDesc.Height;
+					InitializeGlTexture(SpoutTextureOutput, OutputWidth, OutputHeight);
+
 				}
 
 
@@ -535,17 +465,8 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				
 				Microsoft::WRL::ComPtr<ID3D11DeviceContext> devContext; 
 				D3DDevice->GetImmediateContext(&devContext);
-				Microsoft::WRL::ComPtr<IDXGIKeyedMutex> localMutex;
-
-				D3DTextureOutput->QueryInterface<IDXGIKeyedMutex>(&localMutex);
-
-				if (localMutex == nullptr) {
-					return FF_FAIL;
-				}
-
-		//		localMutex->AcquireSync(waitValue, INFINITE);
-
 				devContext->CopyResource(D3DTextureOutput.Get(), RawTextureToSend);
+				OutputInterop.WriteTexture(D3DTextureOutput.GetAddressOf());
 				keyedMutex->ReleaseSync(waitValue + 1);
 
 				result = TEInstanceAddTextureTransfer(instance, TETextureToSend, semaphore, waitValue +1);
@@ -558,27 +479,8 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			}
 		
 		}
-
-
-		IDXGIKeyedMutex* keyedMutex;
-
-		D3DTextureOutput->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&keyedMutex);
-
-		if (keyedMutex == nullptr) {
-			FFGLLog::LogToHost("Failed to get keyed mutex");
-			isTouchFrameBusy = false;
-			return FF_FAIL;
-		}
-
-		HRESULT hr = keyedMutex->AcquireSync(0, INFINITE);
-
-		//OutputInterop.WriteTextureReadback(D3DTextureOutput.GetAddressOf(), SpoutTextureOutput, GL_TEXTURE_2D, OutputWidth, OutputHeight, false, pGL->HostFBO);
-
-		if (wglDXLockObjectsNV(dxInteropHandle, 1, &dxInteropOutputObject)) {
-			FFGLLog::LogToHost("Failed to lock objects");
-			return FF_FAIL;
-		}
-
+		
+		OutputInterop.ReadGLDXtexture(SpoutTextureOutput, GL_TEXTURE_2D, OutputWidth, OutputHeight, true, pGL->HostFBO);
 
 		ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
 		ffglex::ScopedSamplerActivation activateSampler(0);
@@ -587,18 +489,11 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		shader.Set("MaxUV", 1.0f, 1.0f);
 		quad.Draw();
 
-		if (wglDXUnlockObjectsNV(dxInteropHandle, 1, &dxInteropOutputObject)) {
-			FFGLLog::LogToHost("Failed to unlock objects");
-			return FF_FAIL;
-
-		}
-		keyedMutex->ReleaseSync(0);
-		keyedMutex->Release();
 	}
 	
 
 	// Unbind the input texture
-	//glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
 
 
 	return FF_SUCCESS;

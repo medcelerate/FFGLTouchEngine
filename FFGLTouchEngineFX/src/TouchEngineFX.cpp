@@ -223,7 +223,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			}
 		}
 
-		if (type == FF_TYPE_INTEGER) {
+		if (type == FF_TYPE_INTEGER || type == FF_TYPE_OPTION) {
 			TEResult result = TEInstanceLinkSetIntValue(instance, param.first.c_str(), &ParameterMapInt[param.second], 1);
 			if (result != TEResultSuccess)
 			{
@@ -250,6 +250,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				return FF_FAIL;
 			}
 		}
+
 
 	}
 	TouchObject<TETexture> TETextureToReceive;
@@ -881,19 +882,20 @@ void FFGLTouchEngineFX::ConstructBaseParameters() {
 		SetParamInfof(i, (std::string("Pulse")).c_str(), FF_TYPE_EVENT);
 		SetParamVisibility(i, false, false);
 	}
-
+	
 	for (uint32_t i = (MaxParamsByType * 5) + OffsetParamsByType; i < (MaxParamsByType * 6) + OffsetParamsByType; i++)
 	{
-		SetParamInfof(i, (std::string("Parameter")).c_str(), FF_TYPE_OPTION);
+		SetOptionParamInfo(i, (std::string("Parameter") + std::to_string(i)).c_str(), 10, 0);
 		SetParamVisibility(i, false, false);
 	}
+	
 
 	return;
 
 }
 
 void FFGLTouchEngineFX::ResetBaseParameters() {
-	for (uint32_t i = OffsetParamsByType; i < MaxParamsByType + OffsetParamsByType; i++)
+	for (uint32_t i = OffsetParamsByType; i < (MaxParamsByType * 6) + OffsetParamsByType; i++)
 	{
 		SetParamVisibility(i, false, true);
 	}
@@ -946,7 +948,7 @@ void FFGLTouchEngineFX::GetAllParameters()
 
 			if (linkInfo->domain == TELinkDomainParameter) {
 
-				if (ActiveParams.size() > MaxParamsByType * 5) {
+				if (ActiveParams.size() > MaxParamsByType * 6) {
 					FFGLLog::LogToHost("Too many parameters, skipping");
 					continue;
 				}
@@ -1003,22 +1005,38 @@ void FFGLTouchEngineFX::GetAllParameters()
 					{
 						if (TEInstanceLinkHasChoices(instance, linkInfo->identifier)) {
 							TouchObject<TEStringArray> labels;
-							uint32_t ParamID = (ParameterMapInt.size() + OffsetParamsByType) + MaxParamsByType * 5;
+							uint32_t ParamID = (ParameterMapInt.size() + OffsetParamsByType) + (MaxParamsByType * 5);
 							result = TEInstanceLinkGetChoiceLabels(instance, linkInfo->identifier, labels.take());
 							if (result != TEResultSuccess && !labels)
 							{
 								continue;
 							}
 
+							std::vector<std::string> labelsVector;
+							std::vector<float> valuesVector;
+
 							for (int k = 0; k < labels->count; k++)
 							{
-								SetParamElementInfo(ParamID, k, labels->strings[k], k);
+								labelsVector.push_back(labels->strings[k]);
+								valuesVector.push_back(static_cast<float>(k));
+							}
+
+							SetParamElements(ParamID, labelsVector, valuesVector, true);
+
+							int32_t value = 0;
+							result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
+							if (result != TEResultSuccess)
+							{
+								continue;
 							}
 
 							Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
 							ActiveParams.insert(ParamID);
 							SetParamDisplayName(ParamID, linkInfo->label, true);
 							ParameterMapType[ParamID] = FF_TYPE_OPTION;
+
+							RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
+							SetParamVisibility(ParamID, true, true);
 							break;
 						}
 						else {
@@ -1083,7 +1101,7 @@ void FFGLTouchEngineFX::GetAllParameters()
 						else
 						{
 							//SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_BOOLEAN);
-							uint32_t ParamID = (ParameterMapBool.size() + OffsetParamsByType) + MaxParamsByType * 2;
+							uint32_t ParamID = (ParameterMapBool.size() + OffsetParamsByType) + (MaxParamsByType * 2);
 							Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
 							ActiveParams.insert(ParamID);
 							ParameterMapType[ParamID] = FF_TYPE_BOOLEAN;
@@ -1106,7 +1124,7 @@ void FFGLTouchEngineFX::GetAllParameters()
 					}
 					case TELinkTypeString:
 					{
-						uint32_t ParamID = (ParameterMapString.size() + OffsetParamsByType) + MaxParamsByType * 3; //(MaxParamsByType * 3) + OffsetParamsByType
+						uint32_t ParamID = (ParameterMapString.size() + OffsetParamsByType) + (MaxParamsByType * 3); //(MaxParamsByType * 3) + OffsetParamsByType
 						Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
 						ActiveParams.insert(ParamID);
 						ParameterMapType[ParamID] = FF_TYPE_TEXT;

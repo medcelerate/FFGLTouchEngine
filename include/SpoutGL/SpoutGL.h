@@ -259,11 +259,15 @@ class SPOUT_DLLEXP spoutGL {
 	bool WriteDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
 	// Copy from shared DX11 texture to OpenGL via CPU
 	bool ReadDX11texture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
-	// Read pixels from an OpenGL texture
+	// Read pixels from an OpenGL texture using pbo
 	bool UnloadTexturePixels(GLuint TextureID, GLuint TextureTarget,
 		unsigned int width, unsigned int height, unsigned int pitch,
 		unsigned char* data, GLenum glFormat = GL_RGBA,
 		bool bInvert = false, GLuint HostFBO = 0);
+	// Read RGB or RGBA pixels from an OpenGL texture with format
+	bool ReadTexturePixels(GLuint TextureID, GLuint TextureTarget,
+		unsigned int width, unsigned int height, void* dest,
+		GLenum GLformat, int nChannels);
 
 
 	//
@@ -285,9 +289,6 @@ class SPOUT_DLLEXP spoutGL {
 	// For external access
 	//
 
-	bool CreateInterop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive);
-	bool WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
-
 	// DirectX 11 texture sharing
 	spoutDirectX spoutdx;
 	// Pixel buffer copying
@@ -297,13 +298,17 @@ class SPOUT_DLLEXP spoutGL {
 	// Frame counting management
 	spoutFrameCount frame;
 
+	bool CreateInterop(unsigned int width, unsigned int height, DWORD dwFormat, bool bReceive);
+	bool WriteGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = true, GLuint HostFBO = 0);
+	bool ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
+
 protected :
 	
 	// For 2.006(receive only) / WriteMemoryBuffer / ReadMemoryBuffer
 	SpoutSharedMemory memoryshare;
 
 	// GL/DX functions
-
+	
 	HRESULT LockInteropObject(HANDLE hDevice, HANDLE *hObject);
 	HRESULT UnlockInteropObject(HANDLE hDevice, HANDLE *hObject);
 	void CleanupGL(); // Free OpenGL resources
@@ -312,8 +317,6 @@ protected :
 	void CheckOpenGLTexture(GLuint &texID, GLenum GLformat, unsigned int width, unsigned int height);
 
 	// OpenGL texture copy
-
-	bool ReadGLDXtexture(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert = false, GLuint HostFBO = 0);
 	bool SetSharedTextureData(GLuint TextureID, GLuint TextureTarget, unsigned int width, unsigned int height, bool bInvert, GLuint HostFBO);
 	
 	// OpenGL pixel copy

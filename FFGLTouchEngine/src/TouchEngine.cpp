@@ -225,16 +225,6 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				return FF_FAIL;
 			}
 		}
-		/*
-		if (type == FF_TYPE_EVENT) {
-			TEResult result = TEInstanceLinkSetBooleanValue(instance, param.first.c_str(), ParameterMapBool[param.second]);
-			if (result != TEResultSuccess)
-			{
-				isTouchFrameBusy = false;
-				return FF_FAIL;
-			}
-		}
-		*/
 
 	}
 

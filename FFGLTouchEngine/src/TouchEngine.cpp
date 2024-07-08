@@ -646,7 +646,7 @@ void FFGLTouchEngine::ConstructBaseParameters() {
 
 void FFGLTouchEngine::ResetBaseParameters() {
 	for (auto& ParamID : ActiveParams) {
-		SetParamVisibility(ParamID, false, false);
+		SetParamVisibility(ParamID, false, true);
 	}
 
 	hasVideoOutput = false;

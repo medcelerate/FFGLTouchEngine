@@ -899,6 +899,8 @@ void FFGLTouchEngineFX::ResetBaseParameters() {
 	for (auto& ParamID : ActiveParams) {
 		SetParamVisibility(ParamID, false, true);
 	}
+	hasVideoInput = false;
+	hasVideoOutput = false;
 	ActiveParams.clear();
 	ParameterMapFloat.clear();
 	ParameterMapInt.clear();

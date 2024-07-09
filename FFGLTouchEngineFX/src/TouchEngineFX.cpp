@@ -329,7 +329,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			InitializeGlTexture(SpoutTextureInput, InputWidth, InputHeight);
 		}
 	
-		InputInterop.WriteGLDXtexture(pGL->inputTextures[0]->Handle, GL_TEXTURE_2D, InputWidth, InputHeight, false, pGL->HostFBO);
+		InputInterop.WriteGLDXtexture(pGL->inputTextures[0]->Handle, GL_TEXTURE_2D, InputWidth, InputHeight, true, pGL->HostFBO);
 		
 		InputInterop.ReadTexture(D3DTextureInput.GetAddressOf());
 

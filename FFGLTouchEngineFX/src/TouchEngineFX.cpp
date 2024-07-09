@@ -90,11 +90,14 @@ FFGLTouchEngineFX::FFGLTouchEngineFX()
 	// Parameters
  	SetParamInfof(0, "Tox File", FF_TYPE_FILE);
 	SetParamInfof(1, "Reload", FF_TYPE_EVENT);
+	SetParamInfof(2, "Unload", FF_TYPE_EVENT);
+	SetParamInfof(3, "Clear Instance", FF_TYPE_EVENT);
+
+	//This is the starting point for the parameters and should be the count of manually added parameters.
+	OffsetParamsByType = 4;
+
 
 	MaxParamsByType = 30;
-
-	//This is the starting point for the parameters
-	OffsetParamsByType = 2;
 
 
 	ConstructBaseParameters();
@@ -535,8 +538,25 @@ FFResult FFGLTouchEngineFX::DeInitGL()
 
 FFResult FFGLTouchEngineFX::SetFloatParameter(unsigned int dwIndex, float value) {
 
-	if (dwIndex == 1) {
+	if (dwIndex == 1 && value == 1) {
+		LoadTouchEngine();
 		LoadTEFile();
+		return FF_SUCCESS;
+	}
+
+	if (dwIndex == 2 && value == 1) {
+		if (isTouchEngineLoaded)
+		{
+			TEInstanceSuspend(instance);
+			TEInstanceUnload(instance);
+		}
+		ResetBaseParameters();
+		return FF_SUCCESS;
+	}
+
+	if (dwIndex == 3 && value == 1) {
+		ResetBaseParameters();
+		ClearTouchInstance();
 		return FF_SUCCESS;
 	}
 
@@ -1267,6 +1287,23 @@ void FFGLTouchEngineFX::ResumeTouchEngine() {
 	GetAllParameters();
 	return;
 
+}
+
+void FFGLTouchEngineFX::ClearTouchInstance() {
+	if (instance != nullptr)
+	{
+		if (isTouchEngineLoaded)
+		{
+			TEInstanceSuspend(instance);
+			TEInstanceUnload(instance);
+		}
+		InputInteropInitialized = !InputInterop.CleanupInterop();
+		OutputInteropInitialized = !OutputInterop.CleanupInterop();
+		instance.reset();
+		D3DContext.reset();
+		isGraphicsContextLoaded = false;
+	}
+	return;
 }
 
 void FFGLTouchEngineFX::InitializeGlTexture(GLuint& texture, uint16_t width, uint16_t height)

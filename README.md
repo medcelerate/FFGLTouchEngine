@@ -9,13 +9,9 @@ This plugin is provided AS-IS from this repository, bug fixes and feature reques
 
 [Production Use Support Form](https://forms.gle/QNSKGjdMsX1ptbvh7)
 
-### Issues
-Please file issues here on github.
-- Attach a tox that has issues.
-- Describe steps to reproduce.
-- Describe the issue you are seeing.
-- Attach screenshot of license.
-- Describe OS and environment, i.e windows 11, Nvidia GPU etc.
+## Important!
+
+### You need at least a touchdesigner commercial license for this to work!
 
 ### Tests
 
@@ -29,10 +25,6 @@ Thank you to  ([@yannicks-png](https://github.com/yannicksengstock)) for the sup
 
 [Download Latest Release Here](https://github.com/medcelerate/FFGLTouchEngine/releases)
 
-## Important!
-
-### You need at least a touchdesigner commercial license for this to work!
-
 ---
 
 ### Current Features
@@ -44,6 +36,17 @@ Thank you to  ([@yannicks-png](https://github.com/yannicksengstock)) for the sup
 - [ ] MacOS Support
 
 ---
+
+### Submitting Issues
+Please file issues here on github.
+- Attach a tox that has issues.
+- Describe steps to reproduce.
+- Describe the issue you are seeing.
+- Attach screenshot of license.
+- Describe OS and environment, i.e windows 11, Nvidia GPU etc.
+
+---
+
 ### Guides
 
 **Textures**

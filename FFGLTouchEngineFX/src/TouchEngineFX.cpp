@@ -537,12 +537,12 @@ FFResult FFGLTouchEngineFX::DeInitGL()
 
 FFResult FFGLTouchEngineFX::SetFloatParameter(unsigned int dwIndex, float value) {
 
-	if (dwIndex == 1) {
+	if (dwIndex == 1 && value == 1) {
 		LoadTEFile();
 		return FF_SUCCESS;
 	}
 
-	if (dwIndex == 2) {
+	if (dwIndex == 2 && value == 1) {
 		if (isTouchEngineLoaded)
 		{
 			TEInstanceSuspend(instance);

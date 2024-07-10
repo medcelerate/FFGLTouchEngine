@@ -140,7 +140,6 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 	}
 
 
-	EnableSpoutLogFile("FFGL.log", true);
 	//Load TouchEngine
 	LoadTouchEngine();
 
@@ -165,10 +164,8 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 		return FF_FAIL;
 	}
 
-	// Create the input texture
 
 	// Set the viewport size
-
 	OutputWidth = vp->width;
 	OutputHeight = vp->height;
 
@@ -439,23 +436,6 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				if (keyedMutex == nullptr) {
 					return FF_FAIL;
 				}
-				/*
-				auto mapIt = TextureMutexMap.find(RawTextureToSend);
-				if (mapIt == TextureMutexMap.end())
-				{
-					auto y = RawTextureToSend->QueryInterface<IDXGIKeyedMutex>(&keyedMutex);
-					if (keyedMutex == nullptr) {
-						return FF_FAIL;
-					}
-					TextureMutexMap[RawTextureToSend] = keyedMutex;
-				}
-				else
-				{
-					keyedMutex = mapIt->second;
-				}
-				
-				*/
-				//Dynamically change texture size here when wxH changes
 
 				TESemaphore* semaphore = nullptr;
 				uint64_t waitValue = 0; 
@@ -1073,7 +1053,6 @@ void FFGLTouchEngineFX::GetAllParameters()
 							{
 								continue;
 							}
-							//SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_INTEGER, static_cast<float>(value));
 							SetParamDisplayName(ParamID, linkInfo->label, true);
 							ParameterMapInt[ParamID] = value;
 
@@ -1170,7 +1149,7 @@ void FFGLTouchEngineFX::GetAllParameters()
 				}
 			}
 			else if (linkInfo->domain == TELinkDomainOperator) {
-				if (strcmp(linkInfo->name, "input") == 0 && linkInfo->type == TELinkTypeTexture)
+				if (strcmp(linkInfo->name, "in1") == 0 && linkInfo->type == TELinkTypeTexture)
 				{
 					isVideoFX = true;
 					hasVideoInput = true;
@@ -1209,7 +1188,7 @@ void FFGLTouchEngineFX::GetAllParameters()
 			}
 
 			if (linkInfo->domain == TELinkDomainOperator) {
-				if (strcmp(linkInfo->name, "output") == 0 && linkInfo->type == TELinkTypeTexture)
+				if (strcmp(linkInfo->name, "out1") == 0 && linkInfo->type == TELinkTypeTexture)
 				{
 					hasVideoOutput = true;
 				}

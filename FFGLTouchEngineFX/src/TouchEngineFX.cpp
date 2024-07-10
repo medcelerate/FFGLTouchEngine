@@ -338,7 +338,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		//TEResult result = TEInstanceAddTextureTransfer(instance, TETextureToReceive, nullptr, 0);
 
 		//Sets the texture to the input of the TouchEngine instance
-		TEResult result = TEInstanceLinkSetTextureValue(instance, "op/input", TETextureToReceive, D3DContext);
+		TEResult result = TEInstanceLinkSetTextureValue(instance, "op/in1", TETextureToReceive, D3DContext);
 		
 		if (result != TEResultSuccess)
 		{
@@ -367,7 +367,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 	if (hasVideoOutput) {
 		
 		//Will need to replace the below value with something more standard
-		result = TEInstanceLinkGetTextureValue(instance, "op/output", TELinkValueCurrent, TETextureToSend.take());
+		result = TEInstanceLinkGetTextureValue(instance, "op/out1", TELinkValueCurrent, TETextureToSend.take());
 		if (result == TEResultSuccess && TETextureToSend != nullptr) {
 			if (TETextureGetType(TETextureToSend) == TETextureTypeD3DShared && result == TEResultSuccess) {
 				TouchObject<TED3D11Texture> D3DTextureToSend;

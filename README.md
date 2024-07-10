@@ -13,19 +13,22 @@ This plugin is provided AS-IS from this repository, bug fixes and feature reques
 
 ### You need at least a touchdesigner commercial license for this to work!
 
-### Tests
-
-- Currently known to work with TouchDesigner 2023.
-
----
-
-[If you like this tool please consider support my other venture and there will be many more tools to come.](https://www.kickstarter.com/projects/cvalt/help-build-new-york-citys-newest-zero-proof-cocktail-bar?ref=fhrd79)
 
 Thank you to  ([@yannicks-png](https://github.com/yannicksengstock)) for the support and guidance.
+
+### Download
 
 [Download Latest Release Here](https://github.com/medcelerate/FFGLTouchEngine/releases)
 
 ---
+
+### Tests
+
+- Currently known to work with TouchDesigner 2023.
+- There is an issue with earlier versions of 2023 that cause Int menus not to appear.
+
+---
+
 
 ### Current Features
 - [x] Support Tox as Generative FFGL
@@ -51,7 +54,9 @@ Please file issues here on github.
 
 **Textures**
 
-To output video from TouchDesigner you need to create an out TOP and set the name to `output`, make sure to hit `yes to all`. The same goes for inputs. If using the FX version make sure to create an in top named `input`.
+To output video from TouchDesigner you need to create an out TOP and set the name to `out1`, make sure to hit `yes to all`. The same goes for inputs. If using the FX version make sure to create an in top named `in1`.
+
+If you are using a source make sure to set the resolution in TouchDesigner or expose it as a parameter.
 
 **Parameters**
 

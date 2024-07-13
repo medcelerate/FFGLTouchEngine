@@ -9,19 +9,16 @@ This plugin is provided AS-IS from this repository, bug fixes and feature reques
 
 [Production Use Support Form](https://forms.gle/QNSKGjdMsX1ptbvh7)
 
+### Download
+
+[Download Latest Release Here](https://github.com/medcelerate/FFGLTouchEngine/releases)
+
 ## Important!
 
 ### Any of the following TouchDesigner licenses are need for this to work.
 - Educational
 - Commercial
 - Pro
-
-
-Thank you to  ([@yannicks-png](https://github.com/yannicksengstock)) for the support and guidance.
-
-### Download
-
-[Download Latest Release Here](https://github.com/medcelerate/FFGLTouchEngine/releases)
 
 ---
 
@@ -66,3 +63,6 @@ If you are using a source make sure to set the resolution in TouchDesigner or ex
 Due to FFGL limits, you can have at most 30 of each type of parameter. If you use more it could at the moment cause undefined behavior.
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Q5Q6YUGIA)
+
+
+Thank you to  ([@yannicks-png](https://github.com/yannicksengstock)) for the support and guidance.

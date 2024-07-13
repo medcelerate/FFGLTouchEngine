@@ -11,7 +11,10 @@ This plugin is provided AS-IS from this repository, bug fixes and feature reques
 
 ## Important!
 
-### You need at least a touchdesigner commercial license for this to work!
+### Any of the following TouchDesigner licenses are need for this to work.
+- Educational
+- Commercial
+- Pro
 
 
 Thank you to  ([@yannicks-png](https://github.com/yannicksengstock)) for the support and guidance.

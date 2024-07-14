@@ -33,6 +33,8 @@ public:
 	float GetFloatParameter(unsigned int index) override;
 	char* GetTextParameter(unsigned int index) override;
 
+	//FFResult SetTime(double time) override;
+
 private:
 	TouchObject<TEInstance> instance;
 	Microsoft::WRL::ComPtr<ID3D11Device> D3DDevice;
@@ -46,6 +48,7 @@ private:
 	std::atomic_bool isGraphicsContextLoaded = false;
 	std::atomic_bool isTouchFrameBusy = false;
 	uint64_t FrameCount = 0;
+	double Time = 0.0;
 
 	//Touch file capabilities
 	bool hasVideoInput = false;

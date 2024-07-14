@@ -524,6 +524,12 @@ char* FFGLTouchEngine::GetTextParameter(unsigned int dwIndex) {
 
 	return (char*)ParameterMapString[dwIndex].c_str();
 }
+/*
+FFResult FFGLTouchEngine::SetTime(double time) {
+	Time = time;
+	return FF_SUCCESS;
+}
+*/
 
 bool FFGLTouchEngine::LoadTEGraphicsContext(bool reload)
 {

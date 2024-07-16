@@ -1098,6 +1098,10 @@ void FFGLTouchEngine::eventCallback(TEEvent event, TEResult result, int64_t star
 			return;
 		}
 
+		if (!errors) {
+			return;
+		}
+
 		for (int i = 0; i < errors->count; i++)
 		{
 			std::string error = 

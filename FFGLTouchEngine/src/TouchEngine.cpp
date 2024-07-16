@@ -742,6 +742,9 @@ void FFGLTouchEngine::GetAllParameters()
 
 					case TELinkTypeDouble:
 					{
+						if (linkInfo->intent == TELinkIntentColorRGBA || linkInfo->intent == TELinkIntentPositionXYZW || linkInfo->intent == TELinkIntentSizeWH) {
+							continue;
+						}
 						uint32_t ParamID = Parameters.size() + OffsetParamsByType;
 						Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
 						ActiveParams.insert(ParamID);

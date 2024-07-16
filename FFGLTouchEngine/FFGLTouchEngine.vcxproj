@@ -194,6 +194,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(SolutionDir)lib\TouchEngine\TouchEngine.lib;$(SolutionDir)lib\Spout\Spout_static.lib;$(SolutionDir)lib\Glew\glew32s.lib;opengl32.lib</AdditionalDependencies>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseTest|x64'">
@@ -209,6 +210,7 @@
       <LanguageStandard_C>stdc11</LanguageStandard_C>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <Optimization>Disabled</Optimization>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -216,6 +218,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(SolutionDir)lib\TouchEngine\TouchEngine.lib;$(SolutionDir)lib\Spout\Spout_static.lib;$(SolutionDir)lib\Glew\glew32s.lib;opengl32.lib</AdditionalDependencies>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
     <PostBuildEvent>
       <Command>copy /Y "$(ProjectDir)Build\$(Platform)\$(Configuration)\FFGLTouchEngine.dll" "$(SolutionDir)..\..\Resolume Arena\Plugins\FFGLTouchEngine.dll"</Command>

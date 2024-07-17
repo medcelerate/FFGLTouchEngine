@@ -77,6 +77,12 @@ void textureCallback(TED3D11Texture* texture, TEObjectEvent event, void* info)
 	return;
 }
 
+FFResult FailAndLog(std::string msg) {
+
+	FFGLLog::LogToHost(msg.c_str());
+	return FF_FAIL;
+}
+
 FFGLTouchEngineFX::FFGLTouchEngineFX()
 	: CFFGLPlugin()
 {
@@ -152,16 +158,15 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 	if (!shader.Compile(vertexShaderCode, fragmentShaderCode))
 	{
 		DeInitGL();
-		FFGLLog::LogToHost("Failed to compile shader");
-		return FF_FAIL;
+		return FailAndLog("Failed to compile shader");
+
 	}
 
 	// Initialize the quad
 	if (!quad.Initialise())
 	{
 		DeInitGL();
-		FFGLLog::LogToHost("Failed to initialize quad");
-		return FF_FAIL;
+		return FailAndLog("Failed to initialize quad");
 	}
 
 
@@ -219,7 +224,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			if (result != TEResultSuccess)
 			{
 				isTouchFrameBusy = false;
-				return FF_FAIL;
+				return FailAndLog("Failed to set double value");
 			}
 		}
 
@@ -228,7 +233,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			if (result != TEResultSuccess)
 			{
 				isTouchFrameBusy = false;
-				return FF_FAIL;
+				return FailAndLog("Failed to set int value");
 			}
 		}
 
@@ -238,7 +243,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			if (result != TEResultSuccess)
 			{
 				isTouchFrameBusy = false;
-				return FF_FAIL;
+				return FailAndLog("Failed to set boolean value");
 			}
 		}
 
@@ -247,7 +252,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			if (result != TEResultSuccess)
 			{
 				isTouchFrameBusy = false;
-				return FF_FAIL;
+				return FailAndLog("Failed to set string value");
 			}
 		}
 

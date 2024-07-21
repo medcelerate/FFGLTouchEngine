@@ -372,7 +372,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 	if (hasVideoOutput) {
 		
 		//Will need to replace the below value with something more standard
-		result = TEInstanceLinkGetTextureValue(instance, "op/out1", TELinkValueCurrent, TETextureToSend.take());
+		result = TEInstanceLinkGetTextureValue(instance, OutputOpName.c_str(), TELinkValueCurrent, TETextureToSend.take());
 		if (result == TEResultSuccess && TETextureToSend != nullptr) {
 			if (TETextureGetType(TETextureToSend) == TETextureTypeD3DShared && result == TEResultSuccess) {
 				TouchObject<TED3D11Texture> D3DTextureToSend;
@@ -1198,7 +1198,15 @@ void FFGLTouchEngineFX::GetAllParameters()
 			if (linkInfo->domain == TELinkDomainOperator) {
 				if (strcmp(linkInfo->name, "out1") == 0 && linkInfo->type == TELinkTypeTexture)
 				{
+					OutputOpName = linkInfo->identifier;
 					hasVideoOutput = true;
+					break;
+				}
+				else if (linkInfo->type == TELinkTypeTexture)
+				{
+					OutputOpName = linkInfo->identifier;
+					hasVideoOutput = true;
+					break;
 				}
 			}
 		}

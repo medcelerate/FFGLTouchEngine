@@ -58,6 +58,8 @@ To output video from TouchDesigner you need to create an out TOP and set the nam
 
 If you are using a source make sure to set the resolution in TouchDesigner or expose it as a parameter.
 
+Currently, only 8 bit textures are supported. Others may be supported in a future update.
+
 **Parameters**
 
 Due to FFGL limits, you can have at most 30 of each type of parameter. If you use more it could at the moment cause undefined behavior.

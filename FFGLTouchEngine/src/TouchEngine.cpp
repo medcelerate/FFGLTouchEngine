@@ -163,8 +163,7 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 	);
 	if (FAILED(hr))
 	{
-		FFGLLog::LogToHost("Failed to create D3D11 device");
-		return FF_FAIL;
+		return FailAndLog("Failed to create D3D11 device");
 	}
 
 	//Load TouchEngine
@@ -177,16 +176,14 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 	if (!shader.Compile(vertexShaderCode, fragmentShaderCode))
 	{
 		DeInitGL();
-		FFGLLog::LogToHost("Failed to compile shader");
-		return FF_FAIL;
+		return FailAndLog("Failed to compile shader");
 	}
 
 	// Initialize the quad
 	if (!quad.Initialise())
 	{
 		DeInitGL();
-		FFGLLog::LogToHost("Failed to initialize quad");
-		return FF_FAIL;
+		return FailAndLog("Failed to initialize quad");
 	}
 
 	// Create the input texture
@@ -206,8 +203,7 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 
 	if (!Status)
 	{
-		FFGLLog::LogToHost("Failed to load TE file");
-		return FF_FAIL;
+		return FailAndLog("Failed to load tox file");
 	}
 
 	return CFFGLPlugin::InitGL(vp);
@@ -294,7 +290,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		if (hasVideoOutput) {
 			TouchObject<TETexture> TETextureToSend;
 			//Will need to replace the below value with something more standard
-			result = TEInstanceLinkGetTextureValue(instance, "op/out1", TELinkValueCurrent, TETextureToSend.take());
+			result = TEInstanceLinkGetTextureValue(instance, OutputOpName.c_str(), TELinkValueCurrent, TETextureToSend.take());
 			if (result == TEResultSuccess && TETextureToSend != nullptr) {
 				if (TETextureGetType(TETextureToSend) == TETextureTypeD3DShared && result == TEResultSuccess) {
 					TouchObject<TED3D11Texture> D3DTextureToSend;
@@ -318,20 +314,17 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 						OutputInterop.SetSenderName(SpoutID.c_str());
 
 						if (!OutputInterop.OpenDirectX11(D3DDevice.Get())) {
-							FFGLLog::LogToHost("Failed to open DirectX11");
-							return FF_FAIL;
+							return FailAndLog("Failed to open DirectX11");
 						}
 
 						if (!OutputInterop.CreateInterop(OutputWidth, OutputHeight, RawTextureDesc.Format, false)) {
-							FFGLLog::LogToHost("Failed to create interop");
-							return FF_FAIL;
+							return FailAndLog("Failed to create interop");
 						}
 
 						OutputInterop.frame.CreateAccessMutex("mutex");
 
 						if (!OutputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), OutputWidth, OutputHeight, RawTextureDesc.Format, &D3DTextureOutput)) {
-							FFGLLog::LogToHost("Failed to create DX11 texture");
-							return FF_FAIL;
+							return FailAndLog("Failed to create DX11 texture");
 						}
 
 						InitializeGlTexture(SpoutTexture, OutputWidth, OutputHeight, GetGlType(RawTextureDesc.Format));
@@ -348,13 +341,11 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 						OutputHeight = RawTextureDesc.Height;
 
 						if (!OutputInterop.CleanupInterop()) {
-							FFGLLog::LogToHost("Failed to cleanup interop");
-							return FF_FAIL;
+							return FailAndLog("Failed to cleanup interop");
 						}
 
 						if (!OutputInterop.CreateInterop(OutputWidth, OutputHeight, RawTextureDesc.Format, false)) {
-							FFGLLog::LogToHost("Failed to create interop");
-							return FF_FAIL;
+							return FailAndLog("Failed to create interop");
 						}
 
 						OutputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), OutputWidth, OutputHeight, RawTextureDesc.Format, &D3DTextureOutput);
@@ -598,7 +589,7 @@ bool FFGLTouchEngine::LoadTEGraphicsContext(bool reload)
 	isGraphicsContextLoaded = true;
 	return isGraphicsContextLoaded;
 }
-
+/*
 bool FFGLTouchEngine::CreateInputTexture(int width, int height) {
 	// Create the input texture
 
@@ -675,7 +666,7 @@ bool FFGLTouchEngine::CreateInputTexture(int width, int height) {
 
 
 }
-
+*/
 void FFGLTouchEngine::ConstructBaseParameters() {
 	for (int i = OffsetParamsByType; i < MaxParamsByType + OffsetParamsByType; i++)
 	{
@@ -1014,7 +1005,15 @@ void FFGLTouchEngine::GetAllParameters()
 			if (linkInfo->domain == TELinkDomainOperator) {
 				if (strcmp(linkInfo->name, "out1") == 0 && linkInfo->type == TELinkTypeTexture)
 				{
+					OutputOpName = linkInfo->identifier;
 					hasVideoOutput = true;
+					break;
+				}
+				else if (linkInfo->type == TELinkTypeTexture)
+				{
+					OutputOpName = linkInfo->identifier;
+					hasVideoOutput = true;
+					break;
 				}
 			}
 		}

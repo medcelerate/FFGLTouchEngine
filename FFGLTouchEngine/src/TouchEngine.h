@@ -74,6 +74,9 @@ private:
 	std::unordered_map<FFUInt32, std::string> ParameterMapString;
 	std::unordered_map<FFUInt32, bool> ParameterMapBool;
 
+	//Texture Name
+	std::string OutputOpName;
+
 	//Spout Configs
 	std::string SpoutID;
 	Spout OutputInterop;

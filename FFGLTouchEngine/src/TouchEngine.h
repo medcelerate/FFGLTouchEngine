@@ -41,6 +41,9 @@ private:
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureOutput = nullptr;
 	std::map<ID3D11Texture2D*, IDXGIKeyedMutex*> TextureMutexMap;
 
+	DXGI_FORMAT DXFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
+	GLint GLFormat = 0;
+
 	std::atomic_bool isTouchEngineLoaded = false;
 	std::atomic_bool isTouchEngineReady = false;
 	std::atomic_bool isGraphicsContextLoaded = false;
@@ -87,7 +90,7 @@ private:
 	ffglex::FFGLShader shader;  //!< Utility to help us compile and link some shaders into a program.
 	ffglex::FFGLScreenQuad quad;//!< Utility to help us render a full screen quad.
 	GLuint SpoutTexture = 0;
-	void InitializeGlTexture(GLuint &texture, uint16_t width, uint16_t height);
+	void InitializeGlTexture(GLuint& texture, uint16_t width, uint16_t height, GLenum type);
 	void ConstructBaseParameters();
 	void ResetBaseParameters();
 

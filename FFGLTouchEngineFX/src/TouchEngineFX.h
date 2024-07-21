@@ -39,7 +39,8 @@ private:
 
 	HANDLE dxInteropHandle = 0;
 
-	DXGI_FORMAT DXOutputFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	DXGI_FORMAT DXFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
+	GLint GLFormat = 0;
 
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureInput = nullptr;
 	HANDLE InputSharedHandle = nullptr;
@@ -104,7 +105,7 @@ private:
 	ffglex::FFGLScreenQuad quad;//!< Utility to help us render a full screen quad.
 	GLuint SpoutTextureOutput = 0;
 	GLuint SpoutTextureInput = 0;
-	void InitializeGlTexture(GLuint &texture, uint16_t width, uint16_t height);
+	void InitializeGlTexture(GLuint &texture, uint16_t width, uint16_t height, GLenum type);
 	void ConstructBaseParameters();
 	void ResetBaseParameters();
 

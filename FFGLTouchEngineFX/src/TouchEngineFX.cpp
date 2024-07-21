@@ -83,6 +83,40 @@ FFResult FailAndLog(std::string msg) {
 	return FF_FAIL;
 }
 
+
+DXGI_FORMAT GlToDXFromat(GLint format) {
+	
+	switch (format) {
+	case GL_RGBA8:
+		return DXGI_FORMAT_B8G8R8A8_UNORM;
+
+	case GL_RGBA16:
+		return DXGI_FORMAT_R16G16B16A16_UNORM;
+	}
+}
+
+GLenum GetGlType(GLint format) {
+	switch (format) {
+	case GL_UNSIGNED_BYTE:
+		return GL_RGBA;
+	case GL_RGBA16:
+		return GL_UNSIGNED_SHORT;
+	}
+}
+
+GLenum GetGlType(DXGI_FORMAT format) {
+	switch (format) {
+	case DXGI_FORMAT_B8G8R8A8_UNORM:
+		return GL_UNSIGNED_BYTE;
+	case DXGI_FORMAT_R16G16B16A16_UNORM:
+		return GL_UNSIGNED_SHORT;
+	case DXGI_FORMAT_R32G32B32A32_FLOAT:
+		return GL_FLOAT;
+	default:
+		return GL_UNSIGNED_BYTE;
+	}
+}
+
 FFGLTouchEngineFX::FFGLTouchEngineFX()
 	: CFFGLPlugin()
 {
@@ -212,6 +246,8 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		return FF_FAIL;
 	}
 
+
+
 	isTouchFrameBusy = true;
 
 
@@ -271,6 +307,9 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		shader.Set("MaxUV", maxCoords.s, maxCoords.t);
 		quad.Draw();
 
+		GLint InputFormat = 0;
+		glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &InputFormat);
+
 		
 		if (!InputInteropInitialized) {
 			
@@ -297,25 +336,30 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				return FF_FAIL;
 			}
 
-			if (!InputInterop.CreateInterop(InputWidth, InputHeight, DXOutputFormat, false)) {
+			if (!InputInterop.CreateInterop(InputWidth, InputHeight, GlToDXFromat(InputFormat), false)) {
 				FFGLLog::LogToHost("Failed to create interop");
 				return FF_FAIL;
 			}
 
 			InputInterop.frame.CreateAccessMutex("mutex1");
 
-			if (!InputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), InputWidth, InputHeight, DXOutputFormat, &D3DTextureInput)) {
+			if (!InputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), InputWidth, InputHeight, GlToDXFromat(InputFormat), &D3DTextureInput)) {
 				FFGLLog::LogToHost("Failed to create DX11 texture");
 				return FF_FAIL;
 			}
 
-			InitializeGlTexture(SpoutTextureInput, InputWidth, InputHeight);
+			InitializeGlTexture(SpoutTextureInput, InputWidth, InputHeight, GetGlType(InputFormat));
 
 			InputInteropInitialized = true;
 
 		}
 
-		if (InputWidth != pGL->inputTextures[0]->Width || InputHeight != pGL->inputTextures[0]->Height) {
+		if (
+			InputWidth != pGL->inputTextures[0]->Width
+			|| InputHeight != pGL->inputTextures[0]->Height
+			|| InputFormat != GLFormat
+		) {
+
 			InputWidth = pGL->inputTextures[0]->Width;
 			InputHeight = pGL->inputTextures[0]->Height;
 
@@ -324,14 +368,16 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				return FF_FAIL;
 			}
 
-			if (!InputInterop.CreateInterop(InputWidth, InputHeight, DXOutputFormat, false)) {
+			if (!InputInterop.CreateInterop(InputWidth, InputHeight, GlToDXFromat(InputFormat), false)) {
 				FFGLLog::LogToHost("Failed to create interop");
 				return FF_FAIL;
 			}
 
-			InputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), InputWidth, InputHeight, DXOutputFormat, &D3DTextureInput);
+			InputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), InputWidth, InputHeight, GlToDXFromat(InputFormat), &D3DTextureInput);
 
-			InitializeGlTexture(SpoutTextureInput, InputWidth, InputHeight);
+			InitializeGlTexture(SpoutTextureInput, InputWidth, InputHeight, GetGlType(InputFormat));
+
+			GLFormat = InputFormat;
 		}
 	
 		InputInterop.WriteGLDXtexture(pGL->inputTextures[0]->Handle, GL_TEXTURE_2D, InputWidth, InputHeight, true, pGL->HostFBO);
@@ -398,24 +444,29 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 					OutputInterop.OpenDirectX11(D3DDevice.Get());
 
-					if (!OutputInterop.CreateInterop(OutputWidth, OutputHeight, DXOutputFormat, false)) {
+					if (!OutputInterop.CreateInterop(OutputWidth, OutputHeight, RawTextureDesc.Format, false)) {
 						FFGLLog::LogToHost("Failed to create interop");
 						return FF_FAIL;
 					}
 
 					OutputInterop.frame.CreateAccessMutex("mutex2");
 
-					if (!OutputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), OutputWidth, OutputHeight, DXOutputFormat, &D3DTextureOutput)) {
+					if (!OutputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), OutputWidth, OutputHeight, RawTextureDesc.Format, &D3DTextureOutput)) {
 						FFGLLog::LogToHost("Failed to create DX11 texture");
 						return FF_FAIL;
 					}
 
-					InitializeGlTexture(SpoutTextureOutput, OutputWidth, OutputHeight);
+					InitializeGlTexture(SpoutTextureOutput, OutputWidth, OutputHeight, GetGlType(RawTextureDesc.Format));
+					DXFormat = RawTextureDesc.Format;
 
 					OutputInteropInitialized = true;
 				}
 
-				if (RawTextureDesc.Width != OutputWidth || RawTextureDesc.Height != OutputHeight) {
+				if (
+					RawTextureDesc.Width != OutputWidth
+					|| RawTextureDesc.Height != OutputHeight
+					|| RawTextureDesc.Format != DXFormat
+				) {
 					OutputWidth = RawTextureDesc.Width;
 					OutputHeight = RawTextureDesc.Height;
 
@@ -424,14 +475,16 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 						return FF_FAIL;
 					}
 
-					if (!OutputInterop.CreateInterop(OutputWidth, OutputHeight, DXOutputFormat, false)) {
+					if (!OutputInterop.CreateInterop(OutputWidth, OutputHeight, RawTextureDesc.Format, false)) {
 						FFGLLog::LogToHost("Failed to create interop");
 						return FF_FAIL;
 					}
 
-					OutputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), OutputWidth, OutputHeight, DXOutputFormat, &D3DTextureOutput);
+					OutputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), OutputWidth, OutputHeight, RawTextureDesc.Format, &D3DTextureOutput);
 
-					InitializeGlTexture(SpoutTextureOutput, OutputWidth, OutputHeight);
+					InitializeGlTexture(SpoutTextureOutput, OutputWidth, OutputHeight, GetGlType(RawTextureDesc.Format));
+
+					DXFormat = RawTextureDesc.Format;
 
 				}
 
@@ -670,7 +723,7 @@ bool FFGLTouchEngineFX::LoadTEGraphicsContext(bool reload)
 	isGraphicsContextLoaded = true;
 	return isGraphicsContextLoaded;
 }
-
+/*
 bool FFGLTouchEngineFX::CreateInputTexture(int width, int height, DXGI_FORMAT dxformat) {
 	// Create the input texture
 
@@ -852,7 +905,7 @@ bool FFGLTouchEngineFX::CreateOutputTexture(int width, int height, DXGI_FORMAT d
 	return true;
 
 }
-
+*/
 void FFGLTouchEngineFX::ConstructBaseParameters() {
 	for (uint32_t i = OffsetParamsByType; i < MaxParamsByType + OffsetParamsByType; i++)
 	{
@@ -1301,7 +1354,7 @@ void FFGLTouchEngineFX::ClearTouchInstance() {
 	return;
 }
 
-void FFGLTouchEngineFX::InitializeGlTexture(GLuint& texture, uint16_t width, uint16_t height)
+void FFGLTouchEngineFX::InitializeGlTexture(GLuint& texture, uint16_t width, uint16_t height, GLenum type)
 {
 	if (texture != 0) {
 		glDeleteTextures(1, &texture);
@@ -1310,7 +1363,7 @@ void FFGLTouchEngineFX::InitializeGlTexture(GLuint& texture, uint16_t width, uin
 
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, type, NULL);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);

@@ -39,6 +39,8 @@ private:
 
 	HANDLE dxInteropHandle = 0;
 
+	DXGI_FORMAT DXOutputFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureInput = nullptr;
 	HANDLE InputSharedHandle = nullptr;
 	HANDLE dxInteropInputObject = 0;

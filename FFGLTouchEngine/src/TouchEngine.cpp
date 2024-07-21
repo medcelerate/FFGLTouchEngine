@@ -1110,7 +1110,7 @@ void FFGLTouchEngine::ClearTouchInstance() {
 	return;
 }
 
-void FFGLTouchEngine::InitializeGlTexture(GLuint& texture, uint16_t width, uint16_t height)
+void FFGLTouchEngine::InitializeGlTexture(GLuint& texture, uint16_t width, uint16_t height, GLenum format)
 {
 	if (texture != 0) {
 		glDeleteTextures(1, &texture);
@@ -1119,7 +1119,7 @@ void FFGLTouchEngine::InitializeGlTexture(GLuint& texture, uint16_t width, uint1
 
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, format, NULL);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -1158,6 +1158,11 @@ void FFGLTouchEngine::eventCallback(TEEvent event, TEResult result, int64_t star
 
 		// The TouchEngine has encountered an error
 		// You can get the error message with TEInstanceGetError
+	}
+
+	if (result == TEResultNoKey || result == TEResultKeyError || result == TEResultExpiredKey) {
+		FFGLLog::LogToHost("TouchEngine License Error");
+		return;
 	}
 	switch (event) {
 	case TEEventInstanceDidLoad:

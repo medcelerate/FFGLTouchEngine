@@ -1403,6 +1403,11 @@ void FFGLTouchEngineFX::eventCallback(TEEvent event, TEResult result, int64_t st
 		// The TouchEngine has encountered an error
 		// You can get the error message with TEInstanceGetError
 	}
+
+	if (result == TEResultNoKey || result == TEResultKeyError || result == TEResultExpiredKey) {
+		FFGLLog::LogToHost("TouchEngine License Error");
+		return;
+	}
 	switch (event) {
 	case TEEventInstanceDidLoad:
 		if (LoadTEGraphicsContext(false)) {

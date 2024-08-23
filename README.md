@@ -58,7 +58,7 @@ To output video from TouchDesigner you need to create an out TOP and set the nam
 
 If you are using a source make sure to set the resolution in TouchDesigner or expose it as a parameter.
 
-Currently, only 8 bit textures are supported. Others may be supported in a future update.
+8, 16, and 32 bit textures out of TouchDesigner are supported, however they will be downsampled to the max resolume supports (16 bit).
 
 **Parameters**
 

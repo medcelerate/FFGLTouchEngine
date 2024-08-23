@@ -253,27 +253,26 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				return FailAndLog("Failed to set boolean value");
 			}
 
-			if (type == FF_TYPE_TEXT) {
-				TEResult result = TEInstanceLinkSetStringValue(instance, param.first.c_str(), ParameterMapString[param.second].c_str());
-				if (result != TEResultSuccess)
-				{
-					isTouchFrameBusy = false;
-					return FailAndLog("Failed to set string value");
-				}
-			}
-
-			if (type == FF_TYPE_OPTION) {
-				TEResult result = TEInstanceLinkSetIntValue(instance, param.first.c_str(), &ParameterMapInt[param.second], 1);
-				if (result != TEResultSuccess)
-				{
-					isTouchFrameBusy = false;
-					return FailAndLog("Failed to set option value");
-				}
-			}
-
 		}
 
+		if (type == FF_TYPE_TEXT) {
+			TEResult result = TEInstanceLinkSetStringValue(instance, param.first.c_str(), ParameterMapString[param.second].c_str());
+			if (result != TEResultSuccess)
+			{
+				isTouchFrameBusy = false;
+				return FailAndLog("Failed to set string value");
+			}
+		}
 
+		if (type == FF_TYPE_OPTION) {
+			TEResult result = TEInstanceLinkSetIntValue(instance, param.first.c_str(), &ParameterMapInt[param.second], 1);
+			if (result != TEResultSuccess)
+			{
+				isTouchFrameBusy = false;
+				return FailAndLog("Failed to set option value");
+			}
+		}
+	}
 		TEResult result = TEInstanceStartFrameAtTime(instance, FrameCount, 60, false);
 		if (result != TEResultSuccess)
 		{
@@ -411,7 +410,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 
 		}
-	}
+	
 
 	// Unbind the input texture
 	glBindTexture(GL_TEXTURE_2D, 0);

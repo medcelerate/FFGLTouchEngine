@@ -11,6 +11,8 @@ This plugin is provided AS-IS from this repository, bug fixes and feature reques
 
 ### Download
 [Download The Stable Release Here](https://github.com/medcelerate/FFGLTouchEngine/releases/tag/v1.0-rc2)
+
+
 [Download Latest Release Here](https://github.com/medcelerate/FFGLTouchEngine/releases)
 
 ## Important!

@@ -126,7 +126,7 @@ FFGLTouchEngine::FFGLTouchEngine()
 	//This is the starting point for the parameters and is equal to the number of parameters above.
 	OffsetParamsByType = 4;
 
-	MaxParamsByType = 30;
+	MaxParamsByType = 40;
 
 	ConstructBaseParameters();
 

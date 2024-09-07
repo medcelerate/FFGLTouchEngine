@@ -137,7 +137,7 @@ FFGLTouchEngineFX::FFGLTouchEngineFX()
 	OffsetParamsByType = 4;
 
 
-	MaxParamsByType = 30;
+	MaxParamsByType = 40;
 
 
 	ConstructBaseParameters();

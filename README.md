@@ -15,6 +15,9 @@ This plugin is provided AS-IS from this repository, bug fixes and feature reques
 
 [Download Latest Release Here](https://github.com/medcelerate/FFGLTouchEngine/releases)
 
+### Install
+To install, download the ZIP file and place all 3 DLLs in the same directory.
+
 ## Important!
 
 ### Any of the following TouchDesigner licenses are need for this to work.

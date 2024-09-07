@@ -10,7 +10,7 @@ This plugin is provided AS-IS from this repository, bug fixes and feature reques
 [Production Use Support Form](https://forms.gle/QNSKGjdMsX1ptbvh7)
 
 ### Download
-
+[Download The Stable Release Here](https://github.com/medcelerate/FFGLTouchEngine/releases/tag/v1.0-rc2)
 [Download Latest Release Here](https://github.com/medcelerate/FFGLTouchEngine/releases)
 
 ## Important!

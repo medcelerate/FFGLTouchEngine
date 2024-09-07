@@ -226,6 +226,10 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 	for (auto& param : Parameters) {
 		FFUInt32 type = ParameterMapType[param.second];
 
+		if (ActiveVectorParams.find(param.second) != ActiveVectorParams.end()) {
+			continue;
+		}
+
 		if (type == FF_TYPE_STANDARD) {
 			TEResult result = TEInstanceLinkSetDoubleValue(instance, param.first.c_str(), &ParameterMapFloat[param.second], 1);
 			if (result != TEResultSuccess)
@@ -235,7 +239,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			}
 		}
 
-		if (type == FF_TYPE_INTEGER) {
+		if (type == FF_TYPE_INTEGER || type == FF_TYPE_OPTION) {
 			TEResult result = TEInstanceLinkSetIntValue(instance, param.first.c_str(), &ParameterMapInt[param.second], 1);
 			if (result != TEResultSuccess)
 			{
@@ -252,7 +256,6 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				isTouchFrameBusy = false;
 				return FailAndLog("Failed to set boolean value");
 			}
-
 		}
 
 		if (type == FF_TYPE_TEXT) {
@@ -264,14 +267,22 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			}
 		}
 
-		if (type == FF_TYPE_OPTION) {
-			TEResult result = TEInstanceLinkSetIntValue(instance, param.first.c_str(), &ParameterMapInt[param.second], 1);
-			if (result != TEResultSuccess)
-			{
-				isTouchFrameBusy = false;
-				return FailAndLog("Failed to set option value");
-			}
+	}
+
+	for (auto& param : VectorParameters) {
+		double values[4] = { 0,0,0,0 };
+
+		for (uint8_t i = 0; i < param.count; i++) {
+			values[i] = ParameterMapFloat[param.children[i]];
 		}
+
+		TEResult result = TEInstanceLinkSetDoubleValue(instance, param.identifier.c_str(), values, param.count);
+		if (result != TEResultSuccess)
+		{
+			isTouchFrameBusy = false;
+			return FailAndLog("Failed to set int value");
+		}
+
 	}
 		TEResult result = TEInstanceStartFrameAtTime(instance, FrameCount, 60, false);
 		if (result != TEResultSuccess)
@@ -478,6 +489,7 @@ FFResult FFGLTouchEngine::SetFloatParameter(unsigned int dwIndex, float value) {
 
 	FFUInt32 type = ParameterMapType[dwIndex];
 
+
 	if (type == FF_TYPE_INTEGER) {
 		ParameterMapInt[dwIndex] = static_cast<int32_t>(value);
 		return FF_SUCCESS;
@@ -485,6 +497,11 @@ FFResult FFGLTouchEngine::SetFloatParameter(unsigned int dwIndex, float value) {
 
 	if (type == FF_TYPE_BOOLEAN || type == FF_TYPE_EVENT) {
 		ParameterMapBool[dwIndex] = value;
+		return FF_SUCCESS;
+	}
+
+	if (type == FF_TYPE_OPTION) {
+		ParameterMapInt[dwIndex] = static_cast<int32_t>(value);
 		return FF_SUCCESS;
 	}
 
@@ -706,6 +723,8 @@ void FFGLTouchEngine::ConstructBaseParameters() {
 		SetOptionParamInfo(i, (std::string("Parameter") + std::to_string(i)).c_str(), 10, 0);
 		SetParamVisibility(i, false, false);
 	}
+
+
 	return;
 
 }
@@ -776,6 +795,63 @@ void FFGLTouchEngine::GetAllParameters()
 					case TELinkTypeDouble:
 					{
 						if (linkInfo->intent == TELinkIntentColorRGBA || linkInfo->intent == TELinkIntentPositionXYZW || linkInfo->intent == TELinkIntentSizeWH) {
+							std::string Suffix;
+							switch (linkInfo->intent) {
+							case TELinkIntentColorRGBA:
+								Suffix = "RGBA";
+								break;
+							case TELinkIntentPositionXYZW:
+								Suffix = "XYZW";
+								break;
+							case TELinkIntentSizeWH:
+								Suffix = "WH";
+								break;
+							}
+
+							double value[4] = { 0, 0, 0, 0 };
+							result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueCurrent, value, linkInfo->count);
+							if (result != TEResultSuccess)
+							{
+								continue;
+							}
+
+							double max[4] = { 0, 0, 0, 0 };
+							result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueUIMaximum, max, linkInfo->count);
+							if (result != TEResultSuccess)
+							{
+								continue;
+							}
+							double min[4] = { 0, 0, 0, 0 };
+							result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueUIMinimum, min, linkInfo->count);
+							if (result != TEResultSuccess)
+							{
+								continue;
+							}
+
+							VectorParameterInfo info;
+							info.count = linkInfo->count;
+							info.identifier = linkInfo->identifier;
+
+
+
+							for (uint32_t i = 0; i < linkInfo->count; i++) {
+								uint32_t ParamID = Parameters.size() + OffsetParamsByType;
+								Parameters.push_back(std::make_pair(std::string(linkInfo->identifier) + (char)0x03 + std::to_string(i), ParamID));
+								ActiveParams.insert(ParamID);
+								ActiveVectorParams.insert(ParamID);
+								info.children[i] = ParamID;
+
+								ParameterMapType[ParamID] = FF_TYPE_STANDARD;
+
+								SetParamDisplayName(ParamID, linkInfo->label + std::string(".") + Suffix[i], true);
+
+								SetParamRange(ParamID, min[i], max[i]);
+								RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
+								SetParamVisibility(ParamID, true, true);
+							}
+
+							VectorParameters.push_back(info);
+
 							continue;
 						}
 						uint32_t ParamID = Parameters.size() + OffsetParamsByType;

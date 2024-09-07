@@ -14,6 +14,11 @@
 #include "SpoutGL/SpoutSender.h"
 #include "Thumbnail.h"
 
+typedef struct {
+	std::string identifier;
+	uint8_t count;
+	FFUInt32 children[4];
+} VectorParameterInfo;
 
 class FFGLTouchEngineFX : public CFFGLPlugin
 {
@@ -75,6 +80,13 @@ private:
 	std::unordered_map<FFUInt32, double> ParameterMapFloat;
 	std::unordered_map<FFUInt32, std::string> ParameterMapString;
 	std::unordered_map<FFUInt32, bool> ParameterMapBool;
+	
+	//First check if it is a vector parameter
+
+	std::set<FFUInt32> ActiveVectorParams;
+	std::vector<VectorParameterInfo> VectorParameters;
+
+
 
 	//Texture Name
 	std::string OutputOpName;

@@ -16,6 +16,12 @@
 #include "Thumbnail.h"
 
 
+typedef struct {
+	std::string identifier;
+	uint8_t count;
+	FFUInt32 children[4];
+} VectorParameterInfo;
+
 class FFGLTouchEngine : public CFFGLPlugin
 {
 public:
@@ -73,6 +79,9 @@ private:
 	std::unordered_map<FFUInt32, double> ParameterMapFloat;
 	std::unordered_map<FFUInt32, std::string> ParameterMapString;
 	std::unordered_map<FFUInt32, bool> ParameterMapBool;
+
+	std::set<FFUInt32> ActiveVectorParams;
+	std::vector<VectorParameterInfo> VectorParameters;
 
 	//Texture Name
 	std::string OutputOpName;

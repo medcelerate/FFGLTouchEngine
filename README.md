@@ -10,8 +10,13 @@ This plugin is provided AS-IS from this repository, bug fixes and feature reques
 [Production Use Support Form](https://forms.gle/QNSKGjdMsX1ptbvh7)
 
 ### Download
+[Download The Stable Release Here](https://github.com/medcelerate/FFGLTouchEngine/releases/download/v1.0-rc2/FFGLTouchEngine-v1.0-rc2.zip)
+
 
 [Download Latest Release Here](https://github.com/medcelerate/FFGLTouchEngine/releases)
+
+### Install
+To install, download the ZIP file and place all 3 DLLs in the same directory.
 
 ## Important!
 

@@ -90,8 +90,17 @@ DXGI_FORMAT GlToDXFromat(GLint format) {
 	case GL_RGBA8:
 		return DXGI_FORMAT_B8G8R8A8_UNORM;
 
+	case GL_RGB8:
+		return DXGI_FORMAT_R8G8B8A8_UNORM;
+
 	case GL_RGBA16:
 		return DXGI_FORMAT_R16G16B16A16_UNORM;
+
+
+
+	default:
+		auto s = "Unsupported Format:: " + std::to_string(format);
+		FFGLLog::LogToHost(s.c_str());
 	}
 }
 

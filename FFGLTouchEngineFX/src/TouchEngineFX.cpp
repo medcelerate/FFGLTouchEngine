@@ -142,6 +142,8 @@ FFGLTouchEngineFX::FFGLTouchEngineFX()
 
 	ConstructBaseParameters();
 
+	EnableSpoutLogFile("FFGLTouchEngineFX.log");
+
 }
 
 FFGLTouchEngineFX::~FFGLTouchEngineFX()

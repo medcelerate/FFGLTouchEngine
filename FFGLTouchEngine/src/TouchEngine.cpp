@@ -130,6 +130,8 @@ FFGLTouchEngine::FFGLTouchEngine()
 
 	ConstructBaseParameters();
 
+	EnableSpoutLogFile("FFGLTouchEngine.log");
+
 }
 
 FFGLTouchEngine::~FFGLTouchEngine()

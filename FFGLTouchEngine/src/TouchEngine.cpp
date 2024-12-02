@@ -785,260 +785,18 @@ void FFGLTouchEngine::GetAllParameters()
 
 
 			if (linkInfo->domain == TELinkDomainParameter) {
-
-
-				switch (linkInfo->type)
-				{
-					case TELinkTypeTexture:
-					{
-						continue;
-					}
-
-					case TELinkTypeDouble:
-					{
-						if (linkInfo->intent == TELinkIntentColorRGBA || linkInfo->intent == TELinkIntentPositionXYZW || linkInfo->intent == TELinkIntentSizeWH) {
-							std::string Suffix;
-							switch (linkInfo->intent) {
-							case TELinkIntentColorRGBA:
-								Suffix = "RGBA";
-								break;
-							case TELinkIntentPositionXYZW:
-								Suffix = "XYZW";
-								break;
-							case TELinkIntentSizeWH:
-								Suffix = "WH";
-								break;
-							}
-
-							double value[4] = { 0, 0, 0, 0 };
-							result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueCurrent, value, linkInfo->count);
-							if (result != TEResultSuccess)
-							{
-								continue;
-							}
-
-							double max[4] = { 0, 0, 0, 0 };
-							result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueUIMaximum, max, linkInfo->count);
-							if (result != TEResultSuccess)
-							{
-								continue;
-							}
-							double min[4] = { 0, 0, 0, 0 };
-							result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueUIMinimum, min, linkInfo->count);
-							if (result != TEResultSuccess)
-							{
-								continue;
-							}
-
-							VectorParameterInfo info;
-							info.count = linkInfo->count;
-							info.identifier = linkInfo->identifier;
-
-
-
-							for (uint32_t i = 0; i < linkInfo->count; i++) {
-								uint32_t ParamID = Parameters.size() + OffsetParamsByType;
-								Parameters.push_back(std::make_pair(std::string(linkInfo->identifier) + (char)0x03 + std::to_string(i), ParamID));
-								ActiveParams.insert(ParamID);
-								ActiveVectorParams.insert(ParamID);
-								info.children[i] = ParamID;
-
-								ParameterMapType[ParamID] = FF_TYPE_STANDARD;
-
-								SetParamDisplayName(ParamID, linkInfo->label + std::string(".") + Suffix[i], true);
-
-								SetParamRange(ParamID, min[i], max[i]);
-								RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
-								SetParamVisibility(ParamID, true, true);
-							}
-
-							VectorParameters.push_back(info);
-
-							continue;
-						}
-						uint32_t ParamID = Parameters.size() + OffsetParamsByType;
-						Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
-						ActiveParams.insert(ParamID);
-						ParameterMapType[ParamID] = FF_TYPE_STANDARD;
-
-						//SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_STANDARD);
-
-						SetParamDisplayName(ParamID, linkInfo->label, true);
-
-						double value = 0;
-						result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
-						if (result != TEResultSuccess)
-						{
-							continue;
-						}
-						//SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_STANDARD, static_cast<float>(value));
-						ParameterMapFloat[ParamID] = value;
-
-						double max = 0;
-						result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueUIMaximum, &max, 1);
-						if (result != TEResultSuccess)
-						{
-							continue;
-						}
-						double min = 0;
-						result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueUIMinimum, &min, 1);
-						if (result != TEResultSuccess)
-						{
-							continue;
-						}
-
-						SetParamRange(ParamID, min, max);
-						RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
-						SetParamVisibility(ParamID, true, true);
-
-						break;
-
-					}
-					case TELinkTypeInt:
-					{
-						if (TEInstanceLinkHasChoices(instance, linkInfo->identifier)) {
-							TouchObject<TEStringArray> labels;
-							uint32_t ParamID = (ParameterMapInt.size() + OffsetParamsByType) + (MaxParamsByType * 5);
-							result = TEInstanceLinkGetChoiceLabels(instance, linkInfo->identifier, labels.take());
-							if (result != TEResultSuccess && !labels)
-							{
-								continue;
-							}
-
-							std::vector<std::string> labelsVector;
-							std::vector<float> valuesVector;
-
-							for (int k = 0; k < labels->count; k++)
-							{
-								labelsVector.push_back(labels->strings[k]);
-								valuesVector.push_back(static_cast<float>(k));
-							}
-
-							SetParamElements(ParamID, labelsVector, valuesVector, true);
-
-							int32_t value = 0;
-							result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
-							if (result != TEResultSuccess)
-							{
-								continue;
-							}
-
-							Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
-							ActiveParams.insert(ParamID);
-							SetParamDisplayName(ParamID, linkInfo->label, true);
-							ParameterMapType[ParamID] = FF_TYPE_OPTION;
-
-							RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
-							SetParamVisibility(ParamID, true, true);
-							break;
-						}
-						else {
-							uint32_t ParamID = (ParameterMapInt.size() + OffsetParamsByType) + MaxParamsByType;
-							Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
-							ActiveParams.insert(ParamID);
-							ParameterMapType[ParamID] = FF_TYPE_INTEGER;
-
-							int32_t value = 0;
-							result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
-							if (result != TEResultSuccess)
-							{
-								continue;
-							}
-							SetParamDisplayName(ParamID, linkInfo->label, true);
-							ParameterMapInt[ParamID] = value;
-
-
-							int32_t max = 0;
-							result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueUIMaximum, &max, 1);
-							if (result != TEResultSuccess)
-							{
-								continue;
-							}
-
-							int32_t min = 0;
-							result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueUIMinimum, &min, 1);
-							if (result != TEResultSuccess)
-							{
-								continue;
-							}
-
-							SetParamRange(ParamID, static_cast<float>(min), static_cast<float>(max));
-							RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
-							SetParamVisibility(ParamID, true, true);
-
-							break;
-						}
-					}
-					case TELinkTypeBoolean:
-					{
-
-						if (linkInfo->intent == TELinkIntentMomentary) {
-							uint32_t ParamID = (ParameterMapBool.size() + OffsetParamsByType) + (MaxParamsByType * 4);
-							Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
-							ActiveParams.insert(ParamID);
-							ParameterMapType[ParamID] = FF_TYPE_EVENT;
-
-							//SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_EVENT);
-							bool value = false;
-							result = TEInstanceLinkGetBooleanValue(instance, linkInfo->identifier, TELinkValueCurrent, &value);
-							if (result != TEResultSuccess)
-							{
-								continue;
-							}
-
-							SetParamDisplayName(ParamID, linkInfo->label, true);
-							ParameterMapBool[ParamID] = value;
-							RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
-							SetParamVisibility(ParamID, true, true);
-						}
-						else
-						{
-							//SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_BOOLEAN);
-							uint32_t ParamID = (ParameterMapBool.size() + OffsetParamsByType) + MaxParamsByType * 2;
-							Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
-							ActiveParams.insert(ParamID);
-							ParameterMapType[ParamID] = FF_TYPE_BOOLEAN;
-
-							bool value = false;
-							result = TEInstanceLinkGetBooleanValue(instance, linkInfo->identifier, TELinkValueCurrent, &value);
-							if (result != TEResultSuccess)
-							{
-								continue;
-							}
-
-							//SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_BOOLEAN, value);
-							SetParamDisplayName(ParamID, linkInfo->label, true);
-							ParameterMapBool[ParamID] = value;
-							RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
-							SetParamVisibility(ParamID, true, true);
-						}
-
-						break;
-					}
-					case TELinkTypeString:
-					{
-						uint32_t ParamID = (ParameterMapString.size() + OffsetParamsByType) + MaxParamsByType * 3; //(MaxParamsByType * 3) + OffsetParamsByType
-						Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
-						ActiveParams.insert(ParamID);
-						ParameterMapType[ParamID] = FF_TYPE_TEXT;
-
-						TouchObject<TEString> value;
-						result = TEInstanceLinkGetStringValue(instance, linkInfo->identifier, TELinkValueCurrent, value.take());
-						if (result != TEResultSuccess)
-						{
-							continue;
-						}
-						SetParamDisplayName(ParamID, linkInfo->label, true);
-						ParameterMapString[ParamID] = value->string;
-						RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
-						SetParamVisibility(ParamID, true, true);
-						//SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_TEXT, value);
-
-
-
-						break;
-					}
+				if (ActiveParams.size() > MaxParamsByType * 6) {
+					FFGLLog::LogToHost("Too many parameters, skipping");
+					continue;
 				}
+ 
+				if (linkInfo->type == TELinkTypeGroup) {
+					CreateParametersFromGroup(linkInfo);
+				}
+				else {
+					CreateIndividualParameter(linkInfo);
+				}
+
 			}
 			else if (linkInfo->domain == TELinkDomainOperator) {
 
@@ -1096,6 +854,297 @@ void FFGLTouchEngine::GetAllParameters()
 		}
 	
 	}
+
+
+}
+
+void FFGLTouchEngine::CreateIndividualParameter(const TouchObject<TELinkInfo>& linkInfo) {
+
+	switch (linkInfo->type)
+	{
+		case TELinkTypeTexture:
+		case TELinkTypeGroup:
+		case TELinkTypeSeparator:
+		{
+			return;
+		}
+
+		TEResult result;
+
+		case TELinkTypeDouble:
+		{
+			if (linkInfo->intent == TELinkIntentColorRGBA || linkInfo->intent == TELinkIntentPositionXYZW || linkInfo->intent == TELinkIntentSizeWH) {
+				std::string Suffix;
+				switch (linkInfo->intent) {
+				case TELinkIntentColorRGBA:
+					Suffix = "RGBA";
+					break;
+				case TELinkIntentPositionXYZW:
+					Suffix = "XYZW";
+					break;
+				case TELinkIntentSizeWH:
+					Suffix = "WH";
+					break;
+				}
+
+				double value[4] = { 0, 0, 0, 0 };
+				result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueCurrent, value, linkInfo->count);
+				if (result != TEResultSuccess)
+				{
+					return;
+				}
+
+				double max[4] = { 0, 0, 0, 0 };
+				result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueUIMaximum, max, linkInfo->count);
+				if (result != TEResultSuccess)
+				{
+					return;
+				}
+				double min[4] = { 0, 0, 0, 0 };
+				result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueUIMinimum, min, linkInfo->count);
+				if (result != TEResultSuccess)
+				{
+					return;
+				}
+
+				VectorParameterInfo info;
+				info.count = linkInfo->count;
+				info.identifier = linkInfo->identifier;
+
+
+
+				for (uint32_t i = 0; i < linkInfo->count; i++) {
+					uint32_t ParamID = Parameters.size() + OffsetParamsByType;
+					Parameters.push_back(std::make_pair(std::string(linkInfo->identifier) + (char)0x03 + std::to_string(i), ParamID));
+					ActiveParams.insert(ParamID);
+					ActiveVectorParams.insert(ParamID);
+					info.children[i] = ParamID;
+
+					ParameterMapType[ParamID] = FF_TYPE_STANDARD;
+
+					SetParamDisplayName(ParamID, linkInfo->label + std::string(".") + Suffix[i], true);
+
+					SetParamRange(ParamID, min[i], max[i]);
+					RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
+					SetParamVisibility(ParamID, true, true);
+					
+				}
+
+				VectorParameters.push_back(info);
+
+				return;
+			}
+			uint32_t ParamID = Parameters.size() + OffsetParamsByType;
+			Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
+			ActiveParams.insert(ParamID);
+			ParameterMapType[ParamID] = FF_TYPE_STANDARD;
+
+			//SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_STANDARD);
+
+			SetParamDisplayName(ParamID, linkInfo->label, true);
+
+			double value = 0;
+			result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
+			if (result != TEResultSuccess)
+			{
+				return;
+			}
+			//SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_STANDARD, static_cast<float>(value));
+			ParameterMapFloat[ParamID] = value;
+
+			double max = 0;
+			result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueUIMaximum, &max, 1);
+			if (result != TEResultSuccess)
+			{
+				return;
+			}
+			double min = 0;
+			result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueUIMinimum, &min, 1);
+			if (result != TEResultSuccess)
+			{
+				return;
+			}
+
+			SetParamRange(ParamID, min, max);
+			RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
+			SetParamVisibility(ParamID, true, true);
+
+			break;
+
+		}
+		case TELinkTypeInt:
+		{
+			if (TEInstanceLinkHasChoices(instance, linkInfo->identifier)) {
+				TouchObject<TEStringArray> labels;
+				uint32_t ParamID = (ParameterMapInt.size() + OffsetParamsByType) + (MaxParamsByType * 5);
+				result = TEInstanceLinkGetChoiceLabels(instance, linkInfo->identifier, labels.take());
+				if (result != TEResultSuccess && !labels)
+				{
+					return;
+				}
+
+				std::vector<std::string> labelsVector;
+				std::vector<float> valuesVector;
+
+				for (int k = 0; k < labels->count; k++)
+				{
+					labelsVector.push_back(labels->strings[k]);
+					valuesVector.push_back(static_cast<float>(k));
+				}
+
+				SetParamElements(ParamID, labelsVector, valuesVector, true);
+
+				int32_t value = 0;
+				result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
+				if (result != TEResultSuccess)
+				{
+					return;
+				}
+
+				Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
+				ActiveParams.insert(ParamID);
+				SetParamDisplayName(ParamID, linkInfo->label, true);
+				ParameterMapType[ParamID] = FF_TYPE_OPTION;
+
+				RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
+				SetParamVisibility(ParamID, true, true);
+				break;
+			}
+			else {
+				uint32_t ParamID = (ParameterMapInt.size() + OffsetParamsByType) + MaxParamsByType;
+				Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
+				ActiveParams.insert(ParamID);
+				ParameterMapType[ParamID] = FF_TYPE_INTEGER;
+
+				int32_t value = 0;
+				result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
+				if (result != TEResultSuccess)
+				{
+					return;
+				}
+				SetParamDisplayName(ParamID, linkInfo->label, true);
+				ParameterMapInt[ParamID] = value;
+
+
+				int32_t max = 0;
+				result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueUIMaximum, &max, 1);
+				if (result != TEResultSuccess)
+				{
+					return;
+				}
+
+				int32_t min = 0;
+				result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueUIMinimum, &min, 1);
+				if (result != TEResultSuccess)
+				{
+					return;
+				}
+
+				SetParamRange(ParamID, static_cast<float>(min), static_cast<float>(max));
+				RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
+				SetParamVisibility(ParamID, true, true);
+
+				break;
+			}
+		}
+		case TELinkTypeBoolean:
+		{
+
+			if (linkInfo->intent == TELinkIntentMomentary) {
+				uint32_t ParamID = (ParameterMapBool.size() + OffsetParamsByType) + (MaxParamsByType * 4);
+				Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
+				ActiveParams.insert(ParamID);
+				ParameterMapType[ParamID] = FF_TYPE_EVENT;
+
+				//SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_EVENT);
+				bool value = false;
+				result = TEInstanceLinkGetBooleanValue(instance, linkInfo->identifier, TELinkValueCurrent, &value);
+				if (result != TEResultSuccess)
+				{
+					return;
+				}
+
+				SetParamDisplayName(ParamID, linkInfo->label, true);
+				ParameterMapBool[ParamID] = value;
+				RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
+				SetParamVisibility(ParamID, true, true);
+			}
+			else
+			{
+				//SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_BOOLEAN);
+				uint32_t ParamID = (ParameterMapBool.size() + OffsetParamsByType) + MaxParamsByType * 2;
+				Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
+				ActiveParams.insert(ParamID);
+				ParameterMapType[ParamID] = FF_TYPE_BOOLEAN;
+
+				bool value = false;
+				result = TEInstanceLinkGetBooleanValue(instance, linkInfo->identifier, TELinkValueCurrent, &value);
+				if (result != TEResultSuccess)
+				{
+					return;
+				}
+
+				//SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_BOOLEAN, value);
+				SetParamDisplayName(ParamID, linkInfo->label, true);
+				ParameterMapBool[ParamID] = value;
+				RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
+				SetParamVisibility(ParamID, true, true);
+			}
+
+			break;
+		}
+		case TELinkTypeString:
+		{
+			uint32_t ParamID = (ParameterMapString.size() + OffsetParamsByType) + MaxParamsByType * 3; //(MaxParamsByType * 3) + OffsetParamsByType
+			Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
+			ActiveParams.insert(ParamID);
+			ParameterMapType[ParamID] = FF_TYPE_TEXT;
+
+			TouchObject<TEString> value;
+			result = TEInstanceLinkGetStringValue(instance, linkInfo->identifier, TELinkValueCurrent, value.take());
+			if (result != TEResultSuccess)
+			{
+				return;
+			}
+			SetParamDisplayName(ParamID, linkInfo->label, true);
+			ParameterMapString[ParamID] = value->string;
+			RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
+			SetParamVisibility(ParamID, true, true);
+			//SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_TEXT, value);
+
+
+
+			break;
+		}
+	}
+
+}
+
+void FFGLTouchEngine::CreateParametersFromGroup(const TouchObject<TELinkInfo>& linkInfo) {
+
+	TouchObject<TEStringArray> links;
+	TEResult result = TEInstanceLinkGetChildren(instance, linkInfo->identifier, links.take());
+
+	if (result != TEResultSuccess)
+	{
+		return;
+	}
+
+	for (int j = 0; j < links->count; j++)
+	{
+		TouchObject<TELinkInfo> linkInfo;
+		result = TEInstanceLinkGetInfo(instance, links->strings[j], linkInfo.take());
+
+		if (result != TEResultSuccess)
+		{
+			continue;
+			FFGLLog::LogToHost("Failed to get link info");
+			
+		}
+
+		CreateIndividualParameter(linkInfo);
+	}
+
 
 
 }

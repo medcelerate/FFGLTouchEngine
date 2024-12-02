@@ -1305,7 +1305,7 @@ void FFGLTouchEngineFX::CreateIndividualParameter(const TouchObject<TELinkInfo>&
 	case TELinkTypeBoolean:
 	{
 
-		if (linkInfo->intent == TELinkIntentMomentary) {
+		if (linkInfo->intent == TELinkIntentMomentary || linkInfo->intent == TELinkIntentPulse) {
 			uint32_t ParamID = (ParameterMapBool.size() + OffsetParamsByType) + (MaxParamsByType * 4);
 			Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
 			ActiveParams.insert(ParamID);

@@ -114,7 +114,7 @@ private:
 	void LoadTouchEngine();
 	void ResumeTouchEngine();
 	void GetAllParameters();
-	void CreateIndividualParameter( const TouchObject<TELinkInfo>& linkInfo);
+	void CreateIndividualParameter(const TouchObject<TELinkInfo>& linkInfo);
 	void CreateParametersFromGroup(const TouchObject<TELinkInfo>& linkInfo);
 	void ClearTouchInstance();
 	void eventCallback(TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale);

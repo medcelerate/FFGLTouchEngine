@@ -949,7 +949,7 @@ void FFGLTouchEngineFX::ConstructBaseParameters() {
 	for (uint32_t i = MaxParamsByType + OffsetParamsByType; i < (MaxParamsByType * 2) + OffsetParamsByType; i++)
 	{
 		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_INTEGER);
-		SetParamRange(i, -1000, 1000);
+		SetParamRange(i, -10000, 10000);
 		SetParamVisibility(i, false, false);
 	}
 

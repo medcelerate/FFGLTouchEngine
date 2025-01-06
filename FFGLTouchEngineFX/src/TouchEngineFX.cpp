@@ -72,10 +72,12 @@ std::string GenerateRandomString(size_t length)
 	return str;
 }
 
+#ifdef _WIN32
 void textureCallback(TED3D11Texture* texture, TEObjectEvent event, void* info)
 {
 	return;
 }
+#endif
 
 FFResult FailAndLog(std::string msg) {
 
@@ -84,6 +86,7 @@ FFResult FailAndLog(std::string msg) {
 }
 
 
+#ifdef _WIN32
 DXGI_FORMAT GlToDXFromat(GLint format) {
 	
 	switch (format) {
@@ -103,6 +106,7 @@ DXGI_FORMAT GlToDXFromat(GLint format) {
 		FFGLLog::LogToHost(s.c_str());
 	}
 }
+#endif
 
 GLenum GetGlType(GLint format) {
 	switch (format) {
@@ -113,6 +117,7 @@ GLenum GetGlType(GLint format) {
 	}
 }
 
+#ifdef _WIN32
 GLenum GetGlType(DXGI_FORMAT format) {
 	switch (format) {
 	case DXGI_FORMAT_B8G8R8A8_UNORM:
@@ -125,6 +130,7 @@ GLenum GetGlType(DXGI_FORMAT format) {
 		return GL_UNSIGNED_BYTE;
 	}
 }
+#endif
 
 FFGLTouchEngineFX::FFGLTouchEngineFX()
 	: CFFGLPlugin()
@@ -151,7 +157,9 @@ FFGLTouchEngineFX::FFGLTouchEngineFX()
 
 	ConstructBaseParameters();
 
+#ifdef _WIN32
 	EnableSpoutLogFile("FFGLTouchEngineFX.log");
+#endif
 
 }
 
@@ -171,6 +179,7 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 {
 
 
+#ifdef _WIN32
 	// Create D3D11 device
 	HRESULT hr = D3D11CreateDevice(
 		nullptr,
@@ -189,16 +198,18 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 		FFGLLog::LogToHost("Failed to create D3D11 device");
 		return FF_FAIL;
 	}
-
+#endif
 
 	//Load TouchEngine
 	LoadTouchEngine();
 
+#ifdef _WIN32
 	SpoutIDInput = GenerateRandomString(15);
 	SpoutIDOutput = GenerateRandomString(15);
 
 	SpoutTextureOutput = 0;
 	SpoutTextureInput = 0;
+#endif
 
 	if (!shader.Compile(vertexShaderCode, fragmentShaderCode))
 	{
@@ -343,9 +354,10 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 		
 		if (!InputInteropInitialized) {
-			
+
 			InputWidth = pGL->inputTextures[0]->Width;
 			InputHeight = pGL->inputTextures[0]->Height;
+#ifdef _WIN32
 			/*
 			DXGI_FORMAT texformat = DXOutputFormat;
 
@@ -382,7 +394,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			InitializeGlTexture(SpoutTextureInput, InputWidth, InputHeight, GetGlType(InputFormat));
 
 			InputInteropInitialized = true;
-
+#endif
 		}
 
 		if (
@@ -399,6 +411,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				return FF_FAIL;
 			}
 
+#ifdef _WIN32
 			if (!InputInterop.CreateInterop(InputWidth, InputHeight, GlToDXFromat(InputFormat), false)) {
 				FFGLLog::LogToHost("Failed to create interop");
 				return FF_FAIL;
@@ -407,10 +420,11 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			InputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), InputWidth, InputHeight, GlToDXFromat(InputFormat), &D3DTextureInput);
 
 			InitializeGlTexture(SpoutTextureInput, InputWidth, InputHeight, GetGlType(InputFormat));
-
+#endif
 			GLFormat = InputFormat;
 		}
-	
+
+#ifdef _WIN32
 		InputInterop.WriteGLDXtexture(pGL->inputTextures[0]->Handle, GL_TEXTURE_2D, InputWidth, InputHeight, true, pGL->HostFBO);
 		
 		InputInterop.ReadTexture(D3DTextureInput.GetAddressOf());
@@ -427,6 +441,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			isTouchFrameBusy = false;
 			return FF_FAIL;
 		}
+#endif
 
 		//keyedMutex->Release();
 	}
@@ -451,6 +466,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		//Will need to replace the below value with something more standard
 		result = TEInstanceLinkGetTextureValue(instance, OutputOpName.c_str(), TELinkValueCurrent, TETextureToSend.take());
 		if (result == TEResultSuccess && TETextureToSend != nullptr) {
+#ifdef _WIN32
 			if (TETextureGetType(TETextureToSend) == TETextureTypeD3DShared && result == TEResultSuccess) {
 				TouchObject<TED3D11Texture> D3DTextureToSend;
 				result = TED3D11ContextGetTexture(D3DContext, static_cast<TED3DSharedTexture*>(TETextureToSend.get()), D3DTextureToSend.take());
@@ -558,10 +574,12 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			    devContext->Release();
 				keyedMutex->Release();
 			}
-		
+#endif
 		}
-		
+
+#ifdef _WIN32
 		OutputInterop.ReadGLDXtexture(SpoutTextureOutput, GL_TEXTURE_2D, OutputWidth, OutputHeight, true, pGL->HostFBO);
+#endif
 
 		ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
 		ffglex::ScopedSamplerActivation activateSampler(0);
@@ -584,10 +602,12 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 FFResult FFGLTouchEngineFX::DeInitGL()
 {
 
+#ifdef _WIN32
 	for (auto it : TextureMutexMap) 
 		it.second->Release();
 
 	TextureMutexMap.clear();
+#endif
 
 	if (instance != nullptr)
 	{
@@ -738,6 +758,7 @@ bool FFGLTouchEngineFX::LoadTEGraphicsContext(bool reload)
 
 	// Load the TouchEngine graphics context
 
+#ifdef _WIN32
 	if (D3DDevice == nullptr) {
 		FFGLLog::LogToHost("D3D11 Device Not Available, You Probably Failed Somewhere...In Your Life");
 	}
@@ -753,6 +774,7 @@ bool FFGLTouchEngineFX::LoadTEGraphicsContext(bool reload)
 		return false;
 	}
 	isGraphicsContextLoaded = true;
+#endif
 	return isGraphicsContextLoaded;
 }
 /*

@@ -1,6 +1,7 @@
 #pragma once
+
+#ifdef _WIN32
 #include <windows.h>
-#include "FFGL/FFGLSDK.h"
 #include <d3d11_4.h>
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "user32.lib")   
@@ -8,11 +9,16 @@
 #define WIN32_LEAN_AND_MEAN
 #include <wrl.h>
 #include <shobjidl.h>
+#endif
+
+#include "FFGL/FFGLSDK.h"
 #include <map>
 #include "TouchEngine/TouchObject.h"
 #include "TouchEngine/TEGraphicsContext.h"
+#ifdef _WIN32
 #include "TouchEngine/TED3D11.h"
 #include "SpoutGL/SpoutSender.h"
+#endif
 #include "Thumbnail.h"
 
 
@@ -41,6 +47,8 @@ public:
 
 private:
 	TouchObject<TEInstance> instance;
+
+#ifdef _WIN32
 	Microsoft::WRL::ComPtr<ID3D11Device> D3DDevice;
 	TouchObject<TED3D11Context> D3DContext;
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureInput = nullptr;
@@ -48,6 +56,7 @@ private:
 	std::map<ID3D11Texture2D*, IDXGIKeyedMutex*> TextureMutexMap;
 
 	DXGI_FORMAT DXFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
+#endif
 	GLint GLFormat = 0;
 
 	std::atomic_bool isTouchEngineLoaded = false;
@@ -62,8 +71,10 @@ private:
 	bool isVideoFX = false;
 
 	//TouchEngine IO objects
+#ifdef _WIN32
 	TouchObject<TED3D11Texture> TEVideoInputD3D;
 	TouchObject<TED3D11Texture> TEVideoOutputD3D;
+#endif
 	TouchObject<TETexture> TEVideoInputTexture;
 	TouchObject<TETexture> TEVideoOutputTexture;
 	TouchObject<TEFloatBuffer> TEAudioInFloatBuffer1;
@@ -86,11 +97,13 @@ private:
 	//Texture Name
 	std::string OutputOpName;
 
+
+#ifdef _WIN32
 	//Spout Configs
 	std::string SpoutID;
 	Spout OutputInterop;
 	bool isInteropInitialized = false;
-
+#endif
 
 	int OutputWidth = 0;
 	int OutputHeight = 0;
@@ -101,7 +114,9 @@ private:
 
 	ffglex::FFGLShader shader;  //!< Utility to help us compile and link some shaders into a program.
 	ffglex::FFGLScreenQuad quad;//!< Utility to help us render a full screen quad.
+#ifdef _WIN32
 	GLuint SpoutTexture = 0;
+#endif
 	void InitializeGlTexture(GLuint& texture, uint16_t width, uint16_t height, GLenum type);
 	void ConstructBaseParameters();
 	void ResetBaseParameters();

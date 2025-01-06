@@ -1,6 +1,6 @@
 #pragma once
+#ifdef _WIN32
 #include <windows.h>
-#include "FFGL/FFGLSDK.h"
 #include <d3d11_4.h>
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "user32.lib")   
@@ -8,10 +8,13 @@
 #define WIN32_LEAN_AND_MEAN
 #include <wrl.h>
 #include <shobjidl.h>
+#endif
+#include "FFGL/FFGLSDK.h"
 #include "TouchEngine/TouchObject.h"
-#include "TouchEngine/TEGraphicsContext.h"
+#ifdef _WIN32
 #include "TouchEngine/TED3D11.h"
 #include "SpoutGL/SpoutSender.h"
+#endif
 #include "Thumbnail.h"
 
 typedef struct {
@@ -39,14 +42,17 @@ public:
 
 private:
 	TouchObject<TEInstance> instance;
+#ifdef _WIN32
 	Microsoft::WRL::ComPtr<ID3D11Device> D3DDevice;
 	TouchObject<TED3D11Context> D3DContext;
 
 	HANDLE dxInteropHandle = 0;
 
 	DXGI_FORMAT DXFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
+#endif
 	GLint GLFormat = 0;
-
+	
+#ifdef _WIN32
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureInput = nullptr;
 	HANDLE InputSharedHandle = nullptr;
 	HANDLE dxInteropInputObject = 0;
@@ -57,6 +63,7 @@ private:
 
 	std::unordered_map<ID3D11Texture2D*, IDXGIKeyedMutex*> TextureMutexMap;
 	std::unordered_map<int, IDXGIKeyedMutex*> MutexMap;
+#endif
 
 	std::atomic_bool isTouchEngineLoaded = false;
 	std::atomic_bool isTouchEngineReady = false;
@@ -91,6 +98,7 @@ private:
 	//Texture Name
 	std::string OutputOpName;
 
+#ifdef _WIN32
 	//Spout Configs
 	std::string SpoutIDInput;
 	std::string SpoutIDOutput;
@@ -99,10 +107,10 @@ private:
 	Spout OutputInterop;
 
 	uint32_t SpoutSenderID = 0;
+#endif
 
 	bool InputInteropInitialized = false;
 	bool OutputInteropInitialized = false;
-
 
 	int InputWidth = 0;
 	int InputHeight = 0;

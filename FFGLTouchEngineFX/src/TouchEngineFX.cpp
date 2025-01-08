@@ -242,7 +242,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 	if (!isTouchEngineLoaded || !isTouchEngineReady || isTouchFrameBusy)
 	{
-		return FF_FAIL;
+		return FF_SUCCESS;
 	}
 
 	if (pGL->numInputTextures < 1) {

@@ -275,6 +275,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 		//Will need to replace the below value with something more standard
 		TEResult result = TEInstanceLinkGetTextureValue(instance, OutputOpName.c_str(), TELinkValueCurrent, TETextureToSend.take());
+#ifdef _WIN32
 		if (result == TEResultSuccess && TETextureToSend != nullptr) {
 			if (TETextureGetType(TETextureToSend) == TETextureTypeD3DShared && result == TEResultSuccess) {
 				TouchObject<TED3D11Texture> D3DTextureToSend;
@@ -394,7 +395,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		shader.Set("InputTexture", 0);
 		shader.Set("MaxUV", 1.0f, 1.0f);
 		quad.Draw();
-
+#endif
 	}
 
 

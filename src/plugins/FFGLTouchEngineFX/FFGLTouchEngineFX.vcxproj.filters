@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="S:\creations\ffgltd\FFGLTouchEngine\src\plugins\FFGLTouchEngineFX\TouchEngineFX.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="S:\creations\ffgltd\FFGLTouchEngine\src\lib\FFGL\FFGLSDK.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="S:\creations\ffgltd\FFGLTouchEngine\src\plugins\FFGLTouchEngineFX\TouchEngineFX.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="S:\creations\ffgltd\FFGLTouchEngine\src\lib\FFGL\FFGLSDK.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{F975FB4B-813D-3F83-9E9E-ABEABF045073}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{19CB111A-4236-35E2-96C1-32F998D4931B}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

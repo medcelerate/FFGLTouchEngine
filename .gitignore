@@ -364,6 +364,19 @@ FodyWeavers.xsd
 
 vcpkg_installed/
 
+.DS_Store
+*.lock
+*~.nib
+DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xccheckout
+xcuserdata/
+
+XCBuildData
+*.xcuserstate
 
 CMakeCache.txt
 CMakeFiles

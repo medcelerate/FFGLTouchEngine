@@ -1,0 +1,871 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXAggregateTarget section */
+		C544C43D89B04946F5F9DB6E /* ALL_BUILD */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 65E86D9650044149A3CD6BB2 /* Build configuration list for PBXAggregateTarget "ALL_BUILD" */;
+			buildPhases = (
+				CB00C2B9B63D6F4FF4137019 /* Generate CMakeFiles/ALL_BUILD */,
+			);
+			dependencies = (
+				982DE217716A412D9A918E9B /* PBXTargetDependency */,
+				23FFFD8A892142A38D9802AE /* PBXTargetDependency */,
+			);
+			name = ALL_BUILD;
+			productName = ALL_BUILD;
+		};
+/* End PBXAggregateTarget section */
+
+/* Begin PBXBuildFile section */
+		025DC405B0494D05842CD846 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = 34F3C5356AB7438F94279AD8 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/CMakeLists.txt */; };
+		36FB14481DBD42E8B87C65DC /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.h */ = {isa = PBXBuildFile; fileRef = 2E5341AD42AE47809000E632 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.h */; };
+		491E7739CC0C48F49C2DFEDE /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.cpp */ = {isa = PBXBuildFile; fileRef = CDEF4C232E854C639280F3F6 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.cpp */; };
+		642BBC75A62E44DCA2291D56 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/TouchEngineFX.h */ = {isa = PBXBuildFile; fileRef = 4B92F10FC9C24035957FDCEE /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/TouchEngineFX.h */; };
+		69ADABFBB7B042E78C4B62A6 /* /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk/System/Library/Frameworks/OpenGL.framework */ = {isa = PBXBuildFile; fileRef = 9A28FE552D6D4B489616F360 /* /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk/System/Library/Frameworks/OpenGL.framework */; };
+		6D2474EAB1D14510A90B17EA /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.h */ = {isa = PBXBuildFile; fileRef = B03B04DC5FBC4921AC8CCB23 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.h */; };
+		73E0E5339497447A8DD2271E /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = 0425C48FE46D48BEA52184E2 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/CMakeLists.txt */; };
+		8D8AE7A4253E4E26A45EDE6F /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/TouchEngineFX.cpp */ = {isa = PBXBuildFile; fileRef = 4CD50CB2D4CE478F81B1C572 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/TouchEngineFX.cpp */; };
+		98A2E1E2E8254427A24A7EA9 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.cpp */ = {isa = PBXBuildFile; fileRef = FEC3DE255F06422187F63929 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.cpp */; };
+		D78BD6D73E194D78AEDF2C76 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/TouchEngine.h */ = {isa = PBXBuildFile; fileRef = 49D17CE6F411493FB0AC04B5 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/TouchEngine.h */; };
+		E5F63A7419974BF5A8C479B7 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/TouchEngine.cpp */ = {isa = PBXBuildFile; fileRef = 662612C7099B466D838B6CE3 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/TouchEngine.cpp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXBuildStyle section */
+		203720DF0CEE4472B6A218D8 /* MinSizeRel */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = MinSizeRel;
+		};
+		3566200DCE2B438A986C0949 /* RelWithDebInfo */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = RelWithDebInfo;
+		};
+		4BA86F4A304040F19A651EB7 /* Release */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = Release;
+		};
+		D0C1B2D0782342BD81A6E2D4 /* Debug */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = Debug;
+		};
+/* End PBXBuildStyle section */
+
+/* Begin PBXContainerItemProxy section */
+		8B057EAEA57D4D278A497C9F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 01731E79CA8A49609F3E2AE3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D5CA3D8BC44F5197079BB145;
+			remoteInfo = FFGLTouchEngineFX;
+		};
+		D740F469D8864393B8DE90FB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 01731E79CA8A49609F3E2AE3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A70142B65D3D09E4D2533741;
+			remoteInfo = FFGLTouchEngine;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0425C48FE46D48BEA52184E2 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = src/plugins/FFGLTouchEngineFX/CMakeLists.txt; sourceTree = SOURCE_ROOT; };
+		2E5341AD42AE47809000E632 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = FFGLSDK.h; path = src/lib/FFGL/FFGLSDK.h; sourceTree = SOURCE_ROOT; };
+		34F3C5356AB7438F94279AD8 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = src/plugins/FFGLTouchEngine/CMakeLists.txt; sourceTree = SOURCE_ROOT; };
+		49D17CE6F411493FB0AC04B5 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/TouchEngine.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = TouchEngine.h; path = src/plugins/FFGLTouchEngine/TouchEngine.h; sourceTree = SOURCE_ROOT; };
+		4B92F10FC9C24035957FDCEE /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/TouchEngineFX.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = TouchEngineFX.h; path = src/plugins/FFGLTouchEngineFX/TouchEngineFX.h; sourceTree = SOURCE_ROOT; };
+		4CD50CB2D4CE478F81B1C572 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/TouchEngineFX.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = TouchEngineFX.cpp; path = src/plugins/FFGLTouchEngineFX/TouchEngineFX.cpp; sourceTree = SOURCE_ROOT; };
+		662612C7099B466D838B6CE3 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/TouchEngine.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = TouchEngine.cpp; path = src/plugins/FFGLTouchEngine/TouchEngine.cpp; sourceTree = SOURCE_ROOT; };
+		8DCFAC8DDE4F4003A0CA4178 /* FFGLTouchEngineFX */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; path = libFFGLTouchEngineFX.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		90A72543DC3D41038223FA93 /* FFGLTouchEngine */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; path = libFFGLTouchEngine.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		9A28FE552D6D4B489616F360 /* /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk/System/Library/Frameworks/OpenGL.framework */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk/System/Library/Frameworks/OpenGL.framework; sourceTree = "<absolute>"; };
+		AA009B735A544D8EB8F96C99 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = CMakeLists.txt; sourceTree = SOURCE_ROOT; };
+		B03B04DC5FBC4921AC8CCB23 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = FFGLSDK.h; path = src/lib/FFGL/FFGLSDK.h; sourceTree = SOURCE_ROOT; };
+		CDEF4C232E854C639280F3F6 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = FFGLSDK.cpp; path = src/lib/FFGL/FFGLSDK.cpp; sourceTree = SOURCE_ROOT; };
+		FEC3DE255F06422187F63929 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = FFGLSDK.cpp; path = src/lib/FFGL/FFGLSDK.cpp; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4F460867ABBA46BF9FF624EA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FE9A3CE652E841F18CAB5269 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		044E18B2261C4EE5B9D8FF24 /* Header Files */ = {
+			isa = PBXGroup;
+			children = (
+				B03B04DC5FBC4921AC8CCB23 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.h */,
+				4B92F10FC9C24035957FDCEE /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/TouchEngineFX.h */,
+			);
+			name = "Header Files";
+			sourceTree = "<group>";
+		};
+		11FA35723F7E4D0A9979D86E /* FFGLTouchEngine */ = {
+			isa = PBXGroup;
+			children = (
+				418CD3A8954E44EC87C455A6 /* Header Files */,
+				B0D07E509E1148208AA778EC /* Source Files */,
+				34F3C5356AB7438F94279AD8 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/CMakeLists.txt */,
+			);
+			name = FFGLTouchEngine;
+			sourceTree = "<group>";
+		};
+		1E6692FB55E84E859330364A /* ALL_BUILD */ = {
+			isa = PBXGroup;
+			children = (
+				30CD4E99C5284000B9F56CB8 /* CMake Rules */,
+				AA009B735A544D8EB8F96C99 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/CMakeLists.txt */,
+			);
+			name = ALL_BUILD;
+			sourceTree = "<group>";
+		};
+		30CD4E99C5284000B9F56CB8 /* CMake Rules */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = "CMake Rules";
+			sourceTree = "<group>";
+		};
+		3A7D5AEC1FBA4AA786253A95 /* Source Files */ = {
+			isa = PBXGroup;
+			children = (
+				CDEF4C232E854C639280F3F6 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.cpp */,
+				4CD50CB2D4CE478F81B1C572 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/TouchEngineFX.cpp */,
+			);
+			name = "Source Files";
+			sourceTree = "<group>";
+		};
+		418CD3A8954E44EC87C455A6 /* Header Files */ = {
+			isa = PBXGroup;
+			children = (
+				2E5341AD42AE47809000E632 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.h */,
+				49D17CE6F411493FB0AC04B5 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/TouchEngine.h */,
+			);
+			name = "Header Files";
+			sourceTree = "<group>";
+		};
+		4376B35F1D104A20BF7C3219 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				90A72543DC3D41038223FA93 /* FFGLTouchEngine */,
+				8DCFAC8DDE4F4003A0CA4178 /* FFGLTouchEngineFX */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		542F3313CE6D45BC912B5EFB /* FFGLTouchEngineFX */ = {
+			isa = PBXGroup;
+			children = (
+				044E18B2261C4EE5B9D8FF24 /* Header Files */,
+				3A7D5AEC1FBA4AA786253A95 /* Source Files */,
+				0425C48FE46D48BEA52184E2 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/CMakeLists.txt */,
+			);
+			name = FFGLTouchEngineFX;
+			sourceTree = "<group>";
+		};
+		627B04BE96EE457F8B198F4D = {
+			isa = PBXGroup;
+			children = (
+				1E6692FB55E84E859330364A /* ALL_BUILD */,
+				11FA35723F7E4D0A9979D86E /* FFGLTouchEngine */,
+				542F3313CE6D45BC912B5EFB /* FFGLTouchEngineFX */,
+				4376B35F1D104A20BF7C3219 /* Products */,
+				D3F89AE626834757BA621936 /* Frameworks */,
+				FEBC879CD50D43A6AAD49A40 /* Resources */,
+			);
+			sourceTree = "<group>";
+		};
+		B0D07E509E1148208AA778EC /* Source Files */ = {
+			isa = PBXGroup;
+			children = (
+				FEC3DE255F06422187F63929 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.cpp */,
+				662612C7099B466D838B6CE3 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/TouchEngine.cpp */,
+			);
+			name = "Source Files";
+			sourceTree = "<group>";
+		};
+		D3F89AE626834757BA621936 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				9A28FE552D6D4B489616F360 /* /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk/System/Library/Frameworks/OpenGL.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		FEBC879CD50D43A6AAD49A40 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A70142B65D3D09E4D2533741 /* FFGLTouchEngine */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB6AA9BA0230410D9FD76689 /* Build configuration list for PBXNativeTarget "FFGLTouchEngine" */;
+			buildPhases = (
+				C0F5796BFDA8484D8D6BA0CF /* Sources */,
+				FE9A3CE652E841F18CAB5269 /* Frameworks */,
+				9400E11943AA82749516C635 /* CMake PostBuild Rules */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FFGLTouchEngine;
+			productName = FFGLTouchEngine;
+			productReference = 90A72543DC3D41038223FA93 /* FFGLTouchEngine */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+		D5CA3D8BC44F5197079BB145 /* FFGLTouchEngineFX */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 54096100AA3D42DCAC1D4873 /* Build configuration list for PBXNativeTarget "FFGLTouchEngineFX" */;
+			buildPhases = (
+				1697417103454F6D87AF1040 /* Sources */,
+				4F460867ABBA46BF9FF624EA /* Frameworks */,
+				FEEE6166692C8D301BFD95BA /* CMake PostBuild Rules */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FFGLTouchEngineFX;
+			productName = FFGLTouchEngineFX;
+			productReference = 8DCFAC8DDE4F4003A0CA4178 /* FFGLTouchEngineFX */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		01731E79CA8A49609F3E2AE3 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1540;
+			};
+			buildConfigurationList = F0B6D4D89391417F8630153E /* Build configuration list for PBXProject "FFGLTouchEngine" */;
+			buildSettings = {
+			};
+			buildStyles = (
+				D0C1B2D0782342BD81A6E2D4 /* Debug */,
+				4BA86F4A304040F19A651EB7 /* Release */,
+				203720DF0CEE4472B6A218D8 /* MinSizeRel */,
+				3566200DCE2B438A986C0949 /* RelWithDebInfo */,
+			);
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 0;
+			mainGroup = 627B04BE96EE457F8B198F4D;
+			projectDirPath = .;
+			projectRoot = "";
+			targets = (
+				C544C43D89B04946F5F9DB6E /* ALL_BUILD */,
+				A70142B65D3D09E4D2533741 /* FFGLTouchEngine */,
+				D5CA3D8BC44F5197079BB145 /* FFGLTouchEngineFX */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		9400E11943AA82749516C635 /* CMake PostBuild Rules */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			name = "CMake PostBuild Rules";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e
+if test \"$CONFIGURATION\" = \"Debug\"; then :
+  cd /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine
+  /usr/local/bin/cmake -E cmake_symlink_library /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/Debug/libFFGLTouchEngine.dylib /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/Debug/libFFGLTouchEngine.dylib /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/Debug/libFFGLTouchEngine.dylib
+fi
+if test \"$CONFIGURATION\" = \"Release\"; then :
+  cd /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine
+  /usr/local/bin/cmake -E cmake_symlink_library /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/Release/libFFGLTouchEngine.dylib /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/Release/libFFGLTouchEngine.dylib /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/Release/libFFGLTouchEngine.dylib
+fi
+if test \"$CONFIGURATION\" = \"MinSizeRel\"; then :
+  cd /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine
+  /usr/local/bin/cmake -E cmake_symlink_library /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/MinSizeRel/libFFGLTouchEngine.dylib /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/MinSizeRel/libFFGLTouchEngine.dylib /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/MinSizeRel/libFFGLTouchEngine.dylib
+fi
+if test \"$CONFIGURATION\" = \"RelWithDebInfo\"; then :
+  cd /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine
+  /usr/local/bin/cmake -E cmake_symlink_library /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/RelWithDebInfo/libFFGLTouchEngine.dylib /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/RelWithDebInfo/libFFGLTouchEngine.dylib /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/RelWithDebInfo/libFFGLTouchEngine.dylib
+fi
+";
+			showEnvVarsInLog = 0;
+		};
+		9B50530E35CC49C82C2FACCF = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# shell script goes here
+exit 0";
+			showEnvVarsInLog = 0;
+		};
+		CB00C2B9B63D6F4FF4137019 /* Generate CMakeFiles/ALL_BUILD */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Generate CMakeFiles/ALL_BUILD";
+			outputPaths = (
+/Users/tekt/creations/ffgltd/FFGLTouchEngine2/CMakeFiles/ALL_BUILD			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e
+if test \"$CONFIGURATION\" = \"Debug\"; then :
+  cd /Users/tekt/creations/ffgltd/FFGLTouchEngine2
+  echo Build\\ all\\ projects
+fi
+if test \"$CONFIGURATION\" = \"Release\"; then :
+  cd /Users/tekt/creations/ffgltd/FFGLTouchEngine2
+  echo Build\\ all\\ projects
+fi
+if test \"$CONFIGURATION\" = \"MinSizeRel\"; then :
+  cd /Users/tekt/creations/ffgltd/FFGLTouchEngine2
+  echo Build\\ all\\ projects
+fi
+if test \"$CONFIGURATION\" = \"RelWithDebInfo\"; then :
+  cd /Users/tekt/creations/ffgltd/FFGLTouchEngine2
+  echo Build\\ all\\ projects
+fi
+";
+			showEnvVarsInLog = 0;
+		};
+		FEEE6166692C8D301BFD95BA /* CMake PostBuild Rules */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			name = "CMake PostBuild Rules";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e
+if test \"$CONFIGURATION\" = \"Debug\"; then :
+  cd /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX
+  /usr/local/bin/cmake -E cmake_symlink_library /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/Debug/libFFGLTouchEngineFX.dylib /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/Debug/libFFGLTouchEngineFX.dylib /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/Debug/libFFGLTouchEngineFX.dylib
+fi
+if test \"$CONFIGURATION\" = \"Release\"; then :
+  cd /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX
+  /usr/local/bin/cmake -E cmake_symlink_library /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/Release/libFFGLTouchEngineFX.dylib /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/Release/libFFGLTouchEngineFX.dylib /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/Release/libFFGLTouchEngineFX.dylib
+fi
+if test \"$CONFIGURATION\" = \"MinSizeRel\"; then :
+  cd /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX
+  /usr/local/bin/cmake -E cmake_symlink_library /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/MinSizeRel/libFFGLTouchEngineFX.dylib /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/MinSizeRel/libFFGLTouchEngineFX.dylib /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/MinSizeRel/libFFGLTouchEngineFX.dylib
+fi
+if test \"$CONFIGURATION\" = \"RelWithDebInfo\"; then :
+  cd /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX
+  /usr/local/bin/cmake -E cmake_symlink_library /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/RelWithDebInfo/libFFGLTouchEngineFX.dylib /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/RelWithDebInfo/libFFGLTouchEngineFX.dylib /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/RelWithDebInfo/libFFGLTouchEngineFX.dylib
+fi
+";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1697417103454F6D87AF1040 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				491E7739CC0C48F49C2DFEDE /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.cpp */,
+				8D8AE7A4253E4E26A45EDE6F /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/TouchEngineFX.cpp */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C0F5796BFDA8484D8D6BA0CF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				98A2E1E2E8254427A24A7EA9 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/lib/FFGL/FFGLSDK.cpp */,
+				E5F63A7419974BF5A8C479B7 /* /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/TouchEngine.cpp */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		23FFFD8A892142A38D9802AE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D5CA3D8BC44F5197079BB145 /* FFGLTouchEngineFX */;
+			targetProxy = 8B057EAEA57D4D278A497C9F /* PBXContainerItemProxy */;
+		};
+		982DE217716A412D9A918E9B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A70142B65D3D09E4D2533741 /* FFGLTouchEngine */;
+			targetProxy = D740F469D8864393B8DE90FB /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		171CBB32FA6747289C84FFA8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/Debug;
+				DYLIB_COMPATIBILITY_VERSION = "";
+				DYLIB_CURRENT_VERSION = "";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .dylib;
+				FRAMEWORK_SEARCH_PATHS = (/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/../../../lib/TouchEngine,"$(inherited)");
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",FFGLTouchEngine_EXPORTS,"$(inherited)");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = (/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/../../../include,/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/../../lib,"$(inherited)");
+				INSTALL_PATH = "@rpath";
+				LIBRARY_STYLE = DYNAMIC;
+				OTHER_CPLUSPLUSFLAGS = "   '-std=gnu++17' -fPIC ";
+				OTHER_LDFLAGS = (" -dynamiclib -Wl,-headerpad_max_install_names","-framework TouchEngine","-framework OpenGL","$(inherited)");
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = FFGLTouchEngine;
+				SECTORDER_FLAGS = "";
+				SYSTEM_FRAMEWORK_SEARCH_PATHS = (/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk/System/Library/Frameworks,"$(inherited)");
+				TARGET_TEMP_DIR = "/Users/tekt/creations/ffgltd/FFGLTouchEngine2/build/FFGLTouchEngine.build/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("$(inherited)");
+			};
+			name = Debug;
+		};
+		26C0E7B3E1D24BF0B9CBDFE7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/Debug;
+				DYLIB_COMPATIBILITY_VERSION = "";
+				DYLIB_CURRENT_VERSION = "";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .dylib;
+				FRAMEWORK_SEARCH_PATHS = (/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine,"$(inherited)");
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",FFGLTouchEngineFX_EXPORTS,"$(inherited)");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = (/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/../../../include,/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/../../lib,"$(inherited)");
+				INSTALL_PATH = "@rpath";
+				LIBRARY_STYLE = DYNAMIC;
+				OTHER_CPLUSPLUSFLAGS = "   '-std=gnu++17' -fPIC ";
+				OTHER_LDFLAGS = (" -dynamiclib -Wl,-headerpad_max_install_names","-framework TouchEngine","-framework OpenGL","$(inherited)");
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = FFGLTouchEngineFX;
+				SECTORDER_FLAGS = "";
+				SYSTEM_FRAMEWORK_SEARCH_PATHS = (/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk/System/Library/Frameworks,"$(inherited)");
+				TARGET_TEMP_DIR = "/Users/tekt/creations/ffgltd/FFGLTouchEngine2/build/FFGLTouchEngineFX.build/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("$(inherited)");
+			};
+			name = Debug;
+		};
+		2BA81A9D727442FE8968DDE4 /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/RelWithDebInfo;
+				DYLIB_COMPATIBILITY_VERSION = "";
+				DYLIB_CURRENT_VERSION = "";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .dylib;
+				FRAMEWORK_SEARCH_PATHS = (/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine,"$(inherited)");
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 2;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",FFGLTouchEngineFX_EXPORTS,"$(inherited)");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = (/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/../../../include,/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/../../lib,"$(inherited)");
+				INSTALL_PATH = "@rpath";
+				LIBRARY_STYLE = DYNAMIC;
+				OTHER_CPLUSPLUSFLAGS = "       -DNDEBUG '-std=gnu++17' -fPIC ";
+				OTHER_LDFLAGS = (" -dynamiclib -Wl,-headerpad_max_install_names","-framework TouchEngine","-framework OpenGL","$(inherited)");
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = FFGLTouchEngineFX;
+				SECTORDER_FLAGS = "";
+				SYSTEM_FRAMEWORK_SEARCH_PATHS = (/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk/System/Library/Frameworks,"$(inherited)");
+				TARGET_TEMP_DIR = "/Users/tekt/creations/ffgltd/FFGLTouchEngine2/build/FFGLTouchEngineFX.build/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("$(inherited)");
+			};
+			name = RelWithDebInfo;
+		};
+		43882F02D7C44F00B11A257E /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","$(inherited)");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = ("","$(inherited)");
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("$(inherited)");
+			};
+			name = RelWithDebInfo;
+		};
+		4FD8508C9F594B4983D9F974 /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(NATIVE_ARCH_ACTUAL)";
+				MACOSX_DEPLOYMENT_TARGET = 14.1;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SYMROOT = /Users/tekt/creations/ffgltd/FFGLTouchEngine2/build;
+			};
+			name = RelWithDebInfo;
+		};
+		7D1CC42C192C49D78754D94B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","$(inherited)");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = ("","$(inherited)");
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("$(inherited)");
+			};
+			name = Debug;
+		};
+		82525EDE9CCF4155B9D770ED /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/Release;
+				DYLIB_COMPATIBILITY_VERSION = "";
+				DYLIB_CURRENT_VERSION = "";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .dylib;
+				FRAMEWORK_SEARCH_PATHS = (/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/../../../lib/TouchEngine,"$(inherited)");
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",FFGLTouchEngine_EXPORTS,"$(inherited)");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = (/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/../../../include,/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/../../lib,"$(inherited)");
+				INSTALL_PATH = "@rpath";
+				LIBRARY_STYLE = DYNAMIC;
+				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG '-std=gnu++17' -fPIC ";
+				OTHER_LDFLAGS = (" -dynamiclib -Wl,-headerpad_max_install_names","-framework TouchEngine","-framework OpenGL","$(inherited)");
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = FFGLTouchEngine;
+				SECTORDER_FLAGS = "";
+				SYSTEM_FRAMEWORK_SEARCH_PATHS = (/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk/System/Library/Frameworks,"$(inherited)");
+				TARGET_TEMP_DIR = "/Users/tekt/creations/ffgltd/FFGLTouchEngine2/build/FFGLTouchEngine.build/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("$(inherited)");
+			};
+			name = Release;
+		};
+		C3782E58C8594527BDC5E996 /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(NATIVE_ARCH_ACTUAL)";
+				MACOSX_DEPLOYMENT_TARGET = 14.1;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SYMROOT = /Users/tekt/creations/ffgltd/FFGLTouchEngine2/build;
+			};
+			name = MinSizeRel;
+		};
+		CF90B60854EC4152ABF593F2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(NATIVE_ARCH_ACTUAL)";
+				MACOSX_DEPLOYMENT_TARGET = 14.1;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk;
+				SYMROOT = /Users/tekt/creations/ffgltd/FFGLTouchEngine2/build;
+			};
+			name = Debug;
+		};
+		D59280025D2F436CAC49D42D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","$(inherited)");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = ("","$(inherited)");
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("$(inherited)");
+			};
+			name = Release;
+		};
+		D7E92CA58EB6424FAD7185EA /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","$(inherited)");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = ("","$(inherited)");
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("$(inherited)");
+			};
+			name = MinSizeRel;
+		};
+		D886479D5CF34EF88D9B6337 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(NATIVE_ARCH_ACTUAL)";
+				MACOSX_DEPLOYMENT_TARGET = 14.1;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SYMROOT = /Users/tekt/creations/ffgltd/FFGLTouchEngine2/build;
+			};
+			name = Release;
+		};
+		DEB2E0DB2E7B4EE98471A577 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/Release;
+				DYLIB_COMPATIBILITY_VERSION = "";
+				DYLIB_CURRENT_VERSION = "";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .dylib;
+				FRAMEWORK_SEARCH_PATHS = (/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine,"$(inherited)");
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",FFGLTouchEngineFX_EXPORTS,"$(inherited)");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = (/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/../../../include,/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/../../lib,"$(inherited)");
+				INSTALL_PATH = "@rpath";
+				LIBRARY_STYLE = DYNAMIC;
+				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG '-std=gnu++17' -fPIC ";
+				OTHER_LDFLAGS = (" -dynamiclib -Wl,-headerpad_max_install_names","-framework TouchEngine","-framework OpenGL","$(inherited)");
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = FFGLTouchEngineFX;
+				SECTORDER_FLAGS = "";
+				SYSTEM_FRAMEWORK_SEARCH_PATHS = (/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk/System/Library/Frameworks,"$(inherited)");
+				TARGET_TEMP_DIR = "/Users/tekt/creations/ffgltd/FFGLTouchEngine2/build/FFGLTouchEngineFX.build/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("$(inherited)");
+			};
+			name = Release;
+		};
+		E2B65B53ECE54A1E98A8A8FC /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/RelWithDebInfo;
+				DYLIB_COMPATIBILITY_VERSION = "";
+				DYLIB_CURRENT_VERSION = "";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .dylib;
+				FRAMEWORK_SEARCH_PATHS = (/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/../../../lib/TouchEngine,"$(inherited)");
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 2;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",FFGLTouchEngine_EXPORTS,"$(inherited)");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = (/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/../../../include,/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/../../lib,"$(inherited)");
+				INSTALL_PATH = "@rpath";
+				LIBRARY_STYLE = DYNAMIC;
+				OTHER_CPLUSPLUSFLAGS = "       -DNDEBUG '-std=gnu++17' -fPIC ";
+				OTHER_LDFLAGS = (" -dynamiclib -Wl,-headerpad_max_install_names","-framework TouchEngine","-framework OpenGL","$(inherited)");
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = FFGLTouchEngine;
+				SECTORDER_FLAGS = "";
+				SYSTEM_FRAMEWORK_SEARCH_PATHS = (/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk/System/Library/Frameworks,"$(inherited)");
+				TARGET_TEMP_DIR = "/Users/tekt/creations/ffgltd/FFGLTouchEngine2/build/FFGLTouchEngine.build/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("$(inherited)");
+			};
+			name = RelWithDebInfo;
+		};
+		F6FDBD7A821845AEBC1CBC99 /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/MinSizeRel;
+				DYLIB_COMPATIBILITY_VERSION = "";
+				DYLIB_CURRENT_VERSION = "";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .dylib;
+				FRAMEWORK_SEARCH_PATHS = (/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/../../../lib/TouchEngine,"$(inherited)");
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = s;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",FFGLTouchEngine_EXPORTS,"$(inherited)");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = (/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/../../../include,/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngine/../../lib,"$(inherited)");
+				INSTALL_PATH = "@rpath";
+				LIBRARY_STYLE = DYNAMIC;
+				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG '-std=gnu++17' -fPIC ";
+				OTHER_LDFLAGS = (" -dynamiclib -Wl,-headerpad_max_install_names","-framework TouchEngine","-framework OpenGL","$(inherited)");
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = FFGLTouchEngine;
+				SECTORDER_FLAGS = "";
+				SYSTEM_FRAMEWORK_SEARCH_PATHS = (/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk/System/Library/Frameworks,"$(inherited)");
+				TARGET_TEMP_DIR = "/Users/tekt/creations/ffgltd/FFGLTouchEngine2/build/FFGLTouchEngine.build/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("$(inherited)");
+			};
+			name = MinSizeRel;
+		};
+		FC52E300C6A44A56BEAC7F66 /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = /Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/MinSizeRel;
+				DYLIB_COMPATIBILITY_VERSION = "";
+				DYLIB_CURRENT_VERSION = "";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .dylib;
+				FRAMEWORK_SEARCH_PATHS = (/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine,"$(inherited)");
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = s;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",FFGLTouchEngineFX_EXPORTS,"$(inherited)");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = (/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/../../../include,/Users/tekt/creations/ffgltd/FFGLTouchEngine2/src/plugins/FFGLTouchEngineFX/../../lib,"$(inherited)");
+				INSTALL_PATH = "@rpath";
+				LIBRARY_STYLE = DYNAMIC;
+				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG '-std=gnu++17' -fPIC ";
+				OTHER_LDFLAGS = (" -dynamiclib -Wl,-headerpad_max_install_names","-framework TouchEngine","-framework OpenGL","$(inherited)");
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = FFGLTouchEngineFX;
+				SECTORDER_FLAGS = "";
+				SYSTEM_FRAMEWORK_SEARCH_PATHS = (/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.5.sdk/System/Library/Frameworks,"$(inherited)");
+				TARGET_TEMP_DIR = "/Users/tekt/creations/ffgltd/FFGLTouchEngine2/build/FFGLTouchEngineFX.build/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("$(inherited)");
+			};
+			name = MinSizeRel;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		54096100AA3D42DCAC1D4873 /* Build configuration list for PBXNativeTarget "FFGLTouchEngineFX" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				26C0E7B3E1D24BF0B9CBDFE7 /* Debug */,
+				DEB2E0DB2E7B4EE98471A577 /* Release */,
+				FC52E300C6A44A56BEAC7F66 /* MinSizeRel */,
+				2BA81A9D727442FE8968DDE4 /* RelWithDebInfo */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		65E86D9650044149A3CD6BB2 /* Build configuration list for PBXAggregateTarget "ALL_BUILD" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7D1CC42C192C49D78754D94B /* Debug */,
+				D59280025D2F436CAC49D42D /* Release */,
+				D7E92CA58EB6424FAD7185EA /* MinSizeRel */,
+				43882F02D7C44F00B11A257E /* RelWithDebInfo */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BB6AA9BA0230410D9FD76689 /* Build configuration list for PBXNativeTarget "FFGLTouchEngine" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				171CBB32FA6747289C84FFA8 /* Debug */,
+				82525EDE9CCF4155B9D770ED /* Release */,
+				F6FDBD7A821845AEBC1CBC99 /* MinSizeRel */,
+				E2B65B53ECE54A1E98A8A8FC /* RelWithDebInfo */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F0B6D4D89391417F8630153E /* Build configuration list for PBXProject "FFGLTouchEngine" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CF90B60854EC4152ABF593F2 /* Debug */,
+				D886479D5CF34EF88D9B6337 /* Release */,
+				C3782E58C8594527BDC5E996 /* MinSizeRel */,
+				4FD8508C9F594B4983D9F974 /* RelWithDebInfo */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 01731E79CA8A49609F3E2AE3 /* Project object */;
+}

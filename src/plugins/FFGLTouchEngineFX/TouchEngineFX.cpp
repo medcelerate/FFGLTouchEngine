@@ -133,7 +133,11 @@ GLenum GetGlType(DXGI_FORMAT format) {
 #endif
 
 FFGLTouchEngineFX::FFGLTouchEngineFX()
-	: CFFGLPlugin()
+	: CFFGLPlugin(),
+isTouchEngineLoaded(false),
+isTouchEngineReady(false),
+isGraphicsContextLoaded(false),
+isTouchFrameBusy(false)
 {
 	srand(static_cast<long int>(time(0)));
 
@@ -539,12 +543,12 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			InputWidth = pGL->inputTextures[0]->Width;
 			InputHeight = pGL->inputTextures[0]->Height;
 
+#ifdef _WIN32
 			if (!InputInterop.CleanupInterop()) {
 				FFGLLog::LogToHost("Failed to cleanup interop");
 				return FF_FAIL;
 			}
 
-#ifdef _WIN32
 			if (!InputInterop.CreateInterop(InputWidth, InputHeight, GlToDXFromat(InputFormat), false)) {
 				FFGLLog::LogToHost("Failed to create interop");
 				return FF_FAIL;
@@ -1496,11 +1500,13 @@ void FFGLTouchEngineFX::ClearTouchInstance() {
 			TEInstanceSuspend(instance);
 			TEInstanceUnload(instance);
 		}
+#ifdef _WIN32
 		InputInteropInitialized = !InputInterop.CleanupInterop();
 		OutputInteropInitialized = !OutputInterop.CleanupInterop();
-		instance.reset();
 		D3DContext.reset();
-		isGraphicsContextLoaded = false;
+#endif
+        instance.reset();
+        isGraphicsContextLoaded = false;
 	}
 	return;
 }

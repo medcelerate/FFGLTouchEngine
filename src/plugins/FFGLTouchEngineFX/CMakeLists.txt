@@ -5,19 +5,29 @@ target_sources(FFGLTouchEngineFX PRIVATE
     ../../lib/FFGL/FFGLSDK.h
     ../../lib/FFGL/FFGLSDK.cpp
 )
-target_link_directories(FFGLTouchEngineFX PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/Glew
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/Spout
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/TouchEngine
-)
-target_link_libraries(FFGLTouchEngineFX PRIVATE
-    Spout_static.lib
-    TouchEngine.lib
-    glew32s.lib
-)
+
+
+if (WIN32)
+    target_link_directories(FFGLTouchEngineFX PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/TouchEngine
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/Glew
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/Spout
+    )
+    target_link_libraries(FFGLTouchEngineFX PRIVATE
+        Spout_static.lib
+        TouchEngine.lib
+        glew32s.lib
+    )
+endif()
+if (APPLE)
+    target_link_libraries(FFGLTouchEngineFX "-framework TouchEngine")
+    set_target_properties(FFGLTouchEngineFX PROPERTIES
+        XCODE_ATTRIBUTE_FRAMEWORK_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/TouchEngine 
+    )
+endif()
 target_include_directories(FFGLTouchEngineFX PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../../include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../lib>
     $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(FFGLTouchEngineFX PRIVATE OpenGL::GL)
+target_link_libraries(FFGLTouchEngineFX OpenGL::GL)

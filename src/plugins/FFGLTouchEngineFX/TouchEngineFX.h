@@ -28,6 +28,9 @@ class FFGLTouchEngineFX : public CFFGLPlugin
 public:
 	FFGLTouchEngineFX();
 	~FFGLTouchEngineFX();
+    
+    FFGLTouchEngineFX(const FFGLTouchEngineFX& other) = delete;
+    FFGLTouchEngineFX& operator=(const FFGLTouchEngineFX& other) = delete;
 
 	//CFFGLPlugin
 	FFResult InitGL(const FFGLViewportStruct* vp) override;
@@ -65,10 +68,10 @@ private:
 	std::unordered_map<int, IDXGIKeyedMutex*> MutexMap;
 #endif
 
-	std::atomic_bool isTouchEngineLoaded = false;
-	std::atomic_bool isTouchEngineReady = false;
-	std::atomic_bool isGraphicsContextLoaded = false;
-	std::atomic_bool isTouchFrameBusy = false;
+	std::atomic_bool isTouchEngineLoaded;
+	std::atomic_bool isTouchEngineReady;
+	std::atomic_bool isGraphicsContextLoaded;
+	std::atomic_bool isTouchFrameBusy;
 	uint64_t FrameCount = 0;
 
 	//Touch file capabilities
@@ -131,8 +134,10 @@ private:
 
 
 	bool LoadTEGraphicsContext(bool Reload);
+#ifdef _WIN32
 	bool CreateInputTexture(int width, int height, DXGI_FORMAT dxformat);
 	bool CreateOutputTexture(int width, int height, DXGI_FORMAT dxformat);
+#endif
 	bool LoadTEFile();
 
 	void LoadTouchEngine();

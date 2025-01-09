@@ -30,4 +30,4 @@ target_include_directories(FFGLTouchEngineFX PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../lib>
     $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(FFGLTouchEngineFX OpenGL::GL)
+target_link_libraries(FFGLTouchEngineFX PUBLIC OpenGL::GL)

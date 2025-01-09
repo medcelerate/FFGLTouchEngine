@@ -93,6 +93,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ExceptionHandling>Sync</ExceptionHandling>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <MinimalRebuild></MinimalRebuild>
       <Optimization>Disabled</Optimization>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -119,7 +120,7 @@
     </Midl>
     <Link>
       <AdditionalDependencies>Spout_static.lib;TouchEngine.lib;glew32s.lib;opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>S:/creations/ffgltd/FFGLTouchEngine/lib/Glew;S:/creations/ffgltd/FFGLTouchEngine/lib/Glew/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Glew;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Glew/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Spout;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Spout/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>S:/creations/ffgltd/FFGLTouchEngine/lib/Glew;S:/creations/ffgltd/FFGLTouchEngine/lib/Glew/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Glew;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Glew/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Spout;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Spout/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -138,6 +139,7 @@
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <ExceptionHandling>Sync</ExceptionHandling>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <MinimalRebuild></MinimalRebuild>
       <Optimization>MaxSpeed</Optimization>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -166,7 +168,7 @@
     </Midl>
     <Link>
       <AdditionalDependencies>Spout_static.lib;TouchEngine.lib;glew32s.lib;opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>S:/creations/ffgltd/FFGLTouchEngine/lib/Glew;S:/creations/ffgltd/FFGLTouchEngine/lib/Glew/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Glew;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Glew/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Spout;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Spout/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>S:/creations/ffgltd/FFGLTouchEngine/lib/Glew;S:/creations/ffgltd/FFGLTouchEngine/lib/Glew/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Glew;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Glew/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Spout;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Spout/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -185,6 +187,7 @@
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <ExceptionHandling>Sync</ExceptionHandling>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <MinimalRebuild></MinimalRebuild>
       <Optimization>MinSpace</Optimization>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -213,7 +216,7 @@
     </Midl>
     <Link>
       <AdditionalDependencies>Spout_static.lib;TouchEngine.lib;glew32s.lib;opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>S:/creations/ffgltd/FFGLTouchEngine/lib/Glew;S:/creations/ffgltd/FFGLTouchEngine/lib/Glew/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Glew;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Glew/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Spout;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Spout/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>S:/creations/ffgltd/FFGLTouchEngine/lib/Glew;S:/creations/ffgltd/FFGLTouchEngine/lib/Glew/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Glew;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Glew/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Spout;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Spout/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -233,6 +236,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ExceptionHandling>Sync</ExceptionHandling>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <MinimalRebuild></MinimalRebuild>
       <Optimization>MaxSpeed</Optimization>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -259,7 +263,7 @@
     </Midl>
     <Link>
       <AdditionalDependencies>Spout_static.lib;TouchEngine.lib;glew32s.lib;opengl32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>S:/creations/ffgltd/FFGLTouchEngine/lib/Glew;S:/creations/ffgltd/FFGLTouchEngine/lib/Glew/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Glew;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Glew/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Spout;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Spout/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>S:/creations/ffgltd/FFGLTouchEngine/lib/Glew;S:/creations/ffgltd/FFGLTouchEngine/lib/Glew/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/TouchEngine/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Glew;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Glew/$(Configuration);S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Spout;S:/creations/ffgltd/FFGLTouchEngine/src/plugins/FFGLTouchEngineFX/../../../lib/Spout/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>

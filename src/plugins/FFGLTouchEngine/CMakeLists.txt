@@ -19,9 +19,16 @@ if (WIN32)
     )
 endif()
 if (APPLE)
-    target_link_libraries(FFGLTouchEngine "-framework TouchEngine")
+    target_link_libraries(FFGLTouchEngine
+    "-framework TouchEngine"
+    "-framework Foundation"
+    "-framework QuartzCore"
+    "-framework Metal")
     set_target_properties(FFGLTouchEngine PROPERTIES
         XCODE_ATTRIBUTE_FRAMEWORK_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/TouchEngine 
+    )
+    target_include_directories(FFGLTouchEngine PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../lib/metal-cpp
     )
 endif()
 

@@ -11,14 +11,25 @@
 #include <shobjidl.h>
 #endif
 
+#ifdef __APPLE__
+#define NS_PRIVATE_IMPLEMENTATION
+#define CA_PRIVATE_IMPLEMENTATION
+#define MTL_PRIVATE_IMPLEMENTATION
+#include <Foundation/Foundation.hpp>
+#include <Metal/Metal.hpp>
+#include <QuartzCore/QuartzCore.hpp>
+#endif
+
 #include "FFGL/FFGLSDK.h"
 #include <map>
 #include "TouchEngine/TouchObject.h"
 #include "TouchEngine/TEGraphicsContext.h"
+
 #ifdef _WIN32
 #include "TouchEngine/TED3D11.h"
 #include "SpoutGL/SpoutSender.h"
 #endif
+
 #include "Thumbnail.h"
 
 
@@ -56,6 +67,9 @@ private:
 	std::map<ID3D11Texture2D*, IDXGIKeyedMutex*> TextureMutexMap;
 
 	DXGI_FORMAT DXFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
+#endif
+#ifdef __APPLE__
+    MTL::Device *pDevice;
 #endif
 	GLint GLFormat = 0;
 

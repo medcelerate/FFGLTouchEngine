@@ -148,6 +148,12 @@ FFGLTouchEngine::~FFGLTouchEngine()
 		TEInstanceSuspend(instance);
 		TEInstanceUnload(instance);
 	}
+#ifdef __APPLE__
+    if (pDevice != nullptr) {
+        pDevice->release();
+        pDevice = nullptr;
+    }
+#endif
 
 
 }
@@ -174,6 +180,10 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 	{
 		return FailAndLog("Failed to create D3D11 device");
 	}
+#endif
+    
+#ifdef __APPLE__
+    pDevice = MTL::CreateSystemDefaultDevice();
 #endif
 
 	//Load TouchEngine
@@ -453,6 +463,12 @@ FFResult FFGLTouchEngine::DeInitGL()
 		OutputInterop.CleanupInterop();
 		OutputInterop.CloseDirectX();
 	}
+#endif
+#ifdef __APPLE__
+    if (pDevice != nullptr) {
+        pDevice->release();
+        pDevice = nullptr;
+    }
 #endif
 
 	// Deinitialize the quad

@@ -1,4 +1,5 @@
 #pragma once
+
 #ifdef _WIN32
 #include <windows.h>
 #include <d3d11_4.h>
@@ -9,12 +10,24 @@
 #include <wrl.h>
 #include <shobjidl.h>
 #endif
+
+#ifdef __APPLE__
+#define NS_PRIVATE_IMPLEMENTATION
+#define CA_PRIVATE_IMPLEMENTATION
+#define MTL_PRIVATE_IMPLEMENTATION
+#include <Foundation/Foundation.hpp>
+#include <Metal/Metal.hpp>
+#include <QuartzCore/QuartzCore.hpp>
+#endif
+
 #include "FFGL/FFGLSDK.h"
 #include "TouchEngine/TouchObject.h"
+
 #ifdef _WIN32
 #include "TouchEngine/TED3D11.h"
 #include "SpoutGL/SpoutSender.h"
 #endif
+
 #include "Thumbnail.h"
 
 typedef struct {

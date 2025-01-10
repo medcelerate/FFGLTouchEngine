@@ -248,6 +248,125 @@ void FFGLTouchEnginePluginBase::LoadTouchEngine() {
 
 }
 
+FFResult FFGLTouchEnginePluginBase::SetFloatParameter(unsigned int dwIndex, float value) {
+
+	if (dwIndex == 1 && value == 1) {
+		LoadTouchEngine();
+		LoadTEFile();
+		return FF_SUCCESS;
+	}
+
+	if (dwIndex == 2 && value == 1) {
+		if (isTouchEngineLoaded) {
+			TEInstanceSuspend(instance);
+			TEInstanceUnload(instance);
+		}
+		ResetBaseParameters();
+		return FF_SUCCESS;
+	}
+
+	if (dwIndex == 3 && value == 1) {
+		ResetBaseParameters();
+		ClearTouchInstance();
+		return FF_SUCCESS;
+	}
+
+	if (!isTouchEngineLoaded || !isTouchEngineReady) {
+		return FF_SUCCESS;
+	}
+
+	if (ActiveParams.find(dwIndex) == ActiveParams.end()) {
+		return FF_SUCCESS;
+	}
+
+	FFUInt32 type = ParameterMapType[dwIndex];
+
+
+	if (type == FF_TYPE_INTEGER) {
+		ParameterMapInt[dwIndex] = static_cast<int32_t>(value);
+		return FF_SUCCESS;
+	}
+
+	if (type == FF_TYPE_BOOLEAN || type == FF_TYPE_EVENT) {
+		ParameterMapBool[dwIndex] = value;
+		return FF_SUCCESS;
+	}
+
+	if (type == FF_TYPE_OPTION) {
+		ParameterMapInt[dwIndex] = static_cast<int32_t>(value);
+		return FF_SUCCESS;
+	}
+
+
+	ParameterMapFloat[dwIndex] = value;
+
+	return FF_SUCCESS;
+}
+
+FFResult FFGLTouchEnginePluginBase::SetTextParameter(unsigned int dwIndex, const char* value) {
+	switch (dwIndex) {
+	case 0:
+		// Open file dialog
+		FilePath = std::string(value);
+		LoadTEFile();
+		return FF_SUCCESS;
+	}
+
+	if (!isTouchEngineLoaded || !isTouchEngineReady) {
+		return FF_SUCCESS;
+	}
+
+	if (ActiveParams.find(dwIndex) == ActiveParams.end()) {
+		return FF_SUCCESS;
+	}
+	ParameterMapString[dwIndex] = value;
+	return FF_SUCCESS;
+}
+
+float FFGLTouchEnginePluginBase::GetFloatParameter(unsigned int dwIndex) {
+
+	if (dwIndex == 1) {
+		return 0;
+	}
+	if (!isTouchEngineLoaded || !isTouchEngineReady) {
+		return 0;
+
+	}
+
+	if (ActiveParams.find(dwIndex) == ActiveParams.end()) {
+		return 0;
+	}
+
+	FFUInt32 type = ParameterMapType[dwIndex];
+
+	if (type == FF_TYPE_INTEGER) {
+		return static_cast<float>(ParameterMapInt[dwIndex]);
+	}
+
+	if (type == FF_TYPE_BOOLEAN || type == FF_TYPE_EVENT) {
+		return ParameterMapBool[dwIndex];
+	}
+
+
+	return static_cast<float>(ParameterMapFloat[dwIndex]);
+}
+
+char* FFGLTouchEnginePluginBase::GetTextParameter(unsigned int dwIndex) {
+	if (dwIndex == 0) {
+		return (char*)FilePath.c_str();
+	}
+
+	if (!isTouchEngineLoaded || !isTouchEngineReady) {
+		return nullptr;
+	}
+
+	if (ActiveParams.find(dwIndex) == ActiveParams.end()) {
+		return nullptr;
+	}
+
+	return (char*)ParameterMapString[dwIndex].c_str();
+}
+
 void FFGLTouchEnginePluginBase::ConstructBaseParameters() {
 	for (uint32_t i = OffsetParamsByType; i < MaxParamsByType + OffsetParamsByType; i++) {
 		SetParamInfof(i, (std::string("Parameter") + std::to_string(i)).c_str(), FF_TYPE_STANDARD);
@@ -299,6 +418,96 @@ void FFGLTouchEnginePluginBase::ResetBaseParameters() {
 	ParameterMapBool.clear();
 	Parameters.clear();
 	return;
+}
+
+void FFGLTouchEnginePluginBase::GetAllParameters() {
+	ResetBaseParameters();
+
+	TouchObject<TEStringArray> groupLinkInfo;
+
+	if (instance == nullptr) {
+		return;
+	}
+
+	TEResult result = TEInstanceGetLinkGroups(instance, TEScopeInput, groupLinkInfo.take());
+
+	if (result != TEResultSuccess) {
+		return;
+	}
+
+	for (int i = 0; i < groupLinkInfo->count; i++) {
+		TouchObject<TEStringArray> links;
+		result = TEInstanceLinkGetChildren(instance, groupLinkInfo->strings[i], links.take());
+
+		if (result != TEResultSuccess) {
+			return;
+		}
+
+		for (int j = 0; j < links->count; j++) {
+			TouchObject<TELinkInfo> linkInfo;
+			result = TEInstanceLinkGetInfo(instance, links->strings[j], linkInfo.take());
+
+			if (result != TEResultSuccess) {
+				continue;
+			}
+
+
+			if (linkInfo->domain == TELinkDomainParameter) {
+
+				if (ActiveParams.size() > MaxParamsByType * 6) {
+					FFGLLog::LogToHost("Too many parameters, skipping");
+					continue;
+				}
+
+				if (linkInfo->type == TELinkTypeGroup) {
+					CreateParametersFromGroup(linkInfo);
+				} else {
+					CreateIndividualParameter(linkInfo);
+				}
+			} else if (linkInfo->domain == TELinkDomainOperator) {
+				HandleOperatorLink(linkInfo);
+			}
+
+		}
+	}
+
+	// Get the texture output if it exists
+	result = TEInstanceGetLinkGroups(instance, TEScopeOutput, groupLinkInfo.take());
+
+	if (result != TEResultSuccess) {
+		return;
+	}
+
+	for (int i = 0; i < groupLinkInfo->count; i++) {
+		TouchObject<TEStringArray> links;
+		result = TEInstanceLinkGetChildren(instance, groupLinkInfo->strings[i], links.take());
+
+		if (result != TEResultSuccess) {
+			return;
+		}
+
+		for (int j = 0; j < links->count; j++) {
+			TouchObject<TELinkInfo> linkInfo;
+			result = TEInstanceLinkGetInfo(instance, links->strings[j], linkInfo.take());
+
+			if (result != TEResultSuccess) {
+				continue;
+			}
+
+			if (linkInfo->domain == TELinkDomainOperator) {
+				if (strcmp(linkInfo->name, "out1") == 0 && linkInfo->type == TELinkTypeTexture) {
+					OutputOpName = linkInfo->identifier;
+					hasVideoOutput = true;
+					break;
+				} else if (linkInfo->type == TELinkTypeTexture) {
+					OutputOpName = linkInfo->identifier;
+					hasVideoOutput = true;
+					break;
+				}
+			}
+		}
+
+	}
 }
 
 void FFGLTouchEnginePluginBase::CreateIndividualParameter(const TouchObject<TELinkInfo>& linkInfo) {

@@ -61,11 +61,11 @@ public:
 	// FFResult ProcessOpenGL(ProcessOpenGLStruct* pGL) override;
 	FFResult DeInitGL() override;
 	
-	// FFResult SetFloatParameter(unsigned int dwIndex, float value) override;
-	// FFResult SetTextParameter(unsigned int dwIndex, const char* value) override;
-	//
-	// float GetFloatParameter(unsigned int index) override;
-	// char* GetTextParameter(unsigned int index) override;
+	FFResult SetFloatParameter(unsigned int dwIndex, float value) override;
+	FFResult SetTextParameter(unsigned int dwIndex, const char* value) override;
+
+	float GetFloatParameter(unsigned int index) override;
+	char* GetTextParameter(unsigned int index) override;
 
 protected:
 	FFResult InitializeDevice();
@@ -82,8 +82,11 @@ protected:
 
 	void ConstructBaseParameters();
 	virtual void ResetBaseParameters();
+	void GetAllParameters();
 	void CreateIndividualParameter(const TouchObject<TELinkInfo>& linkInfo);
 	void CreateParametersFromGroup(const TouchObject<TELinkInfo>& linkInfo);
+
+	virtual void HandleOperatorLink(const TouchObject<TELinkInfo>& linkInfo) = 0;
 
 	virtual void eventCallback(TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale);
 	virtual void linkCallback(TELinkEvent event, const char* identifier);

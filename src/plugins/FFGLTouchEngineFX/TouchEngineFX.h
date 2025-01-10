@@ -18,12 +18,6 @@ public:
 	FFResult ProcessOpenGL(ProcessOpenGLStruct* pGL) override;
 	FFResult DeInitGL() override;
 
-	FFResult SetFloatParameter(unsigned int dwIndex, float value) override;
-	FFResult SetTextParameter(unsigned int dwIndex, const char* value) override;
-
-	float GetFloatParameter(unsigned int index) override;
-	char* GetTextParameter(unsigned int index) override;
-
 private:
 #ifdef _WIN32
 	HANDLE dxInteropHandle = 0;
@@ -62,6 +56,7 @@ private:
 #endif
 
 	void ResumeTouchEngine() override;
-	void GetAllParameters();
 	void ClearTouchInstance() override;
+
+	void HandleOperatorLink(const TouchObject<TELinkInfo>& linkInfo) override;
 };

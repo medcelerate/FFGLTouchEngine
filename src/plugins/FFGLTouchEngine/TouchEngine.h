@@ -15,12 +15,6 @@ public:
 	FFResult ProcessOpenGL(ProcessOpenGLStruct* pGL) override;
 	FFResult DeInitGL() override;
 
-	FFResult SetFloatParameter(unsigned int dwIndex, float value) override;
-	FFResult SetTextParameter(unsigned int dwIndex, const char* value) override;
-
-	float GetFloatParameter(unsigned int index) override;
-	char* GetTextParameter(unsigned int index) override;
-
 private:
 #ifdef __APPLE__
     MTL::Device *pDevice;
@@ -52,6 +46,7 @@ private:
 	bool CreateInputTexture(int width, int height);
 
 	void ResumeTouchEngine() override;
-	void GetAllParameters();
 	void ClearTouchInstance() override;
+
+	void HandleOperatorLink(const TouchObject<TELinkInfo>& linkInfo) override;
 };

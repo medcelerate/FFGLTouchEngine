@@ -48,17 +48,6 @@ FFGLTouchEngine::FFGLTouchEngine()
 	SetMinInputs(0);
 	SetMaxInputs(0);
 
-	// Parameters
- 	SetParamInfof(0, "Tox File", FF_TYPE_FILE);
-	SetParamInfof(1, "Reload", FF_TYPE_EVENT);
-	SetParamInfof(2, "Unload", FF_TYPE_EVENT);
-	SetParamInfof(3, "Clear Instance", FF_TYPE_EVENT);
-
-	//This is the starting point for the parameters and is equal to the number of parameters above.
-	OffsetParamsByType = 4;
-
-	MaxParamsByType = 40;
-
 	ConstructBaseParameters();
 
 #ifdef _WIN32
@@ -69,46 +58,22 @@ FFGLTouchEngine::FFGLTouchEngine()
 
 FFGLTouchEngine::~FFGLTouchEngine()
 {
-
-	if (instance != nullptr)
-	{
-		TEInstanceSuspend(instance);
-		TEInstanceUnload(instance);
-	}
 #ifdef __APPLE__
 	if (pDevice != nullptr) {
 		pDevice->release();
 		pDevice = nullptr;
 	}
 #endif
-
-
 }
 
 FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 {
-
-
-#ifdef _WIN32
-	// Create D3D11 device
-	HRESULT hr = D3D11CreateDevice(
-		nullptr,
-		D3D_DRIVER_TYPE_HARDWARE,
-		nullptr,
-		0,
-		nullptr,
-		0,
-		D3D11_SDK_VERSION,
-		D3DDevice.GetAddressOf(),
-		nullptr,
-		nullptr
-	);
-	if (FAILED(hr))
+	FFResult result = InitializeDevice();
+	if (result != FF_SUCCESS)
 	{
-		return FailAndLog("Failed to create D3D11 device");
+		return result;
 	}
-#endif
-    
+
 #ifdef __APPLE__
     pDevice = MTL::CreateSystemDefaultDevice();
 #endif
@@ -122,20 +87,11 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 	SpoutTexture = 0;
 #endif
 
-	if (!shader.Compile(vertexShaderCode, fragmentShaderCode))
+	result = InitializeShader(vertexShaderCode, fragmentShaderCode);
+	if (result != FF_SUCCESS)
 	{
-		DeInitGL();
-		return FailAndLog("Failed to compile shader");
+		return result;
 	}
-
-	// Initialize the quad
-	if (!quad.Initialise())
-	{
-		DeInitGL();
-		return FailAndLog("Failed to initialize quad");
-	}
-
-	// Create the input texture
 
 	// Set the viewport size
 	OutputWidth = vp->width;
@@ -1096,44 +1052,6 @@ void FFGLTouchEngine::CreateParametersFromGroup(const TouchObject<TELinkInfo>& l
 
 
 
-}
-
-bool FFGLTouchEngine::LoadTEFile()
-{
-	// Load the tox file into the TouchEngine
-	// 1. Create a TouchEngine object
-
-
-	if (instance == nullptr)
-	{
-		return false;
-	}
-
-	isTouchEngineReady = false;
-
-	// 2. Load the tox file into the TouchEngine
-	TEResult result = TEInstanceConfigure(instance, FilePath.c_str(), TETimeExternal);
-	if (result != TEResultSuccess)
-	{
-		return false;
-	}
-
-	result = TEInstanceSetFrameRate(instance, 60, 1);
-
-	if (result != TEResultSuccess)
-	{
-		return false;
-	}
-
-
-	result = TEInstanceLoad(instance);
-	if (result != TEResultSuccess)
-	{
-		return false;
-	}
-
-
-	return true;
 }
 
 

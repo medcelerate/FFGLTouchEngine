@@ -68,6 +68,11 @@ public:
 	// char* GetTextParameter(unsigned int index) override;
 
 protected:
+	FFResult InitializeDevice();
+	FFResult InitializeShader(const std::string& vertexShaderCode, const std::string& fragmentShaderCode);
+
+	bool LoadTEFile();
+
 	TouchObject<TEInstance> instance;
 #ifdef _WIN32
 	Microsoft::WRL::ComPtr<ID3D11Device> D3DDevice;

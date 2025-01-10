@@ -65,7 +65,6 @@ private:
 	bool CreateInputTexture(int width, int height, DXGI_FORMAT dxformat);
 	bool CreateOutputTexture(int width, int height, DXGI_FORMAT dxformat);
 #endif
-	bool LoadTEFile();
 
 	void LoadTouchEngine();
 	void ResumeTouchEngine();

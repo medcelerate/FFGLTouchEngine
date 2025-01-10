@@ -85,13 +85,102 @@ FFGLTouchEnginePluginBase::FFGLTouchEnginePluginBase()
 	isGraphicsContextLoaded(false),
 	isTouchFrameBusy(false)
 {
+	// Parameters
+	SetParamInfof(0, "Tox File", FF_TYPE_FILE);
+	SetParamInfof(1, "Reload", FF_TYPE_EVENT);
+	SetParamInfof(2, "Unload", FF_TYPE_EVENT);
+	SetParamInfof(3, "Clear Instance", FF_TYPE_EVENT);
+
+	//This is the starting point for the parameters and is equal to the number of parameters above.
+	OffsetParamsByType = 4;
+
+	MaxParamsByType = 40;
 }
 
 FFGLTouchEnginePluginBase::~FFGLTouchEnginePluginBase()
 {
+	if (instance != nullptr) {
+		TEInstanceSuspend(instance);
+		TEInstanceUnload(instance);
+	}
+}
+
+FFResult FFGLTouchEnginePluginBase::InitializeDevice()
+{
+#ifdef _WIN32
+	// Create D3D11 device
+	HRESULT hr = D3D11CreateDevice(
+		nullptr,
+		D3D_DRIVER_TYPE_HARDWARE,
+		nullptr,
+		0,
+		nullptr,
+		0,
+		D3D11_SDK_VERSION,
+		D3DDevice.GetAddressOf(),
+		nullptr,
+		nullptr
+	);
+	if (FAILED(hr)) {
+		return FailAndLog("Failed to create D3D11 device");
+	}
+#endif
+
+	return FF_SUCCESS;
+}
+
+FFResult FFGLTouchEnginePluginBase::InitializeShader(const std::string& vertexShaderCode, const std::string& fragmentShaderCode)
+{
+	if (!shader.Compile(vertexShaderCode, fragmentShaderCode)) {
+		DeInitGL();
+		return FailAndLog("Failed to compile shader");
+
+	}
+
+	// Initialize the quad
+	if (!quad.Initialise()) {
+		DeInitGL();
+		return FailAndLog("Failed to initialize quad");
+	}
+
+	return FF_SUCCESS;
 }
 
 FFResult FFGLTouchEnginePluginBase::DeInitGL()
 {
 	return FF_SUCCESS;
+}
+
+bool FFGLTouchEnginePluginBase::LoadTEFile()
+{
+	// Load the tox file into the TouchEngine
+	// 1. Create a TouchEngine object
+
+
+	if (instance == nullptr) {
+		return false;
+	}
+
+	isTouchEngineReady = false;
+
+	// 2. Load the tox file into the TouchEngine
+	TEResult result = TEInstanceConfigure(instance, FilePath.c_str(), TETimeExternal);
+	if (result != TEResultSuccess) {
+		return false;
+	}
+
+	result = TEInstanceSetFrameRate(instance, 60, 1);
+
+	if (result != TEResultSuccess) {
+		return false;
+	}
+
+
+	result = TEInstanceLoad(instance);
+	if (result != TEResultSuccess) {
+		return false;
+	}
+
+
+	return true;
 }

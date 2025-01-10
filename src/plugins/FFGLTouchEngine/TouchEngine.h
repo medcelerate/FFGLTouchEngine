@@ -55,7 +55,6 @@ private:
 
 	bool LoadTEGraphicsContext(bool Reload);
 	bool CreateInputTexture(int width, int height);
-	bool LoadTEFile();
 
 	void LoadTouchEngine();
 	void ResumeTouchEngine();

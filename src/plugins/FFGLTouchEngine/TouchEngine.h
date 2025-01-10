@@ -48,17 +48,10 @@ private:
 #ifdef _WIN32
 	GLuint SpoutTexture = 0;
 #endif
-	void InitializeGlTexture(GLuint& texture, uint16_t width, uint16_t height, GLenum type);
-	void ConstructBaseParameters();
-	void ResetBaseParameters();
-
 
 	bool CreateInputTexture(int width, int height);
 
-	void ResumeTouchEngine();
+	void ResumeTouchEngine() override;
 	void GetAllParameters();
-	void CreateIndividualParameter(const TouchObject<TELinkInfo>& linkInfo);
-	void CreateParametersFromGroup(const TouchObject<TELinkInfo>& linkInfo);
-	void ClearTouchInstance();
-	void eventCallback(TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale) override;
+	void ClearTouchInstance() override;
 };

@@ -71,13 +71,21 @@ protected:
 	FFResult InitializeDevice();
 	FFResult InitializeShader(const std::string& vertexShaderCode, const std::string& fragmentShaderCode);
 
+	void InitializeGlTexture(GLuint& texture, uint16_t width, uint16_t height, GLenum type);
+
 	bool LoadTEGraphicsContext(bool Reload);
 	bool LoadTEFile();
 
 	virtual void LoadTouchEngine();
-	// virtual void ResumeTouchEngine() = 0;
+	virtual void ResumeTouchEngine() = 0;
+	virtual void ClearTouchInstance() = 0;
 
-	virtual void eventCallback(TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale) = 0;
+	void ConstructBaseParameters();
+	virtual void ResetBaseParameters();
+	void CreateIndividualParameter(const TouchObject<TELinkInfo>& linkInfo);
+	void CreateParametersFromGroup(const TouchObject<TELinkInfo>& linkInfo);
+
+	virtual void eventCallback(TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale);
 	virtual void linkCallback(TELinkEvent event, const char* identifier);
 
 	TouchObject<TEInstance> instance;

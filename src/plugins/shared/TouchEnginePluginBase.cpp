@@ -151,6 +151,37 @@ FFResult FFGLTouchEnginePluginBase::DeInitGL()
 	return FF_SUCCESS;
 }
 
+bool FFGLTouchEnginePluginBase::LoadTEGraphicsContext(bool reload) {
+	if (isGraphicsContextLoaded && !reload) {
+		return true;
+	}
+
+	if (instance == nullptr) {
+		return false;
+	}
+
+
+	// Load the TouchEngine graphics context
+
+#ifdef _WIN32
+	if (D3DDevice == nullptr) {
+		FFGLLog::LogToHost("D3D11 Device Not Available, You Probably Failed Somewhere...In Your Life");
+	}
+
+	TEResult result = TED3D11ContextCreate(D3DDevice.Get(), D3DContext.take());
+	if (result != TEResultSuccess) {
+		return false;
+	}
+
+	result = TEInstanceAssociateGraphicsContext(instance, D3DContext);
+	if (result != TEResultSuccess) {
+		return false;
+	}
+	isGraphicsContextLoaded = true;
+#endif
+	return isGraphicsContextLoaded;
+}
+
 bool FFGLTouchEnginePluginBase::LoadTEFile()
 {
 	// Load the tox file into the TouchEngine
@@ -183,4 +214,38 @@ bool FFGLTouchEnginePluginBase::LoadTEFile()
 
 
 	return true;
+}
+
+void FFGLTouchEnginePluginBase::LoadTouchEngine() {
+
+	if (instance == nullptr) {
+
+		FFGLLog::LogToHost("Loading TouchEngine");
+		TEResult result = TEInstanceCreate(eventCallbackStatic, linkCallbackStatic, this, instance.take());
+		if (result != TEResultSuccess) {
+			FFGLLog::LogToHost("Failed to create TouchEngine instance");
+			instance.reset();
+			return;
+		}
+
+	}
+
+}
+
+void FFGLTouchEnginePluginBase::linkCallback(TELinkEvent event, const char* identifier) {
+	switch (event) {
+	case TELinkEventAdded:
+		// A link has been added
+		break;
+	case TELinkEventValueChange:
+		break;
+	}
+}
+
+void FFGLTouchEnginePluginBase::eventCallbackStatic(TEInstance* instance, TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale, void* info) {
+	static_cast<FFGLTouchEnginePluginBase*>(info)->eventCallback(event, result, start_time_value, start_time_scale, end_time_value, end_time_scale);
+}
+
+void FFGLTouchEnginePluginBase::linkCallbackStatic(TEInstance* instance, TELinkEvent event, const char* identifier, void* info) {
+	static_cast<FFGLTouchEnginePluginBase*>(info)->linkCallback(event, identifier);
 }

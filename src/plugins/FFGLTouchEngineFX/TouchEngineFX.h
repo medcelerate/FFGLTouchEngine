@@ -60,21 +60,15 @@ private:
 	void ResetBaseParameters();
 
 
-	bool LoadTEGraphicsContext(bool Reload);
 #ifdef _WIN32
 	bool CreateInputTexture(int width, int height, DXGI_FORMAT dxformat);
 	bool CreateOutputTexture(int width, int height, DXGI_FORMAT dxformat);
 #endif
 
-	void LoadTouchEngine();
 	void ResumeTouchEngine();
 	void GetAllParameters();
 	void CreateIndividualParameter(const TouchObject<TELinkInfo>& linkInfo);
 	void CreateParametersFromGroup(const TouchObject<TELinkInfo>& linkInfo);
 	void ClearTouchInstance();
-	void eventCallback(TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale);
-	void linkCallback(TELinkEvent event, const char* identifier);
-
-	static void eventCallbackStatic(TEInstance* instance, TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale, void* info);
-	static void linkCallbackStatic(TEInstance* instance, TELinkEvent event, const char* identifier, void* info);
+	void eventCallback(TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale) override;
 };

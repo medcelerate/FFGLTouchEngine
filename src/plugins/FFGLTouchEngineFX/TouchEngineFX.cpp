@@ -606,39 +606,6 @@ char* FFGLTouchEngineFX::GetTextParameter(unsigned int dwIndex) {
 
 	return (char*)ParameterMapString[dwIndex].c_str();
 }
-
-bool FFGLTouchEngineFX::LoadTEGraphicsContext(bool reload)
-{
-	if (isGraphicsContextLoaded && !reload) {
-		return true;
-	}
-
-	if (instance == nullptr) {
-		return false;
-	}
-	
-
-	// Load the TouchEngine graphics context
-
-#ifdef _WIN32
-	if (D3DDevice == nullptr) {
-		FFGLLog::LogToHost("D3D11 Device Not Available, You Probably Failed Somewhere...In Your Life");
-	}
-
-	TEResult result = TED3D11ContextCreate(D3DDevice.Get(), D3DContext.take());
-	if (result != TEResultSuccess) {
-		return false;
-	}
-
-	result = TEInstanceAssociateGraphicsContext(instance, D3DContext);
-	if (result != TEResultSuccess)
-	{
-		return false;
-	}
-	isGraphicsContextLoaded = true;
-#endif
-	return isGraphicsContextLoaded;
-}
 /*
 bool FFGLTouchEngineFX::CreateInputTexture(int width, int height, DXGI_FORMAT dxformat) {
 	// Create the input texture
@@ -1288,24 +1255,6 @@ void FFGLTouchEngineFX::CreateParametersFromGroup(const TouchObject<TELinkInfo>&
 
 }
 
-
-void FFGLTouchEngineFX::LoadTouchEngine() {
-
-	if (instance == nullptr) {
-
-		FFGLLog::LogToHost("Loading TouchEngine");
-		TEResult result = TEInstanceCreate(eventCallbackStatic, linkCallbackStatic, this, instance.take());
-		if (result != TEResultSuccess)
-		{
-			FFGLLog::LogToHost("Failed to create TouchEngine instance");
-			instance.reset();
-			return;
-		}
-
-	}
-
-}
-
 void FFGLTouchEngineFX::ResumeTouchEngine() {
 	TEResult result = TEInstanceResume(instance);
 	if (result != TEResultSuccess)
@@ -1400,42 +1349,18 @@ void FFGLTouchEngineFX::eventCallback(TEEvent event, TEResult result, int64_t st
 		}
 		// The tox file has been loaded into the TouchEngine
 		break;
-	case TEEventFrameDidFinish: {
+	case TEEventFrameDidFinish:
 		isTouchFrameBusy = false;
 		// A frame has finished rendering
 		break;
-	}
-	case TEEventInstanceReady: {
+	case TEEventInstanceReady:
 		FFGLLog::LogToHost("TouchEngine Ready");
 		isTouchEngineReady = true;
 		// The TouchEngine is ready to start rendering frames
 		break;
-	}
-	case TEEventInstanceDidUnload: {
+	case TEEventInstanceDidUnload:
 		FFGLLog::LogToHost("TouchEngine Unloaded");
 		isTouchEngineLoaded = false;
 		break;
 	}
-	}
-}
-
-void FFGLTouchEngineFX::linkCallback(TELinkEvent event, const char* identifier)
-{
-	switch (event) {
-	case TELinkEventAdded:
-		// A link has been added
-		break;
-	case TELinkEventValueChange:
-		break;
-	}
-}
-
-void FFGLTouchEngineFX::eventCallbackStatic(TEInstance* instance, TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale, void* info)
-{
-	static_cast<FFGLTouchEngineFX*>(info)->eventCallback(event, result, start_time_value, start_time_scale, end_time_value, end_time_scale);
-}
-
-void FFGLTouchEngineFX::linkCallbackStatic(TEInstance* instance, TELinkEvent event, const char* identifier, void* info)
-{
-	static_cast<FFGLTouchEngineFX*>(info)->linkCallback(event, identifier);
 }

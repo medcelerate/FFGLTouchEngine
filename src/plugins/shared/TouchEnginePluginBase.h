@@ -71,7 +71,14 @@ protected:
 	FFResult InitializeDevice();
 	FFResult InitializeShader(const std::string& vertexShaderCode, const std::string& fragmentShaderCode);
 
+	bool LoadTEGraphicsContext(bool Reload);
 	bool LoadTEFile();
+
+	virtual void LoadTouchEngine();
+	// virtual void ResumeTouchEngine() = 0;
+
+	virtual void eventCallback(TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale) = 0;
+	virtual void linkCallback(TELinkEvent event, const char* identifier);
 
 	TouchObject<TEInstance> instance;
 #ifdef _WIN32
@@ -120,4 +127,7 @@ protected:
 
 	ffglex::FFGLShader shader;  //!< Utility to help us compile and link some shaders into a program.
 	ffglex::FFGLScreenQuad quad;//!< Utility to help us render a full screen quad.
+
+	static void eventCallbackStatic(TEInstance* instance, TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale, void* info);
+	static void linkCallbackStatic(TEInstance* instance, TELinkEvent event, const char* identifier, void* info);
 };

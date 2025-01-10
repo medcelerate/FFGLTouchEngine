@@ -83,8 +83,8 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 
 
 #ifdef _WIN32
-	SpoutID = GenerateRandomString(15);
-	SpoutTexture = 0;
+	SpoutIDOutput = GenerateRandomString(15);
+	SpoutTextureOutput = 0;
 #endif
 
 	result = InitializeShader(vertexShaderCode, fragmentShaderCode);
@@ -100,7 +100,7 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 
 	if (FilePath.empty())
 	{
-		return CFFGLPlugin::InitGL(vp);;
+		return CFFGLPlugin::InitGL(vp);
 	}
 
 	bool Status = LoadTEFile();
@@ -146,8 +146,8 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 				RawTextureToSend->GetDesc(&RawTextureDesc);
 
-				if (!isInteropInitialized) {
-					OutputInterop.SetSenderName(SpoutID.c_str());
+				if (!OutputInteropInitialized) {
+					OutputInterop.SetSenderName(SpoutIDOutput.c_str());
 
 					if (!OutputInterop.OpenDirectX11(D3DDevice.Get())) {
 						return FailAndLog("Failed to open DirectX11");
@@ -163,9 +163,9 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 						return FailAndLog("Failed to create DX11 texture");
 					}
 
-					InitializeGlTexture(SpoutTexture, OutputWidth, OutputHeight, GetGlType(RawTextureDesc.Format));
+					InitializeGlTexture(SpoutTextureOutput, OutputWidth, OutputHeight, GetGlType(RawTextureDesc.Format));
 
-					isInteropInitialized = true;
+					OutputInteropInitialized = true;
 				}
 
 				if (
@@ -186,7 +186,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 					OutputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), OutputWidth, OutputHeight, RawTextureDesc.Format, &D3DTextureOutput);
 
-					InitializeGlTexture(SpoutTexture, OutputWidth, OutputHeight, GetGlType(RawTextureDesc.Format));
+					InitializeGlTexture(SpoutTextureOutput, OutputWidth, OutputHeight, GetGlType(RawTextureDesc.Format));
 				}
 
 				IDXGIKeyedMutex* keyedMutex;
@@ -233,13 +233,13 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 		}
 
-		OutputInterop.ReadGLDXtexture(SpoutTexture, GL_TEXTURE_2D, OutputWidth, OutputHeight, true, pGL->HostFBO);
+		OutputInterop.ReadGLDXtexture(SpoutTextureOutput, GL_TEXTURE_2D, OutputWidth, OutputHeight, true, pGL->HostFBO);
 
 		//Receiver the texture from spout
 
 		ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
 		ffglex::ScopedSamplerActivation activateSampler(0);
-		ffglex::Scoped2DTextureBinding textureBinding(SpoutTexture);
+		ffglex::Scoped2DTextureBinding textureBinding(SpoutTextureOutput);
 		shader.Set("InputTexture", 0);
 		shader.Set("MaxUV", 1.0f, 1.0f);
 		quad.Draw();
@@ -341,7 +341,7 @@ FFResult FFGLTouchEngine::DeInitGL()
 	}
 
 #ifdef _WIN32
-	if (isInteropInitialized) {
+	if (OutputInteropInitialized) {
 		OutputInterop.CleanupInterop();
 		OutputInterop.CloseDirectX();
 	}
@@ -473,7 +473,7 @@ void FFGLTouchEngine::ClearTouchInstance() {
 			TEInstanceUnload(instance);
 		}
 #ifdef _WIN32
-		isInteropInitialized = !OutputInterop.CleanupInterop();
+		OutputInteropInitialized = !OutputInterop.CleanupInterop();
 		D3DContext.reset();
 #endif
 		instance.reset();

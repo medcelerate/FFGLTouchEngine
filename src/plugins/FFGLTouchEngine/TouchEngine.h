@@ -33,14 +33,14 @@ private:
 
 #ifdef _WIN32
 	//Spout Configs
-	std::string SpoutID;
+	std::string SpoutIDOutput;
 	Spout OutputInterop;
-	bool isInteropInitialized = false;
+	bool OutputInteropInitialized = false;
 #endif
 
 
 #ifdef _WIN32
-	GLuint SpoutTexture = 0;
+	GLuint SpoutTextureOutput = 0;
 #endif
 
 	bool CreateInputTexture(int width, int height);

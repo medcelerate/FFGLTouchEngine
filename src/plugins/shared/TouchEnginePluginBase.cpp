@@ -417,7 +417,6 @@ void FFGLTouchEnginePluginBase::ResetBaseParameters() {
 	ParameterMapString.clear();
 	ParameterMapBool.clear();
 	Parameters.clear();
-	return;
 }
 
 void FFGLTouchEnginePluginBase::GetAllParameters() {

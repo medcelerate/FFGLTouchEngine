@@ -41,81 +41,8 @@ void main()
 }
 )";
 
-std::string GetSeverityString(TESeverity severity) {
-	switch (severity)
-	{
-	case TESeverityWarning:
-		return "Warning";
-	case TESeverityError:
-		return "Error";
-	default:
-		return "Unknown";
-	}
-
-}
-
-std::string GenerateRandomString(size_t length)
-{
-	auto randchar = []() -> char
-		{
-			const char charset[] =
-				"0123456789"
-				"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-				"abcdefghijklmnopqrstuvwxyz";
-			const size_t max_index = (sizeof(charset) - 1);
-			return charset[rand() % max_index];
-		};
-	std::string str(length, 0);
-	std::generate_n(str.begin(), length, randchar);
-	return str;
-}
-
-FFResult FailAndLog(std::string msg) {
-
-	FFGLLog::LogToHost(msg.c_str());
-	return FF_FAIL;
-}
-
-
-#ifdef _WIN32
-DXGI_FORMAT GlToDXFromat(GLint format) {
-
-	switch (format) {
-	case GL_RGBA8:
-		return DXGI_FORMAT_B8G8R8A8_UNORM;
-
-	case GL_RGBA16:
-		return DXGI_FORMAT_R16G16B16A16_UNORM;
-	}
-}
-#endif
-
-GLenum GetGlType(GLint format) {
-	switch (format) {
-	case GL_UNSIGNED_BYTE:
-		return GL_RGBA;
-	case GL_RGBA16:
-		return GL_UNSIGNED_SHORT;
-	}
-}
-
-#ifdef _WIN32
-GLenum GetGlType(DXGI_FORMAT format) {
-	switch (format) {
-	case DXGI_FORMAT_B8G8R8A8_UNORM:
-		return GL_UNSIGNED_BYTE;
-	case DXGI_FORMAT_R16G16B16A16_UNORM:
-		return GL_UNSIGNED_SHORT;
-	case DXGI_FORMAT_R32G32B32A32_FLOAT:
-		return GL_FLOAT;
-	default:
-		return GL_UNSIGNED_BYTE;
-	}
-}
-#endif
-
 FFGLTouchEngine::FFGLTouchEngine()
-	: CFFGLPlugin()
+	: FFGLTouchEnginePluginBase()
 {
 	// Input properties
 	SetMinInputs(0);
@@ -149,10 +76,10 @@ FFGLTouchEngine::~FFGLTouchEngine()
 		TEInstanceUnload(instance);
 	}
 #ifdef __APPLE__
-    if (pDevice != nullptr) {
-        pDevice->release();
-        pDevice = nullptr;
-    }
+	if (pDevice != nullptr) {
+		pDevice->release();
+		pDevice = nullptr;
+	}
 #endif
 
 
@@ -211,7 +138,6 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 	// Create the input texture
 
 	// Set the viewport size
-
 	OutputWidth = vp->width;
 	OutputHeight = vp->height;
 
@@ -571,7 +497,7 @@ float FFGLTouchEngine::GetFloatParameter(unsigned int dwIndex) {
 	FFUInt32 type = ParameterMapType[dwIndex];
 
 	if (type == FF_TYPE_INTEGER) {
-		return ParameterMapInt[dwIndex];
+		return static_cast<float>(ParameterMapInt[dwIndex]);
 	}
 
 	if (type == FF_TYPE_BOOLEAN || type == FF_TYPE_EVENT) {
@@ -579,7 +505,7 @@ float FFGLTouchEngine::GetFloatParameter(unsigned int dwIndex) {
 	}
 
 
-	return ParameterMapFloat[dwIndex];
+	return static_cast<float>(ParameterMapFloat[dwIndex]);
 }
 
 char* FFGLTouchEngine::GetTextParameter(unsigned int dwIndex) {

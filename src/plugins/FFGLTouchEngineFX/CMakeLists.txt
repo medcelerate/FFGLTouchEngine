@@ -4,6 +4,8 @@ target_sources(FFGLTouchEngineFX PRIVATE
     TouchEngineFX.cpp
     ../../lib/FFGL/FFGLSDK.h
     ../../lib/FFGL/FFGLSDK.cpp
+    ../shared/TouchEnginePluginBase.h
+    ../shared/TouchEnginePluginBase.cpp
 )
 
 
@@ -35,6 +37,7 @@ endif()
 target_include_directories(FFGLTouchEngineFX PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../../include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../lib>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../plugins/shared>
     $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(FFGLTouchEngineFX PUBLIC OpenGL::GL)

@@ -7,12 +7,18 @@
     <ClCompile Include="S:\creations\ffgltd\FFGLTouchEngine\src\lib\FFGL\FFGLSDK.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="S:\creations\ffgltd\FFGLTouchEngine\src\plugins\shared\TouchEnginePluginBase.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="S:\creations\ffgltd\FFGLTouchEngine\src\plugins\FFGLTouchEngine\TouchEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="S:\creations\ffgltd\FFGLTouchEngine\src\lib\FFGL\FFGLSDK.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="S:\creations\ffgltd\FFGLTouchEngine\src\plugins\shared\TouchEnginePluginBase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

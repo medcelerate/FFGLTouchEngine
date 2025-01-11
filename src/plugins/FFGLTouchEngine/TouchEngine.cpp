@@ -254,67 +254,12 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 	isTouchFrameBusy = true;
 
-	for (auto& param : Parameters) {
-		FFUInt32 type = ParameterMapType[param.second];
-
-		if (ActiveVectorParams.find(param.second) != ActiveVectorParams.end()) {
-			continue;
-		}
-
-		if (type == FF_TYPE_STANDARD) {
-			TEResult result = TEInstanceLinkSetDoubleValue(instance, param.first.c_str(), &ParameterMapFloat[param.second], 1);
-			if (result != TEResultSuccess)
-			{
-				isTouchFrameBusy = false;
-				return FailAndLog("Failed to set double value");
-			}
-		}
-
-		if (type == FF_TYPE_INTEGER || type == FF_TYPE_OPTION) {
-			TEResult result = TEInstanceLinkSetIntValue(instance, param.first.c_str(), &ParameterMapInt[param.second], 1);
-			if (result != TEResultSuccess)
-			{
-				isTouchFrameBusy = false;
-				return FailAndLog("Failed to set int value");
-			}
-		}
-
-
-		if (type == FF_TYPE_BOOLEAN || type == FF_TYPE_EVENT) {
-			TEResult result = TEInstanceLinkSetBooleanValue(instance, param.first.c_str(), ParameterMapBool[param.second]);
-			if (result != TEResultSuccess)
-			{
-				isTouchFrameBusy = false;
-				return FailAndLog("Failed to set boolean value");
-			}
-		}
-
-		if (type == FF_TYPE_TEXT) {
-			TEResult result = TEInstanceLinkSetStringValue(instance, param.first.c_str(), ParameterMapString[param.second].c_str());
-			if (result != TEResultSuccess)
-			{
-				isTouchFrameBusy = false;
-				return FailAndLog("Failed to set string value");
-			}
-		}
-
+	FFResult pushResult = PushParametersToTouchEngine();
+	if (pushResult != FF_SUCCESS)
+	{
+		return pushResult;
 	}
 
-	for (auto& param : VectorParameters) {
-		double values[4] = { 0,0,0,0 };
-
-		for (uint8_t i = 0; i < param.count; i++) {
-			values[i] = ParameterMapFloat[param.children[i]];
-		}
-
-		TEResult result = TEInstanceLinkSetDoubleValue(instance, param.identifier.c_str(), values, param.count);
-		if (result != TEResultSuccess)
-		{
-			isTouchFrameBusy = false;
-			return FailAndLog("Failed to set int value");
-		}
-
-	}
 		TEResult result = TEInstanceStartFrameAtTime(instance, FrameCount, 60, false);
 		if (result != TEResultSuccess)
 		{

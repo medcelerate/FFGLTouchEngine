@@ -73,6 +73,8 @@ protected:
 
 	void InitializeGlTexture(GLuint& texture, uint16_t width, uint16_t height, GLenum type);
 
+	FFResult PushParametersToTouchEngine();
+
 	bool LoadTEGraphicsContext(bool Reload);
 	bool LoadTEFile();
 

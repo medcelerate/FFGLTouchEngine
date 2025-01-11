@@ -41,7 +41,7 @@ if (EXISTS CACHE{VCPKG_MANIFEST_FILE})
 endif()
 
 # Specify the C++ standard
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # we need glew (except on macOS)

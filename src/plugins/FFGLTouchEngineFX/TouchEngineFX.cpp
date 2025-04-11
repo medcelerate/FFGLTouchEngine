@@ -46,6 +46,11 @@ void main()
 #ifdef _WIN32
 void textureCallback(TED3D11Texture* texture, TEObjectEvent event, void* info)
 {
+	if (event == TEObjectEventRelease) {
+		// Release the texture
+		FFGLLog::LogToHost("Releasing texture");
+	}
+	FFGLLog::LogToHost("Texture callback called");
 	return;
 }
 #endif
@@ -122,7 +127,13 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 	if (!isTouchEngineLoaded || !isTouchEngineReady || isTouchFrameBusy)
 	{
-		return FF_SUCCESS;
+		ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
+		ffglex::ScopedSamplerActivation activateSampler(0);
+		ffglex::Scoped2DTextureBinding textureBinding(SpoutTextureOutput);
+		shader.Set("InputTexture", 0);
+		shader.Set("MaxUV", 1.0f, 1.0f);
+		quad.Draw();
+		return FF_FAIL;
 	}
 
 	if (pGL->numInputTextures < 1) {
@@ -137,6 +148,12 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		return FF_FAIL;
 	}
 
+	shader.Set("InputTexture", 0);
+	FFGLTexCoords maxCoords = GetMaxGLTexCoords(*pGL->inputTextures[0]);
+	shader.Set("MaxUV", maxCoords.s, maxCoords.t);
+	quad.Draw();
+
+	//Iss
 
 	if (hasVideoOutput) {
 		TouchObject<TETexture> TETextureToSend;
@@ -163,7 +180,12 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 				RawTextureToSend->GetDesc(&RawTextureDesc);
 
-				if (!OutputInteropInitialized) {
+				if (!OutputInteropInitialized || RawTextureDesc.Width != OutputWidth
+					|| RawTextureDesc.Height != OutputHeight
+					|| RawTextureDesc.Format != DXFormat) {
+
+					OutputWidth = RawTextureDesc.Width;
+					OutputHeight = RawTextureDesc.Height;
 
 					OutputInterop.SetSenderName(SpoutIDOutput.c_str());
 
@@ -187,29 +209,6 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 					OutputInteropInitialized = true;
 				}
 
-				if (
-					RawTextureDesc.Width != OutputWidth
-					|| RawTextureDesc.Height != OutputHeight
-					|| RawTextureDesc.Format != DXFormat
-					) {
-					OutputWidth = RawTextureDesc.Width;
-					OutputHeight = RawTextureDesc.Height;
-
-					if (!OutputInterop.CleanupInterop()) {
-						return FailAndLog("Failed to cleanup interop");
-					}
-
-					if (!OutputInterop.CreateInterop(OutputWidth, OutputHeight, RawTextureDesc.Format, false)) {
-						return FailAndLog("Failed to create interop");
-					}
-
-					OutputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), OutputWidth, OutputHeight, RawTextureDesc.Format, &D3DTextureOutput);
-
-					InitializeGlTexture(SpoutTextureOutput, OutputWidth, OutputHeight, GetGlType(RawTextureDesc.Format));
-
-					DXFormat = RawTextureDesc.Format;
-
-				}
 
 
 				IDXGIKeyedMutex* keyedMutex;
@@ -276,7 +275,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		return pushResult;
 	}
 
-	TouchObject<TETexture> TETextureToReceive;
+
 	if (hasVideoInput) {
 		
 		//Basic functions to get data out of resolume and into a texture.
@@ -284,31 +283,23 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		ffglex::ScopedSamplerActivation activateSampler(0);
 		ffglex::Scoped2DTextureBinding textureBinding(pGL->inputTextures[0]->Handle);
 
-		shader.Set("InputTexture", 0);
+		/*shader.Set("InputTexture", 0);
 		FFGLTexCoords maxCoords = GetMaxGLTexCoords(*pGL->inputTextures[0]);
 		shader.Set("MaxUV", maxCoords.s, maxCoords.t);
-		quad.Draw();
+		quad.Draw();*/
 
 		GLint InputFormat = 0;
 		glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &InputFormat);
 
 		
-		if (!InputInteropInitialized) {
+		if (!InputInteropInitialized || InputWidth != pGL->inputTextures[0]->Width
+			|| InputHeight != pGL->inputTextures[0]->Height
+			|| InputFormat != GLFormat) {
 
 			InputWidth = pGL->inputTextures[0]->Width;
 			InputHeight = pGL->inputTextures[0]->Height;
 #ifdef _WIN32
-			/*
-			DXGI_FORMAT texformat = DXOutputFormat;
 
-			if (!InputInterop.CreateInterop(InputWidth, InputHeight, texformat, false)) {
-				return FailAndLog("Failed to create interop");
-			}
-
-			if(!InputInterop.frame.CreateAccessMutex(SpoutID.c_str())) {
-				return FailAndLog("Failed to create access mutex");
-			}
-			*/
 
 			InputInterop.SetSenderName(SpoutIDInput.c_str());
 
@@ -330,32 +321,9 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 			InputInteropInitialized = true;
 #endif
-		}
-
-		if (
-			InputWidth != pGL->inputTextures[0]->Width
-			|| InputHeight != pGL->inputTextures[0]->Height
-			|| InputFormat != GLFormat
-		) {
-
-			InputWidth = pGL->inputTextures[0]->Width;
-			InputHeight = pGL->inputTextures[0]->Height;
-
-#ifdef _WIN32
-			if (!InputInterop.CleanupInterop()) {
-				return FailAndLog("Failed to cleanup interop");
-			}
-
-			if (!InputInterop.CreateInterop(InputWidth, InputHeight, GlToDXFromat(InputFormat), false)) {
-				return FailAndLog("Failed to create interop");
-			}
-
-			InputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), InputWidth, InputHeight, GlToDXFromat(InputFormat), &D3DTextureInput);
-
-			InitializeGlTexture(SpoutTextureInput, InputWidth, InputHeight, GetGlType(InputFormat));
-#endif
 			GLFormat = InputFormat;
 		}
+
 
 #ifdef _WIN32
 		InputInterop.WriteGLDXtexture(pGL->inputTextures[0]->Handle, GL_TEXTURE_2D, InputWidth, InputHeight, true, pGL->HostFBO);

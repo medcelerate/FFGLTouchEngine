@@ -1,0 +1,103 @@
+name: Bug Report
+description: Report a bug with the TouchDesigner plugin
+title: "[Bug] "
+labels: [bug]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ⚠️ Please fill out **all** required fields below to help us resolve your issue faster.
+
+  - type: textarea
+    id: issue-description
+    attributes:
+      label: Issue Description
+      description: Describe the problem you're experiencing.
+      placeholder: e.g. Plugin crashes when loading a specific .toe file.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Describe how to reproduce the issue step-by-step.
+      placeholder: |
+        1. Open TouchDesigner
+        2. Load the plugin
+        3. Do X
+        4. See error
+    validations:
+      required: true
+
+  - type: input
+    id: log-file-location
+    attributes:
+      label: Log File Location (Paste Path or URL)
+      description: If you cannot upload, paste a path or shareable URL for your log file.
+      placeholder: e.g. C:\Users\YourName\Documents\TouchDesigner\log.txt or https://gist.github.com/yourgist
+    validations:
+      required: true
+
+  - type: file
+    id: upload-log-file
+    attributes:
+      label: Upload Log File
+      description: Upload the log file relevant to the issue.
+      multiple: false
+    validations:
+      required: true
+
+  - type: file
+    id: upload-toe
+    attributes:
+      label: Upload TouchDesigner (.toe) File
+      description: Upload the project file demonstrating the issue.
+      multiple: false
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin Version
+      description: What version of the plugin are you using?
+      placeholder: e.g. v1.2.3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: windows-version
+    attributes:
+      label: Windows Version
+      description: What version of Windows are you using?
+      options:
+        - Windows 11
+        - Windows 10
+        - Windows 8.1
+        - Windows 7
+        - Other (please specify in description)
+    validations:
+      required: true
+
+  - type: input
+    id: resolume-version
+    attributes:
+      label: Resolume Version
+      description: What version of Resolume are you using?
+      placeholder: e.g. 7.16.1
+    validations:
+      required: true
+
+  - type: checkbox
+    id: latest-version-confirmation
+    attributes:
+      label: Plugin Version Confirmation
+      description: |
+        Please confirm you are using the latest version of the plugin.
+      options:
+        - label: I confirm that I am using the latest version of the plugin.
+    validations:
+      required: true

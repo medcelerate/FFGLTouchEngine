@@ -41,20 +41,20 @@ body:
     validations:
       required: true
 
-  - type: file
+  - type: textarea
     id: upload-log-file
     attributes:
-      label: Upload Log File
+      label: Paste Resolume Log File
       description: Upload the log file relevant to the issue.
       multiple: false
     validations:
       required: true
 
-  - type: file
+  - type: input
     id: upload-toe
     attributes:
       label: Upload TouchDesigner (.toe) File
-      description: Upload the project file demonstrating the issue.
+      description: Attach a link to the TOE file you are having issues with.
       multiple: false
     validations:
       required: true

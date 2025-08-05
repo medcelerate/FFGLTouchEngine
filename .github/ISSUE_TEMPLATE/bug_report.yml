@@ -46,7 +46,6 @@ body:
     attributes:
       label: Paste Resolume Log File
       description: Upload the log file relevant to the issue.
-      multiple: false
     validations:
       required: true
 
@@ -55,7 +54,6 @@ body:
     attributes:
       label: Upload TouchDesigner (.toe) File
       description: Attach a link to the TOE file you are having issues with.
-      multiple: false
     validations:
       required: true
 

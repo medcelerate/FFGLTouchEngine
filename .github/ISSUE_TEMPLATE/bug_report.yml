@@ -89,7 +89,7 @@ body:
     validations:
       required: true
 
-  - type: checkbox
+  - type: checkboxes
     id: latest-version-confirmation
     attributes:
       label: Plugin Version Confirmation

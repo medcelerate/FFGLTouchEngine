@@ -25,6 +25,8 @@ To install, download the ZIP file and place all 3 DLLs in the same directory.
 - Commercial
 - Pro
 
+### TouchEngine & Resolume must run on the same GPU.
+
 ---
 
 ### Tests

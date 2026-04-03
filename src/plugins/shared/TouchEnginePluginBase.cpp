@@ -606,6 +606,9 @@ void FFGLTouchEnginePluginBase::CreateIndividualParameter(const TouchObject<TELi
 
 
 
+			// Map color RGBA to FFGL color picker types so Resolume shows a color picker
+			static const FFUInt32 colorTypes[] = { FF_TYPE_RED, FF_TYPE_GREEN, FF_TYPE_BLUE, FF_TYPE_ALPHA };
+
 			for (uint32_t i = 0; i < linkInfo->count; i++) {
 				uint32_t ParamID = Parameters.size() + OffsetParamsByType;
 				Parameters.push_back(std::make_pair(std::string(linkInfo->identifier) + (char)0x03 + std::to_string(i), ParamID));
@@ -613,9 +616,13 @@ void FFGLTouchEnginePluginBase::CreateIndividualParameter(const TouchObject<TELi
 				ActiveVectorParams.insert(ParamID);
 				info.children[i] = ParamID;
 
-				ParameterMapType[ParamID] = FF_TYPE_STANDARD;
-
-				SetParamDisplayName(ParamID, linkInfo->label + std::string(".") + Suffix[i], true);
+				if (linkInfo->intent == TELinkIntentColorRGBA && i < 4) {
+					ParameterMapType[ParamID] = colorTypes[i];
+					SetParamInfof(ParamID, (linkInfo->label + std::string(".") + Suffix[i]).c_str(), colorTypes[i]);
+				} else {
+					ParameterMapType[ParamID] = FF_TYPE_STANDARD;
+					SetParamDisplayName(ParamID, linkInfo->label + std::string(".") + Suffix[i], true);
+				}
 
 				SetParamRange(ParamID, min[i], max[i]);
 				RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);

@@ -428,6 +428,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 		InputInterop.ReadTexture(D3DTextureInput.GetAddressOf());
 
+		TouchObject<TED3D11Texture> TETextureToReceive;
 		TETextureToReceive.take(TED3D11TextureCreate(D3DTextureInput.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
 
 		TEResult result = TEInstanceLinkSetTextureValue(instance, InputOpName.c_str(), TETextureToReceive, D3DContext);

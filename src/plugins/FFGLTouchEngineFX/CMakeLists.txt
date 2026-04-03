@@ -1,4 +1,19 @@
-add_library(FFGLTouchEngineFX SHARED)
+if (APPLE)
+    # On macOS, FFGL plugins must be .bundle (loadable bundles)
+    add_library(FFGLTouchEngineFX MODULE)
+    set_target_properties(FFGLTouchEngineFX PROPERTIES
+        BUNDLE TRUE
+        BUNDLE_EXTENSION "bundle"
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/BundleInfo.plist.in"
+        MACOSX_BUNDLE_BUNDLE_NAME "FFGLTouchEngineFX"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.evanclark.FFGLTouchEngineFX"
+        MACOSX_BUNDLE_BUNDLE_VERSION "1.0"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0"
+    )
+else()
+    add_library(FFGLTouchEngineFX SHARED)
+endif()
+
 target_sources(FFGLTouchEngineFX PRIVATE
     TouchEngineFX.h
     TouchEngineFX.cpp
@@ -7,7 +22,6 @@ target_sources(FFGLTouchEngineFX PRIVATE
     ../shared/TouchEnginePluginBase.h
     ../shared/TouchEnginePluginBase.cpp
 )
-
 
 if (WIN32)
     target_link_directories(FFGLTouchEngineFX PUBLIC
@@ -22,18 +36,35 @@ if (WIN32)
     )
 endif()
 if (APPLE)
+    # Link TouchEngine.framework from lib/TouchEngine
+    set(TOUCHENGINE_FRAMEWORK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/TouchEngine/TouchEngine.framework")
     target_link_libraries(FFGLTouchEngineFX PRIVATE
-         "-framework TouchEngine"
-         "-framework Foundation"
-         "-framework QuartzCore"
-         "-framework Metal")
-    set_target_properties(FFGLTouchEngineFX PROPERTIES
-        XCODE_ATTRIBUTE_FRAMEWORK_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/TouchEngine 
+        "${TOUCHENGINE_FRAMEWORK_PATH}"
+        "-framework OpenGL"
+        "-framework Metal"
+        "-framework IOSurface"
+        "-framework CoreFoundation"
+        "-framework QuartzCore"
+        "-framework Foundation"
     )
-    target_include_directories(FFGLTouchEngineFX PUBLIC
+    # Framework search path so the linker/runtime can find TouchEngine.framework
+    set_target_properties(FFGLTouchEngineFX PROPERTIES
+        XCODE_ATTRIBUTE_FRAMEWORK_SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/TouchEngine"
+        BUILD_RPATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/TouchEngine"
+        INSTALL_RPATH "@loader_path/../Frameworks"
+    )
+    target_include_directories(FFGLTouchEngineFX PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../lib/metal-cpp
     )
+    # TEMetal.h uses #import <Metal/Metal.h> which requires Obj-C++
+    set_source_files_properties(
+        TouchEngineFX.cpp
+        ../shared/TouchEnginePluginBase.cpp
+        ../../lib/FFGL/FFGLSDK.cpp
+        PROPERTIES COMPILE_FLAGS "-x objective-c++"
+    )
 endif()
+
 target_include_directories(FFGLTouchEngineFX PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../../include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../lib>

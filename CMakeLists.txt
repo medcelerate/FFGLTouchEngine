@@ -58,4 +58,13 @@ if (WIN32)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
 endif()
 
+if (APPLE)
+    # On macOS, FFGL plugins are loaded as bundles by Resolume
+    set(CMAKE_MACOSX_BUNDLE YES)
+    # Set deployment target
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING "Minimum macOS version")
+    # Silence OpenGL deprecation warnings (OpenGL is deprecated on macOS but required by FFGL)
+    add_compile_definitions(GL_SILENCE_DEPRECATION)
+endif()
+
 add_subdirectory(src/plugins)

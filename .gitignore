@@ -381,3 +381,7 @@ XCBuildData
 CMakeCache.txt
 CMakeFiles
 cmake_install.cmake
+
+# CMake build directories
+build-mac/
+build/

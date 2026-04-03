@@ -43,6 +43,38 @@ void main()
 }
 )";
 
+#ifdef __APPLE__
+// Rectangle textures use pixel coordinates, not normalized 0-1 UVs
+static const char rectVertexShaderCode[] = R"(#version 410 core
+layout( location = 0 ) in vec4 vPosition;
+layout( location = 1 ) in vec2 vUV;
+
+uniform vec2 TextureSize;
+
+out vec2 uv;
+
+void main()
+{
+	gl_Position = vPosition;
+	uv = vUV * TextureSize;
+}
+)";
+
+static const char rectFragmentShaderCode[] = R"(#version 410 core
+uniform sampler2DRect InputTexture;
+
+in vec2 uv;
+out vec4 fragColor;
+
+void main()
+{
+	vec4 color = texture( InputTexture, uv );
+	// IOSurface comes as BGRA, swizzle to RGBA
+	fragColor = color.bgra;
+}
+)";
+#endif
+
 #ifdef _WIN32
 void textureCallback(TED3D11Texture* texture, TEObjectEvent event, void* info)
 {
@@ -101,6 +133,13 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 		return result;
 	}
 
+#ifdef __APPLE__
+	if (!rectShader.Compile(rectVertexShaderCode, rectFragmentShaderCode)) {
+		DeInitGL();
+		return FailAndLog("Failed to compile rectangle shader");
+	}
+#endif
+
 	// Set the viewport size
 	OutputWidth = vp->width;
 	OutputHeight = vp->height;
@@ -127,12 +166,14 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 	if (!isTouchEngineLoaded || !isTouchEngineReady || isTouchFrameBusy)
 	{
+#ifdef _WIN32
 		ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
 		ffglex::ScopedSamplerActivation activateSampler(0);
 		ffglex::Scoped2DTextureBinding textureBinding(SpoutTextureOutput);
 		shader.Set("InputTexture", 0);
 		shader.Set("MaxUV", 1.0f, 1.0f);
 		quad.Draw();
+#endif
 		return FF_FAIL;
 	}
 
@@ -261,6 +302,48 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		shader.Set("MaxUV", 1.0f, 1.0f);
 		quad.Draw();
 #endif
+
+#ifdef __APPLE__
+		if (result == TEResultSuccess && TETextureToSend != nullptr) {
+			TETextureType texType = TETextureGetType(TETextureToSend);
+
+			IOSurfaceRef surface = nullptr;
+
+			if (texType == TETextureTypeIOSurface) {
+				surface = TEIOSurfaceTextureGetSurface(static_cast<TEIOSurfaceTexture*>(TETextureToSend.get()));
+			}
+
+			if (surface != nullptr) {
+				int texWidth = (int)IOSurfaceGetWidth(surface);
+				int texHeight = (int)IOSurfaceGetHeight(surface);
+
+				if (texWidth != OutputWidth || texHeight != OutputHeight) {
+					OutputWidth = texWidth;
+					OutputHeight = texHeight;
+				}
+
+				// Clean up previous GL texture
+				if (OutputTextureGL != 0) {
+					glDeleteTextures(1, &OutputTextureGL);
+					OutputTextureGL = 0;
+				}
+
+				OutputTextureGL = CreateOpenGLTextureFromIOSurface(surface, OutputWidth, OutputHeight);
+
+				if (OutputTextureGL != 0) {
+					result = TEInstanceAddTextureTransfer(instance, TETextureToSend, nullptr, 0);
+
+					ffglex::ScopedShaderBinding shaderBinding(rectShader.GetGLID());
+					ffglex::ScopedSamplerActivation activateSampler(0);
+					glBindTexture(GL_TEXTURE_RECTANGLE, OutputTextureGL);
+					rectShader.Set("InputTexture", 0);
+					rectShader.Set("TextureSize", (float)OutputWidth, (float)OutputHeight);
+					quad.Draw();
+					glBindTexture(GL_TEXTURE_RECTANGLE, 0);
+				}
+			}
+		}
+#endif
 	}
 
 
@@ -277,7 +360,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 
 	if (hasVideoInput) {
-		
+
 		//Basic functions to get data out of resolume and into a texture.
 		ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
 		ffglex::ScopedSamplerActivation activateSampler(0);
@@ -291,7 +374,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		GLint InputFormat = 0;
 		glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &InputFormat);
 
-		
+
 		if (!InputInteropInitialized || InputWidth != pGL->inputTextures[0]->Width
 			|| InputHeight != pGL->inputTextures[0]->Height
 			|| InputFormat != GLFormat) {
@@ -321,13 +404,26 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 			InputInteropInitialized = true;
 #endif
+
+#ifdef __APPLE__
+			// Create or recreate the IOSurface for input texture sharing
+			if (InputIOSurface != nullptr) {
+				CFRelease(InputIOSurface);
+				InputIOSurface = nullptr;
+			}
+			InputIOSurface = CreateIOSurface(InputWidth, InputHeight);
+			if (InputIOSurface == nullptr) {
+				return FailAndLog("Failed to create IOSurface for input");
+			}
+			InputInteropInitialized = true;
+#endif
 			GLFormat = InputFormat;
 		}
 
 
 #ifdef _WIN32
 		InputInterop.WriteGLDXtexture(pGL->inputTextures[0]->Handle, GL_TEXTURE_2D, InputWidth, InputHeight, true, pGL->HostFBO);
-		
+
 		InputInterop.ReadTexture(D3DTextureInput.GetAddressOf());
 
 		//Creates a TETexture from the D3D11 texture
@@ -336,11 +432,80 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 		//Sets the texture to the input of the TouchEngine instance
 		TEResult result = TEInstanceLinkSetTextureValue(instance, "op/in1", TETextureToReceive, D3DContext);
-		
+
 		if (result != TEResultSuccess)
 		{
 			isTouchFrameBusy = false;
 			return FF_FAIL;
+		}
+#endif
+
+#ifdef __APPLE__
+		if (InputIOSurface != nullptr) {
+			// Bind the IOSurface as an OpenGL texture and copy the input into it
+			GLuint ioTexture = 0;
+			glGenTextures(1, &ioTexture);
+			glBindTexture(GL_TEXTURE_RECTANGLE, ioTexture);
+
+			CGLContextObj cglContext = CGLGetCurrentContext();
+			CGLTexImageIOSurface2D(
+				cglContext,
+				GL_TEXTURE_RECTANGLE,
+				GL_RGBA,
+				InputWidth,
+				InputHeight,
+				GL_BGRA,
+				GL_UNSIGNED_INT_8_8_8_8_REV,
+				InputIOSurface,
+				0
+			);
+
+			// Use an FBO to copy the input texture into the IOSurface-backed texture
+			if (InputFBO == 0) {
+				glGenFramebuffers(1, &InputFBO);
+			}
+
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, pGL->HostFBO);
+			glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pGL->inputTextures[0]->Handle, 0);
+
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, InputFBO);
+			glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, ioTexture, 0);
+
+			glBlitFramebuffer(
+				0, 0, InputWidth, InputHeight,
+				0, 0, InputWidth, InputHeight,
+				GL_COLOR_BUFFER_BIT, GL_NEAREST
+			);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, pGL->HostFBO);
+
+			glDeleteTextures(1, &ioTexture);
+
+			// Wrap IOSurface as a TETexture and send to TouchEngine
+			// BGRA is the IOSurface pixel format, map components accordingly
+			TETextureComponentMap map = {
+				TETextureComponentSourceBlue,
+				TETextureComponentSourceGreen,
+				TETextureComponentSourceRed,
+				TETextureComponentSourceAlpha
+			};
+			TouchObject<TEIOSurfaceTexture> inputTETex;
+			inputTETex.take(TEIOSurfaceTextureCreate(
+				InputIOSurface,
+				TETextureFormatBGRA8Unorm,
+				0,
+				TETextureOriginTopLeft,
+				map,
+				nullptr,
+				nullptr
+			));
+
+			TEResult result = TEInstanceLinkSetTextureValue(instance, "op/in1", inputTETex, nullptr);
+			if (result != TEResultSuccess)
+			{
+				isTouchFrameBusy = false;
+				return FF_FAIL;
+			}
 		}
 #endif
 
@@ -364,10 +529,25 @@ FFResult FFGLTouchEngineFX::DeInitGL()
 {
 
 #ifdef _WIN32
-	for (auto it : TextureMutexMap) 
+	for (auto it : TextureMutexMap)
 		it.second->Release();
 
 	TextureMutexMap.clear();
+#endif
+
+#ifdef __APPLE__
+	if (OutputTextureGL != 0) {
+		glDeleteTextures(1, &OutputTextureGL);
+		OutputTextureGL = 0;
+	}
+	if (InputFBO != 0) {
+		glDeleteFramebuffers(1, &InputFBO);
+		InputFBO = 0;
+	}
+	if (InputIOSurface != nullptr) {
+		CFRelease(InputIOSurface);
+		InputIOSurface = nullptr;
+	}
 #endif
 
 	if (instance != nullptr)
@@ -608,6 +788,23 @@ void FFGLTouchEngineFX::ClearTouchInstance() {
 		InputInteropInitialized = !InputInterop.CleanupInterop();
 		OutputInteropInitialized = !OutputInterop.CleanupInterop();
 		D3DContext.reset();
+#endif
+#ifdef __APPLE__
+		MetalContext.reset();
+		InputInteropInitialized = false;
+		OutputInteropInitialized = false;
+		if (OutputTextureGL != 0) {
+			glDeleteTextures(1, &OutputTextureGL);
+			OutputTextureGL = 0;
+		}
+		if (InputFBO != 0) {
+			glDeleteFramebuffers(1, &InputFBO);
+			InputFBO = 0;
+		}
+		if (InputIOSurface != nullptr) {
+			CFRelease(InputIOSurface);
+			InputIOSurface = nullptr;
+		}
 #endif
         instance.reset();
         isGraphicsContextLoaded = false;

@@ -16,10 +16,6 @@ public:
 	FFResult DeInitGL() override;
 
 private:
-#ifdef __APPLE__
-    MTL::Device *pDevice;
-#endif
-
 	//TouchEngine IO objects
 #ifdef _WIN32
 	TouchObject<TED3D11Texture> TEVideoInputD3D;
@@ -36,11 +32,13 @@ private:
 	std::string SpoutIDOutput;
 	Spout OutputInterop;
 	bool OutputInteropInitialized = false;
+	GLuint SpoutTextureOutput = 0;
 #endif
 
-
-#ifdef _WIN32
-	GLuint SpoutTextureOutput = 0;
+#ifdef __APPLE__
+	GLuint OutputTextureGL = 0;
+	// Separate shader for rectangle textures (IOSurface output)
+	ffglex::FFGLShader rectShader;
 #endif
 
 	bool CreateInputTexture(int width, int height);

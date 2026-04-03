@@ -12,12 +12,15 @@
 #endif
 
 #ifdef __APPLE__
-#define NS_PRIVATE_IMPLEMENTATION
-#define CA_PRIVATE_IMPLEMENTATION
-#define MTL_PRIVATE_IMPLEMENTATION
-#include <Foundation/Foundation.hpp>
-#include <Metal/Metal.hpp>
-#include <QuartzCore/QuartzCore.hpp>
+#ifndef GL_SILENCE_DEPRECATION
+#define GL_SILENCE_DEPRECATION
+#endif
+#include <OpenGL/OpenGL.h>
+#include <OpenGL/gl3.h>
+#include <OpenGL/CGLIOSurface.h>
+#include <IOSurface/IOSurface.h>
+#import <Metal/Metal.h>
+#include <TouchEngine/TEMetal.h>
 #endif
 
 #include "FFGL/FFGLSDK.h"
@@ -102,6 +105,15 @@ protected:
 	std::map<ID3D11Texture2D*, IDXGIKeyedMutex*> TextureMutexMap;
 
 	DXGI_FORMAT DXFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
+#endif
+#ifdef __APPLE__
+	id<MTLDevice> MetalDevice = nil;
+	TouchObject<TEMetalContext> MetalContext;
+
+	// Creates an OpenGL texture backed by an IOSurface for zero-copy sharing
+	GLuint CreateOpenGLTextureFromIOSurface(IOSurfaceRef surface, int width, int height);
+	// Creates an IOSurface suitable for texture sharing
+	IOSurfaceRef CreateIOSurface(int width, int height);
 #endif
 	GLint GLFormat = 0;
 

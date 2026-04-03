@@ -41,6 +41,38 @@ void main()
 }
 )";
 
+#ifdef __APPLE__
+// Rectangle textures use pixel coordinates, not normalized 0-1 UVs
+static const char rectVertexShaderCode[] = R"(#version 410 core
+layout( location = 0 ) in vec4 vPosition;
+layout( location = 1 ) in vec2 vUV;
+
+uniform vec2 TextureSize;
+
+out vec2 uv;
+
+void main()
+{
+	gl_Position = vPosition;
+	uv = vUV * TextureSize;
+}
+)";
+
+static const char rectFragmentShaderCode[] = R"(#version 410 core
+uniform sampler2DRect InputTexture;
+
+in vec2 uv;
+out vec4 fragColor;
+
+void main()
+{
+	vec4 color = texture( InputTexture, uv );
+	// IOSurface comes as BGRA, swizzle to RGBA
+	fragColor = color.bgra;
+}
+)";
+#endif
+
 FFGLTouchEngine::FFGLTouchEngine()
 	: FFGLTouchEnginePluginBase()
 {
@@ -58,12 +90,6 @@ FFGLTouchEngine::FFGLTouchEngine()
 
 FFGLTouchEngine::~FFGLTouchEngine()
 {
-#ifdef __APPLE__
-	if (pDevice != nullptr) {
-		pDevice->release();
-		pDevice = nullptr;
-	}
-#endif
 }
 
 FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
@@ -73,10 +99,6 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 	{
 		return result;
 	}
-
-#ifdef __APPLE__
-    pDevice = MTL::CreateSystemDefaultDevice();
-#endif
 
 	//Load TouchEngine
 	LoadTouchEngine();
@@ -92,6 +114,13 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 	{
 		return result;
 	}
+
+#ifdef __APPLE__
+	if (!rectShader.Compile(rectVertexShaderCode, rectFragmentShaderCode)) {
+		DeInitGL();
+		return FailAndLog("Failed to compile rectangle shader");
+	}
+#endif
 
 	// Set the viewport size
 	OutputWidth = vp->width;
@@ -246,6 +275,49 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 #endif
 
+#ifdef __APPLE__
+		if (result == TEResultSuccess && TETextureToSend != nullptr) {
+			TETextureType texType = TETextureGetType(TETextureToSend);
+
+			IOSurfaceRef surface = nullptr;
+
+			if (texType == TETextureTypeIOSurface) {
+				surface = TEIOSurfaceTextureGetSurface(static_cast<TEIOSurfaceTexture*>(TETextureToSend.get()));
+			}
+
+			if (surface != nullptr) {
+				int texWidth = (int)IOSurfaceGetWidth(surface);
+				int texHeight = (int)IOSurfaceGetHeight(surface);
+
+				if (texWidth != OutputWidth || texHeight != OutputHeight) {
+					OutputWidth = texWidth;
+					OutputHeight = texHeight;
+				}
+
+				// Clean up previous GL texture
+				if (OutputTextureGL != 0) {
+					glDeleteTextures(1, &OutputTextureGL);
+					OutputTextureGL = 0;
+				}
+
+				OutputTextureGL = CreateOpenGLTextureFromIOSurface(surface, OutputWidth, OutputHeight);
+
+				if (OutputTextureGL != 0) {
+					// Signal that we're done with the texture transfer
+					result = TEInstanceAddTextureTransfer(instance, TETextureToSend, nullptr, 0);
+
+					ffglex::ScopedShaderBinding shaderBinding(rectShader.GetGLID());
+					ffglex::ScopedSamplerActivation activateSampler(0);
+					glBindTexture(GL_TEXTURE_RECTANGLE, OutputTextureGL);
+					rectShader.Set("InputTexture", 0);
+					rectShader.Set("TextureSize", (float)OutputWidth, (float)OutputHeight);
+					quad.Draw();
+					glBindTexture(GL_TEXTURE_RECTANGLE, 0);
+				}
+			}
+		}
+#endif
+
 	}
 
 
@@ -292,10 +364,10 @@ FFResult FFGLTouchEngine::DeInitGL()
 	}
 #endif
 #ifdef __APPLE__
-    if (pDevice != nullptr) {
-        pDevice->release();
-        pDevice = nullptr;
-    }
+	if (OutputTextureGL != 0) {
+		glDeleteTextures(1, &OutputTextureGL);
+		OutputTextureGL = 0;
+	}
 #endif
 
 	// Deinitialize the quad
@@ -420,6 +492,13 @@ void FFGLTouchEngine::ClearTouchInstance() {
 #ifdef _WIN32
 		OutputInteropInitialized = !OutputInterop.CleanupInterop();
 		D3DContext.reset();
+#endif
+#ifdef __APPLE__
+		MetalContext.reset();
+		if (OutputTextureGL != 0) {
+			glDeleteTextures(1, &OutputTextureGL);
+			OutputTextureGL = 0;
+		}
 #endif
 		instance.reset();
 		isGraphicsContextLoaded = false;

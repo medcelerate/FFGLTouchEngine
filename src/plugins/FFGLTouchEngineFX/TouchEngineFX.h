@@ -9,7 +9,7 @@ class FFGLTouchEngineFX : public FFGLTouchEnginePluginBase
 public:
 	FFGLTouchEngineFX();
 	~FFGLTouchEngineFX() override;
-    
+
     FFGLTouchEngineFX(const FFGLTouchEngineFX& other) = delete;
     FFGLTouchEngineFX& operator=(const FFGLTouchEngineFX& other) = delete;
 
@@ -40,6 +40,13 @@ private:
 	uint32_t SpoutSenderID = 0;
 	GLuint SpoutTextureOutput = 0;
 	GLuint SpoutTextureInput = 0;
+#endif
+
+#ifdef __APPLE__
+	GLuint OutputTextureGL = 0;
+	IOSurfaceRef InputIOSurface = nullptr;
+	GLuint InputFBO = 0;
+	ffglex::FFGLShader rectShader;
 #endif
 
 	bool InputInteropInitialized = false;

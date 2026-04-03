@@ -103,6 +103,13 @@ FFGLTouchEnginePluginBase::~FFGLTouchEnginePluginBase()
 		TEInstanceSuspend(instance);
 		TEInstanceUnload(instance);
 	}
+#ifdef __APPLE__
+	MetalContext.reset();
+	if (MetalDevice != nil) {
+		[MetalDevice release];
+		MetalDevice = nil;
+	}
+#endif
 }
 
 FFResult FFGLTouchEnginePluginBase::InitializeDevice()
@@ -123,6 +130,14 @@ FFResult FFGLTouchEnginePluginBase::InitializeDevice()
 	);
 	if (FAILED(hr)) {
 		return FailAndLog("Failed to create D3D11 device");
+	}
+#endif
+#ifdef __APPLE__
+	if (MetalDevice == nil) {
+		MetalDevice = MTLCreateSystemDefaultDevice();
+		if (MetalDevice == nil) {
+			return FailAndLog("Failed to create Metal device");
+		}
 	}
 #endif
 
@@ -191,6 +206,25 @@ bool FFGLTouchEnginePluginBase::LoadTEGraphicsContext(bool reload) {
 
 	result = TEInstanceAssociateGraphicsContext(instance, D3DContext);
 	if (result != TEResultSuccess) {
+		return false;
+	}
+	isGraphicsContextLoaded = true;
+#endif
+#ifdef __APPLE__
+	if (MetalDevice == nil) {
+		FFGLLog::LogToHost("Metal Device Not Available");
+		return false;
+	}
+
+	TEResult result = TEMetalContextCreate(MetalDevice, MetalContext.take());
+	if (result != TEResultSuccess) {
+		FFGLLog::LogToHost("Failed to create TEMetalContext");
+		return false;
+	}
+
+	result = TEInstanceAssociateGraphicsContext(instance, MetalContext);
+	if (result != TEResultSuccess) {
+		FFGLLog::LogToHost("Failed to associate Metal graphics context");
 		return false;
 	}
 	isGraphicsContextLoaded = true;
@@ -915,3 +949,51 @@ void FFGLTouchEnginePluginBase::eventCallbackStatic(TEInstance* instance, TEEven
 void FFGLTouchEnginePluginBase::linkCallbackStatic(TEInstance* instance, TELinkEvent event, const char* identifier, void* info) {
 	static_cast<FFGLTouchEnginePluginBase*>(info)->linkCallback(event, identifier);
 }
+
+#ifdef __APPLE__
+GLuint FFGLTouchEnginePluginBase::CreateOpenGLTextureFromIOSurface(IOSurfaceRef surface, int width, int height)
+{
+	GLuint texture = 0;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_RECTANGLE, texture);
+
+	CGLContextObj cglContext = CGLGetCurrentContext();
+	CGLError err = CGLTexImageIOSurface2D(
+		cglContext,
+		GL_TEXTURE_RECTANGLE,
+		GL_RGBA,
+		width,
+		height,
+		GL_BGRA,
+		GL_UNSIGNED_INT_8_8_8_8_REV,
+		surface,
+		0
+	);
+
+	if (err != kCGLNoError) {
+		FFGLLog::LogToHost("Failed to bind IOSurface to OpenGL texture");
+		glDeleteTextures(1, &texture);
+		glBindTexture(GL_TEXTURE_RECTANGLE, 0);
+		return 0;
+	}
+
+	glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_RECTANGLE, 0);
+
+	return texture;
+}
+
+IOSurfaceRef FFGLTouchEnginePluginBase::CreateIOSurface(int width, int height)
+{
+	NSDictionary *properties = @{
+		(NSString *)kIOSurfaceWidth: @(width),
+		(NSString *)kIOSurfaceHeight: @(height),
+		(NSString *)kIOSurfaceBytesPerElement: @(4),
+		(NSString *)kIOSurfacePixelFormat: @((uint32_t)'BGRA'),
+	};
+	return IOSurfaceCreate((__bridge CFDictionaryRef)properties);
+}
+#endif

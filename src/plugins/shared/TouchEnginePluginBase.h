@@ -144,6 +144,7 @@ protected:
 	std::unordered_map<FFUInt32, double> ParameterMapFloat;
 	std::unordered_map<FFUInt32, std::string> ParameterMapString;
 	std::unordered_map<FFUInt32, bool> ParameterMapBool;
+	std::set<FFUInt32> PulseParameters;
 
 	std::set<FFUInt32> ActiveVectorParams;
 	std::vector<VectorParameterInfo> VectorParameters;

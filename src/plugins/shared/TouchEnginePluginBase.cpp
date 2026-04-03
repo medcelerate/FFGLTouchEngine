@@ -461,6 +461,7 @@ void FFGLTouchEnginePluginBase::ResetBaseParameters() {
 	ParameterMapInt.clear();
 	ParameterMapString.clear();
 	ParameterMapBool.clear();
+	PulseParameters.clear();
 	Parameters.clear();
 }
 
@@ -738,7 +739,10 @@ void FFGLTouchEnginePluginBase::CreateIndividualParameter(const TouchObject<TELi
 			ActiveParams.insert(ParamID);
 			ParameterMapType[ParamID] = FF_TYPE_EVENT;
 
-			//SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_EVENT);
+			if (linkInfo->intent == TELinkIntentPulse) {
+				PulseParameters.insert(ParamID);
+			}
+
 			bool value = false;
 			result = TEInstanceLinkGetBooleanValue(instance, linkInfo->identifier, TELinkValueCurrent, &value);
 			if (result != TEResultSuccess) {
@@ -858,6 +862,10 @@ FFResult FFGLTouchEnginePluginBase::PushParametersToTouchEngine()
 			if (result != TEResultSuccess) {
 				isTouchFrameBusy = false;
 				return FailAndLog("Failed to set boolean value");
+			}
+			// Auto-reset pulse parameters to false after sending
+			if (ParameterMapBool[param.second] && PulseParameters.find(param.second) != PulseParameters.end()) {
+				ParameterMapBool[param.second] = false;
 			}
 		}
 

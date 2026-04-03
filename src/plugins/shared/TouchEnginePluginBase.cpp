@@ -446,6 +446,20 @@ void FFGLTouchEnginePluginBase::ConstructBaseParameters() {
 		SetOptionParamInfo(i, (std::string("Parameter") + std::to_string(i)).c_str(), 10, 0);
 		SetParamVisibility(i, false, false);
 	}
+
+	// Pre-allocate color picker slots (groups of 4: R, G, B, A)
+	// Each color uses 4 consecutive param slots
+	uint32_t colorBase = (MaxParamsByType * 6) + OffsetParamsByType;
+	for (uint32_t i = 0; i < MaxParamsByType; i += 4) {
+		SetParamInfo(colorBase + i,     "Color", FF_TYPE_RED,        0.0f);
+		SetParamInfo(colorBase + i + 1, "Color", FF_TYPE_GREEN,      0.0f);
+		SetParamInfo(colorBase + i + 2, "Color", FF_TYPE_BLUE,       0.0f);
+		SetParamInfo(colorBase + i + 3, "Color", FF_TYPE_ALPHA,      1.0f);
+		SetParamVisibility(colorBase + i,     false, false);
+		SetParamVisibility(colorBase + i + 1, false, false);
+		SetParamVisibility(colorBase + i + 2, false, false);
+		SetParamVisibility(colorBase + i + 3, false, false);
+	}
 }
 
 void FFGLTouchEnginePluginBase::ResetBaseParameters() {
@@ -462,6 +476,7 @@ void FFGLTouchEnginePluginBase::ResetBaseParameters() {
 	ParameterMapString.clear();
 	ParameterMapBool.clear();
 	PulseParameters.clear();
+	ColorParamCount = 0;
 	Parameters.clear();
 }
 
@@ -606,28 +621,42 @@ void FFGLTouchEnginePluginBase::CreateIndividualParameter(const TouchObject<TELi
 
 
 
-			// Map color RGBA to FFGL color picker types so Resolume shows a color picker
 			static const FFUInt32 colorTypes[] = { FF_TYPE_RED, FF_TYPE_GREEN, FF_TYPE_BLUE, FF_TYPE_ALPHA };
 
+			// Align to start of a group of 4 so R/G/B/A land on the correct pre-allocated types
+			uint32_t colorGroupBase = (ColorParamCount / 4) * 4;
+			if (ColorParamCount % 4 != 0) {
+				colorGroupBase = ColorParamCount; // already mid-group shouldn't happen, but advance
+			}
+
 			for (uint32_t i = 0; i < linkInfo->count; i++) {
-				uint32_t ParamID = Parameters.size() + OffsetParamsByType;
+				uint32_t ParamID;
+
+				if (linkInfo->intent == TELinkIntentColorRGBA && i < 4) {
+					// Use pre-allocated color picker slots (aligned to groups of 4)
+					ParamID = (MaxParamsByType * 6) + OffsetParamsByType + colorGroupBase + i;
+					ParameterMapType[ParamID] = colorTypes[i];
+				} else {
+					ParamID = Parameters.size() + OffsetParamsByType;
+					ParameterMapType[ParamID] = FF_TYPE_STANDARD;
+				}
+
 				Parameters.push_back(std::make_pair(std::string(linkInfo->identifier) + (char)0x03 + std::to_string(i), ParamID));
 				ActiveParams.insert(ParamID);
 				ActiveVectorParams.insert(ParamID);
 				info.children[i] = ParamID;
 
-				if (linkInfo->intent == TELinkIntentColorRGBA && i < 4) {
-					ParameterMapType[ParamID] = colorTypes[i];
-					SetParamInfof(ParamID, (linkInfo->label + std::string(".") + Suffix[i]).c_str(), colorTypes[i]);
-				} else {
-					ParameterMapType[ParamID] = FF_TYPE_STANDARD;
-					SetParamDisplayName(ParamID, linkInfo->label + std::string(".") + Suffix[i], true);
-				}
-
+				ParameterMapFloat[ParamID] = value[i];
+				SetParamDisplayName(ParamID, linkInfo->label + std::string(".") + Suffix[i], true);
 				SetParamRange(ParamID, min[i], max[i]);
 				RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
 				SetParamVisibility(ParamID, true, true);
 
+			}
+
+			// Advance color counter by a full group of 4 to keep alignment
+			if (linkInfo->intent == TELinkIntentColorRGBA) {
+				ColorParamCount = colorGroupBase + 4;
 			}
 
 			VectorParameters.push_back(info);

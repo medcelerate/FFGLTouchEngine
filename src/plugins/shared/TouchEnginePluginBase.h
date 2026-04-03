@@ -145,6 +145,7 @@ protected:
 	std::unordered_map<FFUInt32, std::string> ParameterMapString;
 	std::unordered_map<FFUInt32, bool> ParameterMapBool;
 	std::set<FFUInt32> PulseParameters;
+	uint32_t ColorParamCount = 0;
 
 	std::set<FFUInt32> ActiveVectorParams;
 	std::vector<VectorParameterInfo> VectorParameters;

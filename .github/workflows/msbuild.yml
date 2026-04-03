@@ -20,34 +20,24 @@ jobs:
   build-windows:
     runs-on: windows-latest
 
-    env:
-      SOLUTION_FILE_PATH: ./FFGLTouchEngine.sln
-
     steps:
     - uses: actions/checkout@v3
 
-    - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v2
-
-    - name: Restore NuGet packages
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: nuget restore ${{env.SOLUTION_FILE_PATH}}
+    - name: Configure CMake
+      run: cmake -B build -A x64
 
     - name: Build
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
-
-    - name: Insert Instructions
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: echo "Copy FFGLTouchEngine.dll to your Resolume plugins folder;\n See Examples folder for setup" > FFGLTouchEngine/Build/x64/Release/README.txt
-
-    - name: Insert Version
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: echo ${{ github.ref_name }} > FFGLTouchEngine/Build/x64/Release/VERSION.txt
+      run: cmake --build build --config Release
 
     - name: Generate Zip
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Compress-Archive -Path FFGLTouchEngine/Build/x64/Release/FFGLTouchEngine.dll, FFGLTouchEngineFX/Build/x64/Release/FFGLTouchEngineFX.dll, lib/TouchEngine/TouchEngine.dll, FFGLTouchEngine/Build/x64/Release/README.txt, FFGLTouchEngine/Build/x64/Release/VERSION.txt -Destination "FFGLTouchEngine-Windows-${{ github.ref_name }}.zip"
+      run: |
+        New-Item -ItemType Directory -Force -Path staging
+        Copy-Item "build\src\plugins\FFGLTouchEngine\Release\FFGLTouchEngine.dll" staging\
+        Copy-Item "build\src\plugins\FFGLTouchEngineFX\Release\FFGLTouchEngineFX.dll" staging\
+        Copy-Item "lib\TouchEngine\TouchEngine.dll" staging\
+        "Copy FFGLTouchEngine.dll and FFGLTouchEngineFX.dll to your Resolume plugins folder" | Out-File staging\README.txt
+        "${{ github.ref_name }}" | Out-File staging\VERSION.txt
+        Compress-Archive -Path staging\* -Destination "FFGLTouchEngine-Windows-${{ github.ref_name }}.zip"
 
     - name: Upload Windows Artifact
       uses: actions/upload-artifact@v4

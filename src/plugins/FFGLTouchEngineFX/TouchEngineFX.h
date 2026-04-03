@@ -44,13 +44,19 @@ private:
 
 #ifdef __APPLE__
 	GLuint OutputTextureGL = 0;
+	id<MTLTexture> OutputMetalTexture = nil;
+	IOSurfaceRef OutputIOSurface = nullptr;
 	IOSurfaceRef InputIOSurface = nullptr;
-	GLuint InputFBO = 0;
+	id<MTLTexture> InputMetalTexture = nil;
+	GLuint InputIOSurfaceGL = 0;
+	GLuint InputRenderFBO = 0;
 	ffglex::FFGLShader rectShader;
 #endif
 
 	bool InputInteropInitialized = false;
 	bool OutputInteropInitialized = false;
+
+	std::string InputOpName;
 
 	int InputWidth = 0;
 	int InputHeight = 0;

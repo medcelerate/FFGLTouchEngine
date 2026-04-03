@@ -54,7 +54,7 @@ out vec2 uv;
 void main()
 {
 	gl_Position = vPosition;
-	uv = vUV * TextureSize;
+	uv = vec2(vUV.x, 1.0 - vUV.y) * TextureSize;
 }
 )";
 
@@ -225,19 +225,8 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 					return FF_FAIL;
 				}
 
-				//Dynamically change texture size here when wxH changes
-
 				TESemaphore* semaphore = nullptr;
 				uint64_t waitValue = 0;
-				/*
-				if (TEInstanceHasTextureTransfer(instance, TETextureToSend) == false)
-				{
-					result = TEInstanceAddTextureTransfer(instance, TETextureToSend, semaphore, waitValue);
-					if (result != TEResultSuccess)
-					{
-						return FF_FAIL;
-					}
-				}*/
 				result = TEInstanceGetTextureTransfer(instance, TETextureToSend, &semaphore, &waitValue);
 				if (result != TEResultSuccess)
 				{
@@ -264,8 +253,6 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 		OutputInterop.ReadGLDXtexture(SpoutTextureOutput, GL_TEXTURE_2D, OutputWidth, OutputHeight, true, pGL->HostFBO);
 
-		//Receiver the texture from spout
-
 		ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
 		ffglex::ScopedSamplerActivation activateSampler(0);
 		ffglex::Scoped2DTextureBinding textureBinding(SpoutTextureOutput);
@@ -276,45 +263,60 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 #endif
 
 #ifdef __APPLE__
+		// If we got a new texture from TE, blit it into our IOSurface-backed texture
 		if (result == TEResultSuccess && TETextureToSend != nullptr) {
 			TETextureType texType = TETextureGetType(TETextureToSend);
+			id<MTLTexture> srcTexture = nil;
 
-			IOSurfaceRef surface = nullptr;
-
-			if (texType == TETextureTypeIOSurface) {
-				surface = TEIOSurfaceTextureGetSurface(static_cast<TEIOSurfaceTexture*>(TETextureToSend.get()));
+			if (texType == TETextureTypeMetal) {
+				srcTexture = TEMetalTextureGetTexture(static_cast<TEMetalTexture*>(TETextureToSend.get()));
+			} else if (texType == TETextureTypeIOSurface) {
+				IOSurfaceRef surface = TEIOSurfaceTextureGetSurface(static_cast<TEIOSurfaceTexture*>(TETextureToSend.get()));
+				if (surface != nullptr) {
+					int w = (int)IOSurfaceGetWidth(surface);
+					int h = (int)IOSurfaceGetHeight(surface);
+					MTLTextureDescriptor *desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm width:w height:h mipmapped:NO];
+					desc.storageMode = MTLStorageModeShared;
+					srcTexture = [MetalDevice newTextureWithDescriptor:desc iosurface:surface plane:0];
+				}
 			}
 
-			if (surface != nullptr) {
-				int texWidth = (int)IOSurfaceGetWidth(surface);
-				int texHeight = (int)IOSurfaceGetHeight(surface);
+			if (srcTexture != nil) {
+				int texWidth = (int)srcTexture.width;
+				int texHeight = (int)srcTexture.height;
 
-				if (texWidth != OutputWidth || texHeight != OutputHeight) {
+				// Recreate our IOSurface-backed texture if size changed
+				if (OutputMetalTexture == nil || texWidth != OutputWidth || texHeight != OutputHeight) {
 					OutputWidth = texWidth;
 					OutputHeight = texHeight;
+
+					if (OutputIOSurface != nullptr) { CFRelease(OutputIOSurface); OutputIOSurface = nullptr; }
+					OutputMetalTexture = nil;
+					if (OutputTextureGL != 0) { glDeleteTextures(1, &OutputTextureGL); OutputTextureGL = 0; }
+
+					OutputMetalTexture = CreateIOSurfaceBackedMetalTexture(OutputWidth, OutputHeight, &OutputIOSurface);
+					if (OutputMetalTexture != nil && OutputIOSurface != nullptr) {
+						OutputTextureGL = CreateOpenGLTextureFromIOSurface(OutputIOSurface, OutputWidth, OutputHeight);
+					}
 				}
 
-				// Clean up previous GL texture
-				if (OutputTextureGL != 0) {
-					glDeleteTextures(1, &OutputTextureGL);
-					OutputTextureGL = 0;
+				if (OutputMetalTexture != nil) {
+					CopyMetalTexture(srcTexture, OutputMetalTexture);
 				}
 
-				OutputTextureGL = CreateOpenGLTextureFromIOSurface(surface, OutputWidth, OutputHeight);
-
-				if (OutputTextureGL != 0) {
-					// Signal that we're done with the texture transfer
-					result = TEInstanceAddTextureTransfer(instance, TETextureToSend, nullptr, 0);
-
-					ffglex::ScopedShaderBinding shaderBinding(rectShader.GetGLID());
-					ffglex::ScopedSamplerActivation activateSampler(0);
-					glBindTexture(GL_TEXTURE_RECTANGLE, OutputTextureGL);
-					rectShader.Set("InputTexture", 0);
-					rectShader.Set("TextureSize", (float)OutputWidth, (float)OutputHeight);
-					quad.Draw();
-					glBindTexture(GL_TEXTURE_RECTANGLE, 0);
-				}
+				result = TEInstanceAddTextureTransfer(instance, TETextureToSend, nullptr, 0);
 			}
+		}
+
+		// Always draw the last valid frame
+		if (OutputTextureGL != 0) {
+			ffglex::ScopedShaderBinding shaderBinding(rectShader.GetGLID());
+			ffglex::ScopedSamplerActivation activateSampler(0);
+			glBindTexture(GL_TEXTURE_RECTANGLE, OutputTextureGL);
+			rectShader.Set("InputTexture", 0);
+			rectShader.Set("TextureSize", (float)OutputWidth, (float)OutputHeight);
+			quad.Draw();
+			glBindTexture(GL_TEXTURE_RECTANGLE, 0);
 		}
 #endif
 
@@ -326,11 +328,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 	isTouchFrameBusy = true;
 
-	FFResult pushResult = PushParametersToTouchEngine();
-	if (pushResult != FF_SUCCESS)
-	{
-		return pushResult;
-	}
+	PushParametersToTouchEngine();
 
 		TEResult result = TEInstanceStartFrameAtTime(instance, FrameCount, 60, false);
 		if (result != TEResultSuccess)
@@ -367,6 +365,11 @@ FFResult FFGLTouchEngine::DeInitGL()
 	if (OutputTextureGL != 0) {
 		glDeleteTextures(1, &OutputTextureGL);
 		OutputTextureGL = 0;
+	}
+	OutputMetalTexture = nil;
+	if (OutputIOSurface != nullptr) {
+		CFRelease(OutputIOSurface);
+		OutputIOSurface = nullptr;
 	}
 #endif
 
@@ -498,6 +501,11 @@ void FFGLTouchEngine::ClearTouchInstance() {
 		if (OutputTextureGL != 0) {
 			glDeleteTextures(1, &OutputTextureGL);
 			OutputTextureGL = 0;
+		}
+		OutputMetalTexture = nil;
+		if (OutputIOSurface != nullptr) {
+			CFRelease(OutputIOSurface);
+			OutputIOSurface = nullptr;
 		}
 #endif
 		instance.reset();

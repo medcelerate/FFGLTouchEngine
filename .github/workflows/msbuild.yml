@@ -3,7 +3,7 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: MSBuild
+name: Build
 
 on:
   push:
@@ -11,20 +11,17 @@ on:
       - '*'
 
 env:
-  # Path to the solution file relative to the root of the project.
-  SOLUTION_FILE_PATH: ./FFGLTouchEngine.sln
-
-  # Configuration type to build.
-  # You can convert this to a build matrix if you need coverage of multiple configuration types.
-  # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
   BUILD_CONFIGURATION: Release
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
+
+    env:
+      SOLUTION_FILE_PATH: ./FFGLTouchEngine.sln
 
     steps:
     - uses: actions/checkout@v3
@@ -38,22 +35,75 @@ jobs:
 
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      # Add additional options to the MSBuild command line here (like platform or verbosity level).
-      # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
+
     - name: Insert Instructions
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: echo "Copy FFGLTouchEngine.dll to your Resolume plugins folder;\n See Examples folder for setup" > FFGLTouchEngine/Build/x64/Release/README.txt
+
     - name: Insert Version
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: echo ${{ github.ref_name }} > FFGLTouchEngine/Build/x64/Release/VERSION.txt
 
     - name: Generate Zip
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: Compress-Archive -Path FFGLTouchEngine/Build/x64/Release/FFGLTouchEngine.dll, FFGLTouchEngineFX/Build/x64/Release/FFGLTouchEngineFX.dll, lib/TouchEngine/TouchEngine.dll, FFGLTouchEngine/Build/x64/Release/README.txt, FFGLTouchEngine/Build/x64/Release/VERSION.txt -Destination "FFGLTouchEngine-${{ github.ref_name }}.zip"
+      run: Compress-Archive -Path FFGLTouchEngine/Build/x64/Release/FFGLTouchEngine.dll, FFGLTouchEngineFX/Build/x64/Release/FFGLTouchEngineFX.dll, lib/TouchEngine/TouchEngine.dll, FFGLTouchEngine/Build/x64/Release/README.txt, FFGLTouchEngine/Build/x64/Release/VERSION.txt -Destination "FFGLTouchEngine-Windows-${{ github.ref_name }}.zip"
+
+    - name: Upload Windows Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build
+        path: "FFGLTouchEngine-Windows-${{ github.ref_name }}.zip"
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Generate Xcode Project
+      run: |
+        mkdir -p build-mac
+        cd build-mac
+        cmake -G Xcode -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 ..
+
+    - name: Build
+      run: |
+        xcodebuild -project build-mac/FFGLTouchEngine.xcodeproj \
+          -scheme ALL_BUILD \
+          -configuration Release
+
+    - name: Generate Zip
+      run: |
+        cd build-mac/Release
+        zip -r "../../FFGLTouchEngine-macOS-${{ github.ref_name }}.zip" \
+          FFGLTouchEngine.bundle \
+          FFGLTouchEngineFX.bundle
+
+    - name: Upload macOS Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-build
+        path: "FFGLTouchEngine-macOS-${{ github.ref_name }}.zip"
+
+  release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download Windows Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: windows-build
+
+    - name: Download macOS Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: macos-build
+
     - name: Generate Release
       uses: ncipollo/release-action@v1
       with:
-        artifacts: "FFGLTouchEngine-${{ github.ref_name }}.zip"
+        artifacts: "FFGLTouchEngine-Windows-${{ github.ref_name }}.zip,FFGLTouchEngine-macOS-${{ github.ref_name }}.zip"
         generateReleaseNotes: true
         prerelease: false

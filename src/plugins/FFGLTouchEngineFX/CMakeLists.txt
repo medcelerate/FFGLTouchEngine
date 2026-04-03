@@ -47,11 +47,32 @@ if (APPLE)
         "-framework QuartzCore"
         "-framework Foundation"
     )
-    # Framework search path so the linker/runtime can find TouchEngine.framework
+    # Framework search path for linking, and rpath for runtime inside the bundle
+    # Disable Xcode's own code signing — our post-build script handles it
     set_target_properties(FFGLTouchEngineFX PROPERTIES
         XCODE_ATTRIBUTE_FRAMEWORK_SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/TouchEngine"
-        BUILD_RPATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/TouchEngine"
+        XCODE_ATTRIBUTE_LD_RUNPATH_SEARCH_PATHS "@loader_path/../Frameworks"
+        XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO"
+        BUILD_RPATH "@loader_path/../Frameworks"
         INSTALL_RPATH "@loader_path/../Frameworks"
+    )
+    # Copy TouchEngine.framework into the bundle, sign everything, copy to Release
+    set(SIGN_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/sign_bundle.sh")
+    add_custom_command(TARGET FFGLTouchEngineFX POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_BUNDLE_DIR:FFGLTouchEngineFX>/Contents/Frameworks"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${TOUCHENGINE_FRAMEWORK_PATH}"
+            "$<TARGET_BUNDLE_DIR:FFGLTouchEngineFX>/Contents/Frameworks/TouchEngine.framework"
+        COMMAND bash "${SIGN_SCRIPT}" "$<TARGET_BUNDLE_DIR:FFGLTouchEngineFX>"
+        # Copy final bundle to top-level Release directory
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "${CMAKE_BINARY_DIR}/Release"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf
+            "${CMAKE_BINARY_DIR}/Release/FFGLTouchEngineFX.bundle"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "$<TARGET_BUNDLE_DIR:FFGLTouchEngineFX>"
+            "${CMAKE_BINARY_DIR}/Release/FFGLTouchEngineFX.bundle"
     )
     target_include_directories(FFGLTouchEngineFX PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../../lib/metal-cpp

@@ -105,10 +105,8 @@ FFGLTouchEnginePluginBase::~FFGLTouchEnginePluginBase()
 	}
 #ifdef __APPLE__
 	MetalContext.reset();
-	if (MetalDevice != nil) {
-		[MetalDevice release];
-		MetalDevice = nil;
-	}
+	MetalCommandQueue = nil;
+	MetalDevice = nil;
 #endif
 }
 
@@ -137,6 +135,10 @@ FFResult FFGLTouchEnginePluginBase::InitializeDevice()
 		MetalDevice = MTLCreateSystemDefaultDevice();
 		if (MetalDevice == nil) {
 			return FailAndLog("Failed to create Metal device");
+		}
+		MetalCommandQueue = [MetalDevice newCommandQueue];
+		if (MetalCommandQueue == nil) {
+			return FailAndLog("Failed to create Metal command queue");
 		}
 	}
 #endif
@@ -913,20 +915,17 @@ void FFGLTouchEnginePluginBase::eventCallback(TEEvent event, TEResult result, in
 		if (LoadTEGraphicsContext(false)) {
 			isTouchEngineLoaded = true;
 			ResumeTouchEngine();
+		} else {
+			FFGLLog::LogToHost("Failed to load TE graphics context");
 		}
-		// The tox file has been loaded into the TouchEngine
 		break;
 	case TEEventFrameDidFinish:
 		isTouchFrameBusy = false;
-		// A frame has finished rendering
 		break;
 	case TEEventInstanceReady:
-		FFGLLog::LogToHost("TouchEngine Ready");
 		isTouchEngineReady = true;
-		// The TouchEngine is ready to start rendering frames
 		break;
 	case TEEventInstanceDidUnload:
-		FFGLLog::LogToHost("TouchEngine Unloaded");
 		isTouchEngineLoaded = false;
 		break;
 	}
@@ -995,5 +994,52 @@ IOSurfaceRef FFGLTouchEnginePluginBase::CreateIOSurface(int width, int height)
 		(NSString *)kIOSurfacePixelFormat: @((uint32_t)'BGRA'),
 	};
 	return IOSurfaceCreate((__bridge CFDictionaryRef)properties);
+}
+
+id<MTLTexture> FFGLTouchEnginePluginBase::CreateIOSurfaceBackedMetalTexture(int width, int height, IOSurfaceRef* outSurface)
+{
+	// Create the IOSurface
+	IOSurfaceRef surface = CreateIOSurface(width, height);
+	if (surface == nullptr) {
+		FFGLLog::LogToHost("Failed to create IOSurface for Metal texture");
+		return nil;
+	}
+
+	// Create a Metal texture descriptor matching the IOSurface
+	MTLTextureDescriptor *desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
+		width:width
+		height:height
+		mipmapped:NO];
+	desc.storageMode = MTLStorageModeShared;
+	desc.usage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
+
+	// Create Metal texture backed by the IOSurface
+	id<MTLTexture> texture = [MetalDevice newTextureWithDescriptor:desc iosurface:surface plane:0];
+	if (texture == nil) {
+		FFGLLog::LogToHost("Failed to create IOSurface-backed Metal texture");
+		CFRelease(surface);
+		return nil;
+	}
+
+	*outSurface = surface;
+	return texture;
+}
+
+void FFGLTouchEnginePluginBase::CopyMetalTexture(id<MTLTexture> src, id<MTLTexture> dst)
+{
+	id<MTLCommandBuffer> cmdBuf = [MetalCommandQueue commandBuffer];
+	id<MTLBlitCommandEncoder> blit = [cmdBuf blitCommandEncoder];
+	[blit copyFromTexture:src
+		sourceSlice:0
+		sourceLevel:0
+		sourceOrigin:MTLOriginMake(0, 0, 0)
+		sourceSize:MTLSizeMake(src.width, src.height, 1)
+		toTexture:dst
+		destinationSlice:0
+		destinationLevel:0
+		destinationOrigin:MTLOriginMake(0, 0, 0)];
+	[blit endEncoding];
+	[cmdBuf commit];
+	[cmdBuf waitUntilCompleted];
 }
 #endif

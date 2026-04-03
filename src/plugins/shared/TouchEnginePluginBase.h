@@ -108,8 +108,13 @@ protected:
 #endif
 #ifdef __APPLE__
 	id<MTLDevice> MetalDevice = nil;
+	id<MTLCommandQueue> MetalCommandQueue = nil;
 	TouchObject<TEMetalContext> MetalContext;
 
+	// Creates an IOSurface-backed Metal texture for sharing with OpenGL
+	id<MTLTexture> CreateIOSurfaceBackedMetalTexture(int width, int height, IOSurfaceRef* outSurface);
+	// Copies a TE Metal texture into our IOSurface-backed texture via Metal blit
+	void CopyMetalTexture(id<MTLTexture> src, id<MTLTexture> dst);
 	// Creates an OpenGL texture backed by an IOSurface for zero-copy sharing
 	GLuint CreateOpenGLTextureFromIOSurface(IOSurfaceRef surface, int width, int height);
 	// Creates an IOSurface suitable for texture sharing

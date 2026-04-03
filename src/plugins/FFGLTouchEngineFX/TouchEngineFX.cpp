@@ -56,7 +56,7 @@ out vec2 uv;
 void main()
 {
 	gl_Position = vPosition;
-	uv = vUV * TextureSize;
+	uv = vec2(vUV.x, 1.0 - vUV.y) * TextureSize;
 }
 )";
 
@@ -79,10 +79,8 @@ void main()
 void textureCallback(TED3D11Texture* texture, TEObjectEvent event, void* info)
 {
 	if (event == TEObjectEventRelease) {
-		// Release the texture
 		FFGLLog::LogToHost("Releasing texture");
 	}
-	FFGLLog::LogToHost("Texture callback called");
 	return;
 }
 #endif
@@ -144,7 +142,6 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 	OutputWidth = vp->width;
 	OutputHeight = vp->height;
 
-
 	if (FilePath.empty())
 	{
 		return CFFGLPlugin::InitGL(vp);
@@ -194,12 +191,9 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 	shader.Set("MaxUV", maxCoords.s, maxCoords.t);
 	quad.Draw();
 
-	//Iss
-
 	if (hasVideoOutput) {
 		TouchObject<TETexture> TETextureToSend;
 
-		//Will need to replace the below value with something more standard
 		TEResult result = TEInstanceLinkGetTextureValue(instance, OutputOpName.c_str(), TELinkValueCurrent, TETextureToSend.take());
 #ifdef _WIN32
 		if (result == TEResultSuccess && TETextureToSend != nullptr) {
@@ -249,8 +243,6 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 					OutputInteropInitialized = true;
 				}
-
-
 
 				IDXGIKeyedMutex* keyedMutex;
 				RawTextureToSend->QueryInterface<IDXGIKeyedMutex>(&keyedMutex);
@@ -304,44 +296,59 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 #endif
 
 #ifdef __APPLE__
+		// If we got a new texture from TE, blit it into our IOSurface-backed texture
 		if (result == TEResultSuccess && TETextureToSend != nullptr) {
 			TETextureType texType = TETextureGetType(TETextureToSend);
+			id<MTLTexture> srcTexture = nil;
 
-			IOSurfaceRef surface = nullptr;
-
-			if (texType == TETextureTypeIOSurface) {
-				surface = TEIOSurfaceTextureGetSurface(static_cast<TEIOSurfaceTexture*>(TETextureToSend.get()));
+			if (texType == TETextureTypeMetal) {
+				srcTexture = TEMetalTextureGetTexture(static_cast<TEMetalTexture*>(TETextureToSend.get()));
+			} else if (texType == TETextureTypeIOSurface) {
+				IOSurfaceRef surface = TEIOSurfaceTextureGetSurface(static_cast<TEIOSurfaceTexture*>(TETextureToSend.get()));
+				if (surface != nullptr) {
+					int w = (int)IOSurfaceGetWidth(surface);
+					int h = (int)IOSurfaceGetHeight(surface);
+					MTLTextureDescriptor *desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm width:w height:h mipmapped:NO];
+					desc.storageMode = MTLStorageModeShared;
+					srcTexture = [MetalDevice newTextureWithDescriptor:desc iosurface:surface plane:0];
+				}
 			}
 
-			if (surface != nullptr) {
-				int texWidth = (int)IOSurfaceGetWidth(surface);
-				int texHeight = (int)IOSurfaceGetHeight(surface);
+			if (srcTexture != nil) {
+				int texWidth = (int)srcTexture.width;
+				int texHeight = (int)srcTexture.height;
 
-				if (texWidth != OutputWidth || texHeight != OutputHeight) {
+				if (OutputMetalTexture == nil || texWidth != OutputWidth || texHeight != OutputHeight) {
 					OutputWidth = texWidth;
 					OutputHeight = texHeight;
+
+					if (OutputIOSurface != nullptr) { CFRelease(OutputIOSurface); OutputIOSurface = nullptr; }
+					OutputMetalTexture = nil;
+					if (OutputTextureGL != 0) { glDeleteTextures(1, &OutputTextureGL); OutputTextureGL = 0; }
+
+					OutputMetalTexture = CreateIOSurfaceBackedMetalTexture(OutputWidth, OutputHeight, &OutputIOSurface);
+					if (OutputMetalTexture != nil && OutputIOSurface != nullptr) {
+						OutputTextureGL = CreateOpenGLTextureFromIOSurface(OutputIOSurface, OutputWidth, OutputHeight);
+					}
 				}
 
-				// Clean up previous GL texture
-				if (OutputTextureGL != 0) {
-					glDeleteTextures(1, &OutputTextureGL);
-					OutputTextureGL = 0;
+				if (OutputMetalTexture != nil) {
+					CopyMetalTexture(srcTexture, OutputMetalTexture);
 				}
 
-				OutputTextureGL = CreateOpenGLTextureFromIOSurface(surface, OutputWidth, OutputHeight);
-
-				if (OutputTextureGL != 0) {
-					result = TEInstanceAddTextureTransfer(instance, TETextureToSend, nullptr, 0);
-
-					ffglex::ScopedShaderBinding shaderBinding(rectShader.GetGLID());
-					ffglex::ScopedSamplerActivation activateSampler(0);
-					glBindTexture(GL_TEXTURE_RECTANGLE, OutputTextureGL);
-					rectShader.Set("InputTexture", 0);
-					rectShader.Set("TextureSize", (float)OutputWidth, (float)OutputHeight);
-					quad.Draw();
-					glBindTexture(GL_TEXTURE_RECTANGLE, 0);
-				}
+				result = TEInstanceAddTextureTransfer(instance, TETextureToSend, nullptr, 0);
 			}
+		}
+
+		// Always draw the last valid frame
+		if (OutputTextureGL != 0) {
+			ffglex::ScopedShaderBinding shaderBinding(rectShader.GetGLID());
+			ffglex::ScopedSamplerActivation activateSampler(0);
+			glBindTexture(GL_TEXTURE_RECTANGLE, OutputTextureGL);
+			rectShader.Set("InputTexture", 0);
+			rectShader.Set("TextureSize", (float)OutputWidth, (float)OutputHeight);
+			quad.Draw();
+			glBindTexture(GL_TEXTURE_RECTANGLE, 0);
 		}
 #endif
 	}
@@ -353,27 +360,16 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 	isTouchFrameBusy = true;
 
-	FFResult pushResult = PushParametersToTouchEngine();
-	if (pushResult != FF_SUCCESS) {
-		return pushResult;
-	}
-
+	PushParametersToTouchEngine();
 
 	if (hasVideoInput) {
 
-		//Basic functions to get data out of resolume and into a texture.
 		ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
 		ffglex::ScopedSamplerActivation activateSampler(0);
 		ffglex::Scoped2DTextureBinding textureBinding(pGL->inputTextures[0]->Handle);
 
-		/*shader.Set("InputTexture", 0);
-		FFGLTexCoords maxCoords = GetMaxGLTexCoords(*pGL->inputTextures[0]);
-		shader.Set("MaxUV", maxCoords.s, maxCoords.t);
-		quad.Draw();*/
-
 		GLint InputFormat = 0;
 		glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &InputFormat);
-
 
 		if (!InputInteropInitialized || InputWidth != pGL->inputTextures[0]->Width
 			|| InputHeight != pGL->inputTextures[0]->Height
@@ -382,8 +378,6 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			InputWidth = pGL->inputTextures[0]->Width;
 			InputHeight = pGL->inputTextures[0]->Height;
 #ifdef _WIN32
-
-
 			InputInterop.SetSenderName(SpoutIDInput.c_str());
 
 			if (!InputInterop.OpenDirectX11(D3DDevice.Get())) {
@@ -406,15 +400,23 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 #endif
 
 #ifdef __APPLE__
-			// Create or recreate the IOSurface for input texture sharing
-			if (InputIOSurface != nullptr) {
-				CFRelease(InputIOSurface);
-				InputIOSurface = nullptr;
+			// Clean up old resources
+			if (InputIOSurface != nullptr) { CFRelease(InputIOSurface); InputIOSurface = nullptr; }
+			InputMetalTexture = nil;
+			if (InputIOSurfaceGL != 0) { glDeleteTextures(1, &InputIOSurfaceGL); InputIOSurfaceGL = 0; }
+			if (InputRenderFBO != 0) { glDeleteFramebuffers(1, &InputRenderFBO); InputRenderFBO = 0; }
+
+			InputMetalTexture = CreateIOSurfaceBackedMetalTexture(InputWidth, InputHeight, &InputIOSurface);
+			if (InputMetalTexture == nil || InputIOSurface == nullptr) {
+				return FailAndLog("Failed to create IOSurface-backed Metal texture for input");
 			}
-			InputIOSurface = CreateIOSurface(InputWidth, InputHeight);
-			if (InputIOSurface == nullptr) {
-				return FailAndLog("Failed to create IOSurface for input");
+
+			InputIOSurfaceGL = CreateOpenGLTextureFromIOSurface(InputIOSurface, InputWidth, InputHeight);
+			if (InputIOSurfaceGL == 0) {
+				return FailAndLog("Failed to create GL texture from input IOSurface");
 			}
+
+			glGenFramebuffers(1, &InputRenderFBO);
 			InputInteropInitialized = true;
 #endif
 			GLFormat = InputFormat;
@@ -426,12 +428,9 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 		InputInterop.ReadTexture(D3DTextureInput.GetAddressOf());
 
-		//Creates a TETexture from the D3D11 texture
 		TETextureToReceive.take(TED3D11TextureCreate(D3DTextureInput.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
-		//TEResult result = TEInstanceAddTextureTransfer(instance, TETextureToReceive, nullptr, 0);
 
-		//Sets the texture to the input of the TouchEngine instance
-		TEResult result = TEInstanceLinkSetTextureValue(instance, "op/in1", TETextureToReceive, D3DContext);
+		TEResult result = TEInstanceLinkSetTextureValue(instance, InputOpName.c_str(), TETextureToReceive, D3DContext);
 
 		if (result != TEResultSuccess)
 		{
@@ -441,75 +440,56 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 #endif
 
 #ifdef __APPLE__
-		if (InputIOSurface != nullptr) {
-			// Bind the IOSurface as an OpenGL texture and copy the input into it
-			GLuint ioTexture = 0;
-			glGenTextures(1, &ioTexture);
-			glBindTexture(GL_TEXTURE_RECTANGLE, ioTexture);
+		if (InputIOSurfaceGL != 0 && InputMetalTexture != nil && InputRenderFBO != 0) {
+			// Save current GL state
+			GLint prevViewport[4];
+			glGetIntegerv(GL_VIEWPORT, prevViewport);
 
-			CGLContextObj cglContext = CGLGetCurrentContext();
-			CGLTexImageIOSurface2D(
-				cglContext,
-				GL_TEXTURE_RECTANGLE,
-				GL_RGBA,
-				InputWidth,
-				InputHeight,
-				GL_BGRA,
-				GL_UNSIGNED_INT_8_8_8_8_REV,
-				InputIOSurface,
-				0
-			);
+			// Clear stale GL errors
+			while (glGetError() != GL_NO_ERROR) {}
 
-			// Use an FBO to copy the input texture into the IOSurface-backed texture
-			if (InputFBO == 0) {
-				glGenFramebuffers(1, &InputFBO);
+			// Render the host input texture into the IOSurface-backed rect texture
+			glBindFramebuffer(GL_FRAMEBUFFER, InputRenderFBO);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, InputIOSurfaceGL, 0);
+			glViewport(0, 0, InputWidth, InputHeight);
+
+			{
+				ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
+				ffglex::ScopedSamplerActivation activateSampler(0);
+				ffglex::Scoped2DTextureBinding textureBinding(pGL->inputTextures[0]->Handle);
+				shader.Set("InputTexture", 0);
+				FFGLTexCoords maxCoords = GetMaxGLTexCoords(*pGL->inputTextures[0]);
+				shader.Set("MaxUV", maxCoords.s, maxCoords.t);
+				quad.Draw();
 			}
 
-			glBindFramebuffer(GL_READ_FRAMEBUFFER, pGL->HostFBO);
-			glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pGL->inputTextures[0]->Handle, 0);
-
-			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, InputFBO);
-			glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, ioTexture, 0);
-
-			glBlitFramebuffer(
-				0, 0, InputWidth, InputHeight,
-				0, 0, InputWidth, InputHeight,
-				GL_COLOR_BUFFER_BIT, GL_NEAREST
-			);
-
+			// Restore host FBO and viewport
 			glBindFramebuffer(GL_FRAMEBUFFER, pGL->HostFBO);
+			glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
 
-			glDeleteTextures(1, &ioTexture);
+			// Ensure GL is fully done before TE reads the IOSurface
+			glFinish();
 
-			// Wrap IOSurface as a TETexture and send to TouchEngine
-			// BGRA is the IOSurface pixel format, map components accordingly
-			TETextureComponentMap map = {
-				TETextureComponentSourceBlue,
-				TETextureComponentSourceGreen,
-				TETextureComponentSourceRed,
-				TETextureComponentSourceAlpha
-			};
+			// Send to TouchEngine as IOSurface texture
 			TouchObject<TEIOSurfaceTexture> inputTETex;
 			inputTETex.take(TEIOSurfaceTextureCreate(
 				InputIOSurface,
 				TETextureFormatBGRA8Unorm,
 				0,
-				TETextureOriginTopLeft,
-				map,
+				TETextureOriginBottomLeft,
+				kTETextureComponentMapIdentity,
 				nullptr,
 				nullptr
 			));
 
-			TEResult result = TEInstanceLinkSetTextureValue(instance, "op/in1", inputTETex, nullptr);
-			if (result != TEResultSuccess)
-			{
+			TEResult result = TEInstanceLinkSetTextureValue(instance, InputOpName.c_str(), inputTETex, nullptr);
+			if (result != TEResultSuccess) {
 				isTouchFrameBusy = false;
 				return FF_FAIL;
 			}
 		}
 #endif
 
-		//keyedMutex->Release();
 	}
 
 	TEResult result = TEInstanceStartFrameAtTime(instance, FrameCount, 60, false);
@@ -540,13 +520,23 @@ FFResult FFGLTouchEngineFX::DeInitGL()
 		glDeleteTextures(1, &OutputTextureGL);
 		OutputTextureGL = 0;
 	}
-	if (InputFBO != 0) {
-		glDeleteFramebuffers(1, &InputFBO);
-		InputFBO = 0;
+	OutputMetalTexture = nil;
+	if (OutputIOSurface != nullptr) {
+		CFRelease(OutputIOSurface);
+		OutputIOSurface = nullptr;
 	}
+	InputMetalTexture = nil;
 	if (InputIOSurface != nullptr) {
 		CFRelease(InputIOSurface);
 		InputIOSurface = nullptr;
+	}
+	if (InputIOSurfaceGL != 0) {
+		glDeleteTextures(1, &InputIOSurfaceGL);
+		InputIOSurfaceGL = 0;
+	}
+	if (InputRenderFBO != 0) {
+		glDeleteFramebuffers(1, &InputRenderFBO);
+		InputRenderFBO = 0;
 	}
 #endif
 
@@ -567,14 +557,11 @@ FFResult FFGLTouchEngineFX::DeInitGL()
 
 /*
 bool FFGLTouchEngineFX::CreateInputTexture(int width, int height, DXGI_FORMAT dxformat) {
-	// Create the input texture
-
 	if (D3DTextureInput != nullptr)
 	{
 		D3DTextureInput->Release();
 		D3DTextureInput = nullptr;
 	}
-
 
 	D3D11_TEXTURE2D_DESC description = { 0 };
 	description.Width = width;
@@ -593,28 +580,12 @@ bool FFGLTouchEngineFX::CreateInputTexture(int width, int height, DXGI_FORMAT dx
 	HRESULT hr = D3DDevice->CreateTexture2D(&description, nullptr, &D3DTextureInput);
 	if (FAILED(hr))
 	{
-		switch (hr) {
-		case DXGI_ERROR_INVALID_CALL:
-			//str += "DXGI_ERROR_INVALID_CALL";
-			break;
-		case E_INVALIDARG:
-			//	str += "E_INVALIDARG";
-			break;
-		case E_OUTOFMEMORY:
-			//	str += "E_OUTOFMEMORY";
-			break;
-		default:
-			//	str += "Unlisted error";
-			break;
-		}
 		FFGLLog::LogToHost("Failed to create texture input");
 		return false;
 	}
 
 	Microsoft::WRL::ComPtr <IDXGIResource> InputSharedResource;
-
 	hr = D3DTextureInput->QueryInterface(__uuidof(IDXGIResource), (void**)&InputSharedResource);
-
 	if (FAILED(hr))
 	{
 		FFGLLog::LogToHost("Failed to get input share handle");
@@ -622,7 +593,6 @@ bool FFGLTouchEngineFX::CreateInputTexture(int width, int height, DXGI_FORMAT dx
 	}
 
 	hr = InputSharedResource->GetSharedHandle(&InputSharedHandle);
-
 	if (FAILED(hr))
 	{
 		FFGLLog::LogToHost("Failed to get input share handle");
@@ -630,33 +600,7 @@ bool FFGLTouchEngineFX::CreateInputTexture(int width, int height, DXGI_FORMAT dx
 	}
 
 	InputSharedResource->Release();
-
-	InitializeGlTexture(SpoutTextureInput, width, height);
-
-	ffglex::Scoped2DTextureBinding inputBinding(SpoutTextureInput);
-//	glBindTexture(GL_TEXTURE_2D, SpoutTextureInput);
-
-	if (dxInteropHandle == 0 ) {
-		dxInteropHandle = wglDXOpenDeviceNV(D3DDevice.Get());
-	}
-
-	if (dxInteropHandle == 0)
-	{
-		FFGLLog::LogToHost("Failed to open device");
-		return false;
-	}
-
-	dxInteropInputObject = wglDXRegisterObjectNV(dxInteropHandle, D3DTextureInput.Get(), SpoutTextureInput, GL_TEXTURE_2D, WGL_ACCESS_READ_WRITE_NV);
-
-	if (dxInteropInputObject == 0)
-	{
-		FFGLLog::LogToHost("Failed to register object");
-		return false;
-	}
- 
 	return true;
-
-
 }
 
 bool FFGLTouchEngineFX::CreateOutputTexture(int width, int height, DXGI_FORMAT dxformat) {
@@ -681,31 +625,14 @@ bool FFGLTouchEngineFX::CreateOutputTexture(int width, int height, DXGI_FORMAT d
 	description.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
 
 	HRESULT hr = D3DDevice->CreateTexture2D(&description, nullptr, &D3DTextureOutput);
-
 	if (FAILED(hr))
 	{
-		switch (hr) {
-		case DXGI_ERROR_INVALID_CALL:
-			//str += "DXGI_ERROR_INVALID_CALL";
-			break;
-		case E_INVALIDARG:
-			//	str += "E_INVALIDARG";
-			break;
-		case E_OUTOFMEMORY:
-			//	str += "E_OUTOFMEMORY";
-			break;
-		default:
-			//	str += "Unlisted error";
-			break;
-		}
 		FFGLLog::LogToHost("Failed to create texture output");
 		return false;
 	}
 
 	Microsoft::WRL::ComPtr <IDXGIResource> OutputSharedResource;
-
 	hr = D3DTextureOutput->QueryInterface(__uuidof(IDXGIResource), (void**)&OutputSharedResource);
-
 	if (FAILED(hr))
 	{
 		FFGLLog::LogToHost("Failed to get output share handle");
@@ -713,7 +640,6 @@ bool FFGLTouchEngineFX::CreateOutputTexture(int width, int height, DXGI_FORMAT d
 	}
 
 	hr = OutputSharedResource->GetSharedHandle(&OutputSharedHandle);
-
 	if (FAILED(hr))
 	{
 		FFGLLog::LogToHost("Failed to get output share handle");
@@ -721,42 +647,20 @@ bool FFGLTouchEngineFX::CreateOutputTexture(int width, int height, DXGI_FORMAT d
 	}
 
 	OutputSharedResource->Release();
-
-	InitializeGlTexture(SpoutTextureOutput, width, height);
-
-	ffglex::Scoped2DTextureBinding inputBinding(SpoutTextureOutput);
-	//glBindTexture(GL_TEXTURE_2D, SpoutTextureOutput);
-	if (dxInteropHandle == 0) {
-		dxInteropHandle = wglDXOpenDeviceNV(D3DDevice.Get());
-	}
-
-	if (dxInteropHandle == 0)
-	{
-		FFGLLog::LogToHost("Failed to open device");
-		return false;
-	}
-
-	dxInteropOutputObject = wglDXRegisterObjectNV(dxInteropHandle, D3DTextureOutput.Get(), SpoutTextureOutput, GL_TEXTURE_2D, WGL_ACCESS_READ_WRITE_NV);
-
-	if (dxInteropOutputObject == 0)
-	{
-		FFGLLog::LogToHost("Failed to register object");
-		return false;
-	}
-
 	return true;
-
 }
 */
 
 void FFGLTouchEngineFX::ResetBaseParameters()
 {
+	FFGLTouchEnginePluginBase::ResetBaseParameters();
 	hasVideoInput = false;
 }
 
 void FFGLTouchEngineFX::HandleOperatorLink(const TouchObject<TELinkInfo>& linkInfo)
 {
 	if (strcmp(linkInfo->name, "in1") == 0 && linkInfo->type == TELinkTypeTexture) {
+		InputOpName = linkInfo->identifier;
 		isVideoFX = true;
 		hasVideoInput = true;
 	}
@@ -769,7 +673,6 @@ void FFGLTouchEngineFX::ResumeTouchEngine() {
 	{
 		FFGLLog::LogToHost("Failed to resume TouchEngine instance");
 	}
-
 
 	GetAllParameters();
 	return;
@@ -797,13 +700,23 @@ void FFGLTouchEngineFX::ClearTouchInstance() {
 			glDeleteTextures(1, &OutputTextureGL);
 			OutputTextureGL = 0;
 		}
-		if (InputFBO != 0) {
-			glDeleteFramebuffers(1, &InputFBO);
-			InputFBO = 0;
+		OutputMetalTexture = nil;
+		if (OutputIOSurface != nullptr) {
+			CFRelease(OutputIOSurface);
+			OutputIOSurface = nullptr;
 		}
+		InputMetalTexture = nil;
 		if (InputIOSurface != nullptr) {
 			CFRelease(InputIOSurface);
 			InputIOSurface = nullptr;
+		}
+		if (InputIOSurfaceGL != 0) {
+			glDeleteTextures(1, &InputIOSurfaceGL);
+			InputIOSurfaceGL = 0;
+		}
+		if (InputRenderFBO != 0) {
+			glDeleteFramebuffers(1, &InputRenderFBO);
+			InputRenderFBO = 0;
 		}
 #endif
         instance.reset();

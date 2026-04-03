@@ -37,7 +37,8 @@ private:
 
 #ifdef __APPLE__
 	GLuint OutputTextureGL = 0;
-	// Separate shader for rectangle textures (IOSurface output)
+	id<MTLTexture> OutputMetalTexture = nil;
+	IOSurfaceRef OutputIOSurface = nullptr;
 	ffglex::FFGLShader rectShader;
 #endif
 

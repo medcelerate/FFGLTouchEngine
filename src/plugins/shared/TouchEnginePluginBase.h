@@ -126,6 +126,7 @@ protected:
 	std::atomic_bool isTouchEngineReady;
 	std::atomic_bool isGraphicsContextLoaded;
 	std::atomic_bool isTouchFrameBusy;
+	std::atomic_bool isBeingDestroyed;
 	uint64_t FrameCount = 0;
 
 	//Touch file capabilities

@@ -146,7 +146,7 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 {
 
-	if (!isTouchEngineLoaded || !isTouchEngineReady || isTouchFrameBusy)
+	if (instance == nullptr || !isTouchEngineLoaded || !isTouchEngineReady || isTouchFrameBusy)
 	{
 		return FF_SUCCESS;
 	}
@@ -350,6 +350,8 @@ FFResult FFGLTouchEngine::DeInitGL()
 	{
 		if (isTouchEngineLoaded)
 		{
+			isTouchEngineLoaded = false;
+			isTouchEngineReady = false;
 			TEInstanceSuspend(instance);
 			TEInstanceUnload(instance);
 		}

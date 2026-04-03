@@ -83,7 +83,8 @@ FFGLTouchEnginePluginBase::FFGLTouchEnginePluginBase()
 	isTouchEngineLoaded(false),
 	isTouchEngineReady(false),
 	isGraphicsContextLoaded(false),
-	isTouchFrameBusy(false)
+	isTouchFrameBusy(false),
+	isBeingDestroyed(false)
 {
 	// Parameters
 	SetParamInfof(0, "Tox File", FF_TYPE_FILE);
@@ -99,9 +100,17 @@ FFGLTouchEnginePluginBase::FFGLTouchEnginePluginBase()
 
 FFGLTouchEnginePluginBase::~FFGLTouchEnginePluginBase()
 {
+	// Mark as destroying so event callbacks are ignored
+	isBeingDestroyed = true;
+
 	if (instance != nullptr) {
-		TEInstanceSuspend(instance);
-		TEInstanceUnload(instance);
+		if (isTouchEngineLoaded) {
+			isTouchEngineLoaded = false;
+			isTouchEngineReady = false;
+			TEInstanceSuspend(instance);
+			TEInstanceUnload(instance);
+		}
+		instance.reset();
 	}
 #ifdef __APPLE__
 	MetalContext.reset();
@@ -816,6 +825,10 @@ void FFGLTouchEnginePluginBase::CreateParametersFromGroup(const TouchObject<TELi
 
 FFResult FFGLTouchEnginePluginBase::PushParametersToTouchEngine()
 {
+	if (instance == nullptr) {
+		return FF_SUCCESS;
+	}
+
 	for (auto& param : Parameters) {
 		FFUInt32 type = ParameterMapType[param.second];
 
@@ -880,6 +893,10 @@ FFResult FFGLTouchEnginePluginBase::PushParametersToTouchEngine()
 
 void FFGLTouchEnginePluginBase::eventCallback(TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale) {
 
+	// Ignore callbacks during destruction to prevent pure virtual calls
+	if (isBeingDestroyed) {
+		return;
+	}
 
 	if (result == TEResultComponentErrors) {
 		TouchObject<TEErrorArray> errors;
@@ -932,6 +949,9 @@ void FFGLTouchEnginePluginBase::eventCallback(TEEvent event, TEResult result, in
 }
 
 void FFGLTouchEnginePluginBase::linkCallback(TELinkEvent event, const char* identifier) {
+	if (isBeingDestroyed) {
+		return;
+	}
 	switch (event) {
 	case TELinkEventAdded:
 		// A link has been added

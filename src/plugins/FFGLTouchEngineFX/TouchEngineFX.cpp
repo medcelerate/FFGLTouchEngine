@@ -161,7 +161,7 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 {
 
-	if (!isTouchEngineLoaded || !isTouchEngineReady || isTouchFrameBusy)
+	if (instance == nullptr || !isTouchEngineLoaded || !isTouchEngineReady || isTouchFrameBusy)
 	{
 #ifdef _WIN32
 		ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
@@ -544,6 +544,8 @@ FFResult FFGLTouchEngineFX::DeInitGL()
 	{
 		if (isTouchEngineLoaded)
 		{
+			isTouchEngineLoaded = false;
+			isTouchEngineReady = false;
 			TEInstanceSuspend(instance);
 			TEInstanceUnload(instance);
 		}

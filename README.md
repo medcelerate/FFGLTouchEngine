@@ -43,7 +43,7 @@ To install, download the ZIP file and place all 3 DLLs in the same directory.
 - [x] Support Texture Input
 - [ ] Dynamic allocation of touchengine processes
 - [ ] Drag & Drop of Tox Into Resolume
-- [ ] MacOS Support
+- [x] MacOS Support
 
 ---
 

@@ -56,7 +56,6 @@ private:
 	bool InputInteropInitialized = false;
 	bool OutputInteropInitialized = false;
 
-	std::string InputOpName;
 
 	int InputWidth = 0;
 	int InputHeight = 0;

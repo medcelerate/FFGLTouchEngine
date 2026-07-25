@@ -25,6 +25,7 @@
 
 #include "FFGL/FFGLSDK.h"
 #include <map>
+#include <mutex>
 #include <string>
 #include "TouchEngine/TouchObject.h"
 
@@ -122,8 +123,30 @@ protected:
 #endif
 	GLint GLFormat = 0;
 
+	// Serializes TE instance lifecycle (load/unload/reload), parameter map
+	// mutation (enumeration on the TE callback thread), and the render thread's
+	// per-frame TE section. TE callbacks race the render thread otherwise —
+	// observed as a segfault when Reload invalidated links mid-frame
+	// (TEInstanceLinkSetTextureValue on a freed link) and as per-frame pushes
+	// into dead instances after failed loads. Recursive because lifecycle
+	// paths nest (SetFloatParameter -> LoadTEFile, eventCallback ->
+	// ResumeTouchEngine -> GetAllParameters -> ResetBaseParameters). All TE
+	// load/unload calls under it are asynchronous, so worst-case hold time is
+	// milliseconds. Never hold it while blocking on TE completion.
+	std::recursive_mutex TEStateMutex;
+
 	std::atomic_bool isTouchEngineLoaded;
 	std::atomic_bool isTouchEngineReady;
+	// True from a successful TEInstanceLoad until its TEEventInstanceDidLoad
+	// arrives. Reload/Unload pulses are ignored while set: configuring a second
+	// load onto an in-flight one makes TE free the first load's links after
+	// we've already enumerated them and gone ready — the render thread then
+	// pushes a dead link identifier and the host segfaults inside TE.
+	std::atomic_bool isLoadPending{ false };
+	// A load/reload request arrived while a load was in flight. Rather than
+	// dropping it (which silently left the OLD tox running after a path
+	// change), it is replayed as soon as the in-flight load completes.
+	std::atomic_bool isReloadQueued{ false };
 	std::atomic_bool isGraphicsContextLoaded;
 	std::atomic_bool isTouchFrameBusy;
 	std::atomic_bool isBeingDestroyed;
@@ -150,7 +173,8 @@ protected:
 	std::set<FFUInt32> ActiveVectorParams;
 	std::vector<VectorParameterInfo> VectorParameters;
 
-	//Texture Name
+	//Operator link identifiers (input is only set by FX-style toxes)
+	std::string InputOpName;
 	std::string OutputOpName;
 
 	int OutputWidth = 0;

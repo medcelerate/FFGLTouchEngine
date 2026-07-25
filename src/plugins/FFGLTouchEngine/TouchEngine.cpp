@@ -67,8 +67,10 @@ out vec4 fragColor;
 void main()
 {
 	vec4 color = texture( InputTexture, uv );
-	// IOSurface comes as BGRA, swizzle to RGBA
-	fragColor = color.bgra;
+	// No swizzle: CGLTexImageIOSurface2D binds the BGRA IOSurface with
+	// GL_BGRA + GL_UNSIGNED_INT_8_8_8_8_REV, so sampling already yields RGBA.
+	// A .bgra here double-corrects and swaps red/blue.
+	fragColor = color;
 }
 )";
 #endif
@@ -145,6 +147,7 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 
 FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 {
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 
 	if (instance == nullptr || !isTouchEngineLoaded || !isTouchEngineReady || isTouchFrameBusy)
 	{
@@ -345,6 +348,7 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 FFResult FFGLTouchEngine::DeInitGL()
 {
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 
 	if (instance != nullptr)
 	{
@@ -469,6 +473,7 @@ void FFGLTouchEngine::HandleOperatorLink(const TouchObject<TELinkInfo>& linkInfo
 
 
 void FFGLTouchEngine::ResumeTouchEngine() {
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 	TEResult result = TEInstanceResume(instance);
 	if (result != TEResultSuccess)
 	{
@@ -487,6 +492,7 @@ void FFGLTouchEngine::ResumeTouchEngine() {
 }
 
 void FFGLTouchEngine::ClearTouchInstance() {
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 	if (instance != nullptr)
 	{
 		if (isTouchEngineLoaded)

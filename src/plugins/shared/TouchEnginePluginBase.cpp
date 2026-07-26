@@ -59,6 +59,11 @@ DXGI_FORMAT GlToDXFromat(GLint format) {
 	default:
 		auto s = "Unsupported Format:: " + std::to_string(format);
 		FFGLLog::LogToHost(s.c_str());
+		// Falling off the end here was undefined behaviour: an unsupported
+		// format returned whatever happened to be in the return register, and
+		// that value went on to describe a D3D texture. B8G8R8A8_UNORM is the
+		// format this plugin assumes everywhere else, so it is the safe guess.
+		return DXGI_FORMAT_B8G8R8A8_UNORM;
 	}
 }
 #endif
@@ -69,6 +74,10 @@ GLenum GetGlType(GLint format) {
 		return GL_RGBA;
 	case GL_RGBA16:
 		return GL_UNSIGNED_SHORT;
+	default:
+		// Same undefined-behaviour fall-through as above. GL_RGBA matches the
+		// 8-bit path the rest of the plugin is built around.
+		return GL_RGBA;
 	}
 }
 
@@ -344,11 +353,28 @@ FFResult FFGLTouchEnginePluginBase::SetFloatParameter(unsigned int dwIndex, floa
 			TEInstanceSuspend(instance);
 			TEInstanceUnload(instance);
 		}
+		// Unload keeps the instance alive (unlike Clear, which resets it and is
+		// therefore covered by ProcessOpenGL's `instance == nullptr` guard), so
+		// these flags are the only thing between the render thread and a
+		// suspended, unloaded instance. ResetBaseParameters() empties the
+		// parameter maps but does not touch them, so the per-frame TE section
+		// kept running after an Unload.
+		isTouchEngineLoaded = false;
+		isTouchEngineReady = false;
+		// An Unload can land while a load is still in flight, in which case
+		// DidLoad may never arrive to clear these. Left set, isLoadPending would
+		// queue every later load behind one that can no longer complete.
+		isLoadPending = false;
+		isReloadQueued = false;
 		ResetBaseParameters();
 		return FF_SUCCESS;
 	}
 
 	if (dwIndex == 3 && value == 1) {
+		isTouchEngineLoaded = false;
+		isTouchEngineReady = false;
+		isLoadPending = false;
+		isReloadQueued = false;
 		ResetBaseParameters();
 		ClearTouchInstance();
 		return FF_SUCCESS;

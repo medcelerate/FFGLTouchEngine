@@ -80,9 +80,9 @@ void main()
 #ifdef _WIN32
 void textureCallback(TED3D11Texture* texture, TEObjectEvent event, void* info)
 {
-	if (event == TEObjectEventRelease) {
-		FFGLLog::LogToHost("Releasing texture");
-	}
+	// Deliberately silent. This fires on every TE texture release, so logging
+	// here put a host-log write in the per-frame path and buried every other
+	// FFGL: line under hundreds of "Releasing texture" entries.
 	return;
 }
 #endif

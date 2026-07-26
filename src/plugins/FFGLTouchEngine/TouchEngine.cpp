@@ -189,7 +189,11 @@ FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 						return FailAndLog("Failed to create interop");
 					}
 
-					OutputInterop.frame.CreateAccessMutex("mutex");
+					// Spout names this mutex after the sender. The literal "mutex"
+					// made every plugin instance in every process share one
+					// texture-access mutex, so two TouchEngine clips serialised
+					// against each other and corrupted each other's frames.
+					OutputInterop.frame.CreateAccessMutex(SpoutIDOutput.c_str());
 
 					if (!OutputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), OutputWidth, OutputHeight, RawTextureDesc.Format, &D3DTextureOutput)) {
 						return FailAndLog("Failed to create DX11 texture");

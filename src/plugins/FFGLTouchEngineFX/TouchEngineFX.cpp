@@ -90,7 +90,11 @@ void textureCallback(TED3D11Texture* texture, TEObjectEvent event, void* info)
 FFGLTouchEngineFX::FFGLTouchEngineFX()
 	: FFGLTouchEnginePluginBase()
 {
-	srand(static_cast<long int>(time(0)));
+	// No srand() here any more: GenerateRandomString seeds its own engine from
+	// std::random_device. Seeding the global sequence from time(0) was both
+	// insufficient (two hosts started in the same second produced identical
+	// Spout names) and harmful (it reset the sequence under any generator
+	// instance constructed earlier in the same process).
 
 	// Input properties
 	SetMinInputs(0);
@@ -262,7 +266,10 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 						return FailAndLog("Failed to create interop");
 					}
 
-					OutputInterop.frame.CreateAccessMutex("mutex2");
+					// Named after the sender, not a literal — see the note in
+					// FFGLTouchEngine.cpp. "mutex2" was shared by every FX
+					// instance in every process.
+					OutputInterop.frame.CreateAccessMutex(SpoutIDOutput.c_str());
 
 					if (!OutputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), OutputWidth, OutputHeight, RawTextureDesc.Format, &D3DTextureOutput)) {
 						return FailAndLog("Failed to create DX11 texture");
@@ -418,7 +425,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 				return FailAndLog("Failed to create interop");
 			}
 
-			InputInterop.frame.CreateAccessMutex("mutex1");
+			InputInterop.frame.CreateAccessMutex(SpoutIDInput.c_str());
 
 			if (!InputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), InputWidth, InputHeight, GlToDXFromat(InputFormat), &D3DTextureInput)) {
 				return FailAndLog("Failed to create DX11 texture");

@@ -1,4 +1,6 @@
 #include "TouchEnginePluginBase.h"
+#include <algorithm>
+#include <random>
 
 FFResult FailAndLog(std::string message)
 {
@@ -27,17 +29,29 @@ static void LogLinkSkip(const char* identifier, const char* reason) {
 	FFGLLog::LogToHost(msg.c_str());
 }
 
+// Spout sender names must be unique per plugin instance AND across processes:
+// two Arena instances, or two clips in one Arena, otherwise fight over the same
+// shared texture. rand() could not give that — it draws from a global sequence
+// that FFGLTouchEngine never seeded (so every process produced the identical
+// name) and that FFGLTouchEngineFX re-seeded from time(0) in its constructor
+// (so two Arenas started in the same second matched, and an FX constructed
+// between two generators could reset the sequence under them).
 std::string GenerateRandomString(size_t length) {
-	auto randchar = []() -> char {
-		const char charset[] =
-			"0123456789"
-			"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-			"abcdefghijklmnopqrstuvwxyz";
-		const size_t max_index = (sizeof(charset) - 1);
-		return charset[rand() % max_index];
-		};
+	static const char charset[] =
+		"0123456789"
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		"abcdefghijklmnopqrstuvwxyz";
+	// -1 for the terminating NUL: the distribution is inclusive, so this spans
+	// exactly the 62 characters.
+	static constexpr size_t charset_size = sizeof(charset) - 1;
+
+	// thread_local: enumeration runs on the TE callback thread while the host
+	// may construct plugins on another.
+	thread_local std::mt19937 engine{ std::random_device{}() };
+	std::uniform_int_distribution<size_t> pick(0, charset_size - 1);
+
 	std::string str(length, 0);
-	std::generate_n(str.begin(), length, randchar);
+	std::generate_n(str.begin(), length, [&]() { return charset[pick(engine)]; });
 	return str;
 }
 

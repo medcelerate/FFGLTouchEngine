@@ -1064,35 +1064,34 @@ void FFGLTouchEnginePluginBase::eventCallback(TEEvent event, TEResult result, in
 
 	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 
-	if (result == TEResultComponentErrors) {
+	// Only log here, never return: the switch below must still see the event,
+	// or a DidLoad carrying an error would leave isLoadPending set and queue
+	// every later load behind one that already finished.
+	if (result == TEResultComponentErrors || result == TEResultComponentWarnings) {
 		TouchObject<TEErrorArray> errors;
-		TEResult result = TEInstanceGetErrors(instance, errors.take());
-		if (result != TEResultSuccess) {
-			return;
+		if (TEInstanceGetErrors(instance, errors.take()) == TEResultSuccess && errors) {
+			for (int i = 0; i < errors->count; i++) {
+				std::string error =
+					"TouchEngine Error: Severity: " +
+					GetSeverityString(errors->errors[i].severity) +
+					", Location: " + errors->errors[i].location +
+					", Description: " + errors->errors[i].description;
+
+				FFGLLog::LogToHost(error.c_str());
+			}
 		}
-
-		if (!errors) {
-			return;
-		}
-
-		for (int i = 0; i < errors->count; i++) {
-			std::string error =
-				"TouchEngine Error: Severity: " +
-				GetSeverityString(errors->errors[i].severity) +
-				", Location: " + errors->errors[i].location +
-				", Description: " + errors->errors[i].description;
-
-			FFGLLog::LogToHost(error.c_str());
-		}
-
-		// The TouchEngine has encountered an error
-		// You can get the error message with TEInstanceGetError
 	}
 
 	if (result == TEResultNoKey || result == TEResultKeyError || result == TEResultExpiredKey) {
 		FFGLLog::LogToHost("TouchEngine License Error");
-		return;
 	}
+
+	// TEResult.h: component errors and warnings "do not prevent further use of
+	// TouchEngine", so a tox that reports them is still loaded and must run.
+	bool loadSucceeded = result == TEResultSuccess ||
+		result == TEResultComponentWarnings ||
+		result == TEResultComponentErrors;
+
 	switch (event) {
 	case TEEventInstanceDidLoad:
 		isLoadPending = false;
@@ -1104,7 +1103,7 @@ void FFGLTouchEnginePluginBase::eventCallback(TEEvent event, TEResult result, in
 			LoadTEFile();
 			break;
 		}
-		if (result != TEResultSuccess) {
+		if (!loadSucceeded) {
 			// Surface load failures (bad tox, or a tox authored in a newer TD build
 			// than this engine) instead of silently showing nothing. Do NOT resume
 			// or enumerate a failed load — that used to register parameters against
@@ -1131,6 +1130,15 @@ void FFGLTouchEnginePluginBase::eventCallback(TEEvent event, TEResult result, in
 		// previously loaded comp has just been UNLOADED at this point. Treating
 		// it as render-ready resumed per-frame texture pushes into links that
 		// no longer exist and segfaulted the host inside TE (the Reload crash).
+		if (!loadSucceeded && TEResultGetSeverity(result) == TESeverityError) {
+			// Configure itself failed (no usable engine, bad path), so the load
+			// queued behind it cannot complete; don't let it block later loads.
+			isLoadPending = false;
+			isReloadQueued = false;
+			const char* desc = TEResultGetDescription(result);
+			FFGLLog::LogToHost((std::string("FFGLTouchEngine: instance failed to configure — ") +
+				(desc ? desc : "unknown error")).c_str());
+		}
 		break;
 	case TEEventInstanceDidUnload:
 		isTouchEngineLoaded = false;

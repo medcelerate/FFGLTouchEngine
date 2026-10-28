@@ -3,7 +3,7 @@
 //
 // Usage:
 //   te_pool_spike <toxA> <toxB> [--engine DIR] [--alt-engine DIR] [--heavy TOX]
-//                 [--only basic,graphics,vulkan,glshared,channels,path,pin,heavy,
+//                 [--only basic,graphics,vulkan,glshared,channels,fxinput,path,pin,heavy,
 //                         reassoc-unloaded,reassoc-loaded]
 //                 [--log FILE]
 //
@@ -23,6 +23,10 @@
 //             read of the same frame; toxB gets a solid orange input through a
 //             D3D shared texture with no graphics context (Windows only; built
 //             alongside vulkan).
+//   fxinput   FX input written from GL into D3D shared textures with a keyed
+//             mutex and given to toxB with no graphics context: the keys each
+//             side uses, and whether the output follows the input's colour
+//             (Windows only; built alongside vulkan).
 //   path     Changing the preferred engine path on a running instance
 //             (needs --alt-engine).
 //   pin       A tox pinned to another TouchDesigner by a TouchEngine link next to
@@ -1670,6 +1674,201 @@ static void SectionChannels(const char* toxA, const char* toxB, const char* engi
 	}
 	DestroyGl(gl);
 }
+
+// ---- fxinput ---------------------------------------------------------------
+// FX input with no graphics context, the way the plugin would send it: two
+// D3D11 textures shared by global handle with a keyed mutex, imported into
+// GL, written from GL between keyed-mutex acquire and release, and handed to
+// TouchEngine with TEInstanceAddTextureTransfer. Logs which key each step
+// used and whether TouchEngine set a transfer back, and reads the output's
+// mean colour through D3D to show the input is used: it should move when the
+// input turns from orange to blue.
+
+// The supported D3D formats, as DXGI numbers.
+static std::string D3DFormats(Engine& e) {
+	int32_t count = 0;
+	TEInstanceGetSupportedD3DFormats(e.instance, nullptr, &count);
+	std::vector<DXGI_FORMAT> formats(count);
+	if (count > 0 && TEInstanceGetSupportedD3DFormats(e.instance, formats.data(), &count) != TEResultSuccess) return "query failed";
+	std::ostringstream os;
+	for (int32_t i = 0; i < count; i++) os << (i ? " " : "") << (int)formats[i];
+	return count ? os.str() : "none";
+}
+
+// Mean RGB of the current output, read through D3D and handed back.
+static std::string OutputMean(Engine& e, Gpu& gpu, const std::string& link) {
+	TETexture* tex = nullptr;
+	TEResult r = TEInstanceLinkGetTextureValue(e.instance, link.c_str(), TELinkValueCurrent, &tex);
+	if (r != TEResultSuccess || !tex) return "no output";
+	std::ostringstream os;
+	TED3DSharedTexture* st = (TED3DSharedTexture*)tex;
+	bool bgra = TED3DSharedTextureGetFormat(st) == DXGI_FORMAT_B8G8R8A8_UNORM;
+	ComPtr<ID3D11Texture2D> shared, staging;
+	ComPtr<IDXGIKeyedMutex> km;
+	HRESULT hr = gpu.device->OpenSharedResource(TED3DSharedTextureGetHandle(st), IID_PPV_ARGS(&shared));
+	if (SUCCEEDED(hr)) hr = shared.As(&km);
+	D3D11_TEXTURE2D_DESC desc = {};
+	if (SUCCEEDED(hr)) {
+		shared->GetDesc(&desc);
+		D3D11_TEXTURE2D_DESC sd = desc;
+		sd.Usage = D3D11_USAGE_STAGING;
+		sd.BindFlags = 0;
+		sd.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+		sd.MiscFlags = 0;
+		hr = gpu.device->CreateTexture2D(&sd, nullptr, &staging);
+	}
+	TESemaphore* sem = nullptr;
+	uint64_t wait = 0;
+	if (SUCCEEDED(hr) && TEInstanceHasTextureTransfer(e.instance, tex)) TEInstanceGetTextureTransfer(e.instance, tex, &sem, &wait);
+	if (FAILED(hr)) os << "output open failed";
+	else if (km->AcquireSync(wait, 1000) != S_OK) os << "output key " << wait << " not acquired";
+	else {
+		gpu.context->CopyResource(staging.Get(), shared.Get());
+		km->ReleaseSync(wait + 1);
+		TEInstanceAddTextureTransfer(e.instance, tex, sem, wait + 1);
+		D3D11_MAPPED_SUBRESOURCE m;
+		if (SUCCEEDED(gpu.context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &m))) {
+			double sum[3] = {};
+			size_t n = 0;
+			for (UINT y = 0; y < desc.Height; y += 8)
+				for (UINT x = 0; x < desc.Width; x += 8) {
+					const uint8_t* p = (const uint8_t*)m.pData + (size_t)y * m.RowPitch + (size_t)x * 4;
+					sum[0] += p[bgra ? 2 : 0];
+					sum[1] += p[1];
+					sum[2] += p[bgra ? 0 : 2];
+					n++;
+				}
+			gpu.context->Unmap(staging.Get(), 0);
+			char buf[64];
+			std::snprintf(buf, sizeof buf, "output mean rgb %.0f %.0f %.0f", sum[0] / n, sum[1] / n, sum[2] / n);
+			os << buf;
+		}
+	}
+	if (sem) TERelease(&sem);
+	TERelease(&tex);
+	return os.str();
+}
+
+struct GlInput {
+	ComPtr<ID3D11Texture2D> texture;
+	TED3DSharedTexture* te = nullptr;
+	GLuint mem = 0;
+	GLuint glTex = 0;
+	uint64_t key = 0; // the key the mutex is free at, as far as we know
+};
+
+static void SectionFxInput(const char* toxB, const char* engine) {
+	Out("\n== fxinput: GL-written D3D shared input with a keyed mutex, no graphics context\n");
+	Gl gl;
+	Gpu gpu;
+	gpu.name = "allocator";
+	HRESULT hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, nullptr, 0, D3D11_SDK_VERSION,
+		gpu.device.GetAddressOf(), nullptr, gpu.context.GetAddressOf());
+	if (FAILED(hr) || !MakeGl(gl)) {
+		Note("fxinput", "could not create D3D11 device or GL context");
+		DestroyGl(gl);
+		return;
+	}
+	Engine w;
+	if (Create(w, "FI", engine)) {
+		Record("FI configure B", ConfigureAndWait(w, toxB));
+		Record("FI load B", LoadAndWait(w));
+		Note("FI supported D3D formats", D3DFormats(w));
+		TEInstanceResume(w.instance);
+		std::string inLink = FindTexture(w, TEScopeInput), outLink = FindTexture(w, TEScopeOutput);
+		Note("FI links", "in '" + inLink + "', out '" + outLink + "'");
+		const int W = 640, H = 360;
+		GlInput in[2];
+		std::string err;
+		wglMakeCurrent(gl.dc, gl.rc);
+		for (GlInput& i : in) {
+			D3D11_TEXTURE2D_DESC desc = {};
+			desc.Width = W;
+			desc.Height = H;
+			desc.MipLevels = 1;
+			desc.ArraySize = 1;
+			desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			desc.SampleDesc.Count = 1;
+			desc.Usage = D3D11_USAGE_DEFAULT;
+			desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+			desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
+			ComPtr<IDXGIResource> res;
+			HANDLE handle = nullptr;
+			hr = gpu.device->CreateTexture2D(&desc, nullptr, &i.texture);
+			if (SUCCEEDED(hr)) hr = i.texture.As(&res);
+			if (SUCCEEDED(hr)) hr = res->GetSharedHandle(&handle);
+			if (FAILED(hr)) { err = "input texture creation failed"; break; }
+			gpu.context->Flush();
+			i.te = TED3DSharedTextureCreate(handle, TED3DHandleTypeD3D11Global, DXGI_FORMAT_R8G8B8A8_UNORM, W, H,
+				TETextureOriginTopLeft, kTETextureComponentMapIdentity, nullptr, nullptr);
+			GlErrors errors;
+			errors.Clear();
+			gl.f.CreateMemoryObjectsEXT(1, &i.mem);
+			GLint dedicated = GL_TRUE;
+			gl.f.MemoryObjectParameterivEXT(i.mem, GL_DEDICATED_MEMORY_OBJECT_EXT, &dedicated);
+			gl.f.ImportMemoryWin32HandleEXT(i.mem, 0, GL_HANDLE_TYPE_D3D11_IMAGE_KMT_EXT, handle);
+			glGenTextures(1, &i.glTex);
+			glBindTexture(GL_TEXTURE_2D, i.glTex);
+			gl.f.TexStorageMem2DEXT(GL_TEXTURE_2D, 1, GL_RGBA8, W, H, i.mem, 0);
+			errors.Check("input import");
+			if (!errors.list.empty()) { err = errors.list[0]; break; }
+		}
+		Note("FI inputs", err.empty() ? "2 x 640x360 R8G8B8A8, global handle, keyed mutex, imported into GL" : err);
+		if (err.empty() && !inLink.empty() && !outLink.empty()) {
+			RenderFrames(w, 2);
+			Note("FI before input", OutputMean(w, gpu, outLink));
+			std::vector<uint8_t> pixels((size_t)W * H * 4);
+			for (int f = 0; f < 12; f++) {
+				GlInput& i = in[f % 2];
+				bool orange = f < 6;
+				std::ostringstream os;
+				uint64_t key = i.key;
+				if (TEInstanceHasTextureTransfer(w.instance, (TETexture*)i.te)) {
+					TESemaphore* sem = nullptr;
+					uint64_t teKey = 0;
+					TEResult r = TEInstanceGetTextureTransfer(w.instance, (TETexture*)i.te, &sem, &teKey);
+					os << "TE transfer " << (r == TEResultSuccess ? std::to_string(teKey) : TEResultGetDescription(r))
+						<< (sem ? " (semaphore)" : "") << ", ";
+					if (r == TEResultSuccess) key = teKey;
+					if (sem) TERelease(&sem);
+				}
+				else os << "no TE transfer, ";
+				wglMakeCurrent(gl.dc, gl.rc);
+				if (!gl.f.AcquireKeyedMutexWin32EXT(i.mem, key, 1000)) {
+					os << "key " << key << " NOT acquired";
+					Note("FI frame " + std::to_string(f), os.str());
+					continue;
+				}
+				for (size_t p = 0; p < (size_t)W * H; p++) {
+					pixels[p * 4 + 0] = orange ? 255 : 0;
+					pixels[p * 4 + 1] = orange ? 128 : 64;
+					pixels[p * 4 + 2] = orange ? 0 : 255;
+					pixels[p * 4 + 3] = 255;
+				}
+				glBindTexture(GL_TEXTURE_2D, i.glTex);
+				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, W, H, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+				gl.f.ReleaseKeyedMutexWin32EXT(i.mem, key + 1);
+				glFlush();
+				i.key = key + 1;
+				TEResult r = TEInstanceAddTextureTransfer(w.instance, (TETexture*)i.te, nullptr, key + 1);
+				if (r == TEResultSuccess) r = TEInstanceLinkSetTextureValue(w.instance, inLink.c_str(), (TETexture*)i.te, nullptr);
+				os << (orange ? "orange" : "blue") << " written at key " << key << ", released " << key + 1
+					<< ", set " << (r == TEResultSuccess ? "ok" : TEResultGetDescription(r));
+				RenderFrames(w, 1);
+				os << ", " << OutputMean(w, gpu, outLink);
+				Note("FI frame " + std::to_string(f), os.str());
+			}
+		}
+		wglMakeCurrent(gl.dc, gl.rc);
+		for (GlInput& i : in) {
+			if (i.glTex) glDeleteTextures(1, &i.glTex);
+			if (i.mem) gl.f.DeleteMemoryObjectsEXT(1, &i.mem);
+			if (i.te) TERelease(&i.te);
+		}
+	}
+	Release(w);
+	DestroyGl(gl);
+}
 #endif
 
 // ---- path ------------------------------------------------------------------
@@ -1779,7 +1978,7 @@ int main(int argc, char** argv) {
 	}
 	if (positional.size() < 2) {
 		std::printf("usage: %s <toxA> <toxB> [--engine DIR] [--alt-engine DIR] [--heavy TOX] "
-			"[--only basic,graphics,vulkan,glshared,channels,path,pin,heavy,reassoc-unloaded,reassoc-loaded] [--log FILE]\n", argv[0]);
+			"[--only basic,graphics,vulkan,glshared,channels,fxinput,path,pin,heavy,reassoc-unloaded,reassoc-loaded] [--log FILE]\n", argv[0]);
 		return 2;
 	}
 	if (!logPath.empty()) gLog = std::fopen(logPath.c_str(), "w");
@@ -1804,16 +2003,19 @@ int main(int argc, char** argv) {
 	if (wanted("vulkan")) SectionVulkan(toxA, enginePtr);
 	if (wanted("glshared")) SectionGlShared(toxA, enginePtr);
 	if (wanted("channels")) SectionChannels(toxA, toxB, enginePtr);
+	if (wanted("fxinput")) SectionFxInput(toxB, enginePtr);
 #else
 	if (wanted("vulkan")) Note("vulkan", "skipped: built without Vulkan headers (see build.bat)");
 	if (wanted("glshared")) Note("glshared", "skipped: built without Vulkan headers (see build.bat)");
 	if (wanted("channels")) Note("channels", "skipped: built without Vulkan headers (see build.bat)");
+	if (wanted("fxinput")) Note("fxinput", "skipped: built without Vulkan headers (see build.bat)");
 #endif
 #else
 	if (wanted("graphics")) Note("graphics", "skipped: Windows only for now");
 	if (wanted("vulkan")) Note("vulkan", "skipped: Windows only for now");
 	if (wanted("glshared")) Note("glshared", "skipped: Windows only for now");
 	if (wanted("channels")) Note("channels", "skipped: Windows only for now");
+	if (wanted("fxinput")) Note("fxinput", "skipped: Windows only for now");
 #endif
 	if (wanted("path")) {
 		if (alt.empty()) Note("path", "skipped: needs --alt-engine");

@@ -378,8 +378,13 @@ Still to verify on this route:
   keyed-mutex orange texture on an input link with no context, but the
   example tox's output didn't show whether the input was used.
 - **AMD and Intel**: both extensions need confirming there.
-- **Inside Resolume**: that the plugin's GL calls run on a context where
-  these extensions resolve (`wglGetProcAddress` needs a current context).
+- **Inside Resolume** — output verified: Arena 7.20.1 on the same machine
+  loaded both plugins from `feat/keyed-mutex-output`; a TouchEngine source
+  (`NoiseOutOnly5Param.tox`) and a TouchEngineFX on a clip
+  (`InputOutput5Param.tox`) rendered right side up, without flicker, and
+  kept running together, with no plugin errors logged. Not yet checked
+  there: reloading or restarting a clip, which drops the cached imports,
+  and red/blue against a tox with a known colour.
 
 ### Sharing across the three plugin bundles
 

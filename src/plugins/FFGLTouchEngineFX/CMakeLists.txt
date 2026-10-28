@@ -27,14 +27,14 @@ if (WIN32)
     target_sources(FFGLTouchEngineFX PRIVATE
         ../shared/TEOutputGL.h
         ../shared/TEOutputGL.cpp
+        ../shared/TEInputGL.h
+        ../shared/TEInputGL.cpp
     )
     target_link_directories(FFGLTouchEngineFX PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/TouchEngine
         ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/Glew
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib/Spout
     )
     target_link_libraries(FFGLTouchEngineFX PRIVATE
-        Spout_static.lib
         TouchEngine.lib
         glew32s.lib
     )

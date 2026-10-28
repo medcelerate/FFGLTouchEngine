@@ -77,25 +77,9 @@ void main()
 )";
 #endif
 
-#ifdef _WIN32
-void textureCallback(TED3D11Texture* texture, TEObjectEvent event, void* info)
-{
-	// Deliberately silent. This fires on every TE texture release, so logging
-	// here put a host-log write in the per-frame path and buried every other
-	// FFGL: line under hundreds of "Releasing texture" entries.
-	return;
-}
-#endif
-
 FFGLTouchEngineFX::FFGLTouchEngineFX()
 	: FFGLTouchEnginePluginBase()
 {
-	// No srand() here any more: GenerateRandomString seeds its own engine from
-	// std::random_device. Seeding the global sequence from time(0) was both
-	// insufficient (two hosts started in the same second produced identical
-	// Spout names) and harmful (it reset the sequence under any generator
-	// instance constructed earlier in the same process).
-
 	// Input properties
 	SetMinInputs(0);
 	SetMaxInputs(1);
@@ -103,7 +87,8 @@ FFGLTouchEngineFX::FFGLTouchEngineFX()
 	ConstructBaseParameters();
 
 #ifdef _WIN32
-	EnableSpoutLogFile("FFGLTouchEngineFX.log");
+	// Allocates the shared textures the input is sent in.
+	NeedsD3DDevice = true;
 #endif
 
 }
@@ -122,11 +107,6 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 
 	//Load TouchEngine
 	LoadTouchEngine();
-
-#ifdef _WIN32
-	SpoutIDInput = GenerateRandomString(15);
-	SpoutTextureInput = 0;
-#endif
 
 	result = InitializeShader(vertexShaderCode, fragmentShaderCode);
 	if (result != FF_SUCCESS)
@@ -333,24 +313,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			InputWidth = pGL->inputTextures[0]->Width;
 			InputHeight = pGL->inputTextures[0]->Height;
 #ifdef _WIN32
-			InputInterop.SetSenderName(SpoutIDInput.c_str());
-
-			if (!InputInterop.OpenDirectX11(D3DDevice.Get())) {
-				return FailAndLog("Failed to open DirectX11");
-			}
-
-			if (!InputInterop.CreateInterop(InputWidth, InputHeight, GlToDXFromat(InputFormat), false)) {
-				return FailAndLog("Failed to create interop");
-			}
-
-			InputInterop.frame.CreateAccessMutex(SpoutIDInput.c_str());
-
-			if (!InputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), InputWidth, InputHeight, GlToDXFromat(InputFormat), &D3DTextureInput)) {
-				return FailAndLog("Failed to create DX11 texture");
-			}
-
-			InitializeGlTexture(SpoutTextureInput, InputWidth, InputHeight, GetGlType(InputFormat));
-
+			// TEInputGL reallocates its shared textures itself when these change.
 			InputInteropInitialized = true;
 #endif
 
@@ -379,20 +342,9 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 
 #ifdef _WIN32
-		InputInterop.WriteGLDXtexture(pGL->inputTextures[0]->Handle, GL_TEXTURE_2D, InputWidth, InputHeight, true, pGL->HostFBO);
-
-		InputInterop.ReadTexture(D3DTextureInput.GetAddressOf());
-
-		TouchObject<TED3D11Texture> TETextureToReceive;
-		TETextureToReceive.take(TED3D11TextureCreate(D3DTextureInput.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
-
-		TEResult result = TEInstanceLinkSetTextureValue(instance, InputOpName.c_str(), TETextureToReceive, D3DContext);
-
-		if (result != TEResultSuccess)
-		{
-			isTouchFrameBusy = false;
-			return FF_FAIL;
-		}
+		// On failure (logged once) the frame still starts: TouchEngine keeps
+		// the last input it was given, and the output drawn above stays.
+		InputGL.Send(instance, InputOpName, D3DDevice.Get(), pGL->inputTextures[0]->Handle, InputWidth, InputHeight, pGL->HostFBO);
 #endif
 
 #ifdef __APPLE__
@@ -466,11 +418,7 @@ FFResult FFGLTouchEngineFX::DeInitGL()
 	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 
 #ifdef _WIN32
-	for (auto it : TextureMutexMap)
-		it.second->Release();
-
-	TextureMutexMap.clear();
-
+	InputGL.Release();
 	OutputGL.Release();
 #endif
 
@@ -651,9 +599,9 @@ void FFGLTouchEngineFX::ClearTouchInstance() {
 			TEInstanceUnload(instance);
 		}
 #ifdef _WIN32
-		InputInteropInitialized = !InputInterop.CleanupInterop();
+		InputGL.Release();
+		InputInteropInitialized = false;
 		OutputGL.DropImports();
-		D3DContext.reset();
 #endif
 #ifdef __APPLE__
 		MetalContext.reset();

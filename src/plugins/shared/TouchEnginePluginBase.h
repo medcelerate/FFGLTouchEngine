@@ -24,20 +24,23 @@
 #endif
 
 #include "FFGL/FFGLSDK.h"
+#include <atomic>
 #include <map>
 #include <mutex>
+#include <set>
 #include <string>
+#include <unordered_map>
+#include <vector>
 #include "TouchEngine/TouchObject.h"
 
 #ifdef _WIN32
 #include "TouchEngine/TED3D11.h"
-#include "SpoutGL/SpoutSender.h"
 #include "TEOutputGL.h"
+#include "TEInputGL.h"
 #endif
 
 FFResult FailAndLog(std::string message);
 std::string GetSeverityString(TESeverity severity);
-std::string GenerateRandomString(size_t length);
 
 #ifdef _WIN32
 DXGI_FORMAT GlToDXFromat(GLint format);
@@ -101,9 +104,6 @@ protected:
 	TouchObject<TEInstance> instance;
 #ifdef _WIN32
 	Microsoft::WRL::ComPtr<ID3D11Device> D3DDevice;
-	TouchObject<TED3D11Context> D3DContext;
-	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureInput = nullptr;
-	std::map<ID3D11Texture2D*, IDXGIKeyedMutex*> TextureMutexMap;
 
 	DXGI_FORMAT DXFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
 
@@ -111,11 +111,14 @@ protected:
 	// and no TouchEngine graphics context.
 	TEOutputGL OutputGL;
 
-	// Only plugins that send TouchEngine textures need a D3D11 device and a
-	// TouchEngine graphics context: the FX plugin's input still goes through
-	// D3D11. The Source plugin clears this and its engine runs with no
-	// graphics context at all.
-	bool SendsD3DTextures = true;
+	// The host's input, sent to TouchEngine the same way. FX plugin only.
+	TEInputGL InputGL;
+
+	// No plugin associates a TouchEngine graphics context on Windows: input
+	// and output both cross as D3D shared textures. The D3D11 device only
+	// allocates the shared input textures, so only plugins that send input
+	// set this and create one.
+	bool NeedsD3DDevice = false;
 #endif
 #ifdef __APPLE__
 	id<MTLDevice> MetalDevice = nil;

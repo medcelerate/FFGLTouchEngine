@@ -84,11 +84,6 @@ FFGLTouchEngine::FFGLTouchEngine()
 
 	ConstructBaseParameters();
 
-#ifdef _WIN32
-	// A source sends TouchEngine no textures.
-	SendsD3DTextures = false;
-#endif
-
 }
 
 FFGLTouchEngine::~FFGLTouchEngine()

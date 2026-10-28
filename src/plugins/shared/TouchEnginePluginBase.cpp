@@ -1,6 +1,5 @@
 #include "TouchEnginePluginBase.h"
 #include <algorithm>
-#include <random>
 
 FFResult FailAndLog(std::string message)
 {
@@ -27,32 +26,6 @@ static void LogLinkSkip(const char* identifier, const char* reason) {
 	std::string msg = std::string("FFGLTouchEngine: skipping parameter '") +
 		(identifier ? identifier : "?") + "' — " + reason;
 	FFGLLog::LogToHost(msg.c_str());
-}
-
-// Spout sender names must be unique per plugin instance AND across processes:
-// two Arena instances, or two clips in one Arena, otherwise fight over the same
-// shared texture. rand() could not give that — it draws from a global sequence
-// that FFGLTouchEngine never seeded (so every process produced the identical
-// name) and that FFGLTouchEngineFX re-seeded from time(0) in its constructor
-// (so two Arenas started in the same second matched, and an FX constructed
-// between two generators could reset the sequence under them).
-std::string GenerateRandomString(size_t length) {
-	static const char charset[] =
-		"0123456789"
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		"abcdefghijklmnopqrstuvwxyz";
-	// -1 for the terminating NUL: the distribution is inclusive, so this spans
-	// exactly the 62 characters.
-	static constexpr size_t charset_size = sizeof(charset) - 1;
-
-	// thread_local: enumeration runs on the TE callback thread while the host
-	// may construct plugins on another.
-	thread_local std::mt19937 engine{ std::random_device{}() };
-	std::uniform_int_distribution<size_t> pick(0, charset_size - 1);
-
-	std::string str(length, 0);
-	std::generate_n(str.begin(), length, [&]() { return charset[pick(engine)]; });
-	return str;
 }
 
 #ifdef _WIN32
@@ -154,7 +127,7 @@ FFGLTouchEnginePluginBase::~FFGLTouchEnginePluginBase()
 FFResult FFGLTouchEnginePluginBase::InitializeDevice()
 {
 #ifdef _WIN32
-	if (!SendsD3DTextures) {
+	if (!NeedsD3DDevice) {
 		return FF_SUCCESS;
 	}
 
@@ -242,25 +215,10 @@ bool FFGLTouchEnginePluginBase::LoadTEGraphicsContext(bool reload) {
 	// Load the TouchEngine graphics context
 
 #ifdef _WIN32
-	if (!SendsD3DTextures) {
-		// Output arrives as D3D shared textures with no context associated.
-		isGraphicsContextLoaded = true;
-		return true;
-	}
-
-	if (D3DDevice == nullptr) {
-		FFGLLog::LogToHost("D3D11 Device Not Available, You Probably Failed Somewhere...In Your Life");
-	}
-
-	TEResult result = TED3D11ContextCreate(D3DDevice.Get(), D3DContext.take());
-	if (result != TEResultSuccess) {
-		return false;
-	}
-
-	result = TEInstanceAssociateGraphicsContext(instance, D3DContext);
-	if (result != TEResultSuccess) {
-		return false;
-	}
+	// Nothing to associate: input and output cross as D3D shared textures
+	// (TEInputGL, TEOutputGL). Associating a context from another device
+	// later would crash the host, so the pool can never move an engine
+	// that has one.
 	isGraphicsContextLoaded = true;
 #endif
 #ifdef __APPLE__

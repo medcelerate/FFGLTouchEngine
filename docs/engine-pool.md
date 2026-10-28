@@ -314,12 +314,8 @@ once, as above. The plugins need no device of their own.
 Limits found:
 
 - **Timeline semaphores in GL need `GL_NV_timeline_semaphore`**, which only
-  NVIDIA drivers provide. AMD and Intel need another sync route. The spike's
-  `glshared` section is that candidate: TouchEngine's D3D shared output
-  imported into GL and synchronised with `GL_EXT_win32_keyed_mutex` using
-  the plugin's existing keys. Its keyed mutex already works; binding the
-  texture storage does not yet (`GL_INVALID_VALUE`, being narrowed down).
-  The current D3D11 + Spout path remains the fallback.
+  NVIDIA drivers provide. AMD and Intel need another sync route — see the
+  keyed-mutex route below.
 - **FX input** is untested. GL can import memory but not create shareable
   memory, so the input texture must come from an allocator — the same
   small Vulkan device, or a D3D shared texture, which TouchEngine accepts
@@ -327,6 +323,36 @@ Limits found:
 - Per-frame cost is unmeasured without the spike's full-image readback.
   A plugin should cache the GL import per TouchEngine texture handle, since
   TouchEngine reuses a small set of output textures.
+
+#### Windows: keyed-mutex handoff, with no graphics context at all
+
+The simpler alternative, verified with `te_pool_spike --only glshared` on
+TouchDesigner 2023.12000 (same machine): the engine gets **no graphics
+context**, delivers its usual D3D shared texture (a KMT handle,
+`DXGI_FORMAT_B8G8R8A8_UNORM`), and GL imports it directly:
+
+- `glImportMemoryWin32HandleEXT(mem, 0, GL_HANDLE_TYPE_D3D11_IMAGE_KMT_EXT,
+  handle)` then `glTexStorageMem2DEXT(..., GL_RGBA8, ...)`. **The size must
+  be 0** for D3D11 image handles: a nonzero size imports without error but
+  makes the storage call fail with `GL_INVALID_VALUE`.
+- Sync is `glAcquireKeyedMutexWin32EXT(mem, wait, timeout)` /
+  `glReleaseKeyedMutexWin32EXT(mem, wait + 1)` with the keys from
+  `TEInstanceGetTextureTransfer`, then `TEInstanceAddTextureTransfer` — the
+  same keys the plugin's D3D11 path uses today, but with a timeout instead
+  of `AcquireSync(INFINITE)`.
+- Two engines, three rounds each, real pixels every round; import plus
+  full readback took 4–6 ms against 16–43 ms on the Vulkan route.
+
+Compared with the Vulkan route it needs no Vulkan device, no allocation
+sizing, no host semaphore and no NVIDIA-only extension — only
+`GL_EXT_memory_object_win32` and `GL_EXT_win32_keyed_mutex`, which still
+need checking on AMD and Intel. And with no context to associate, the pool's
+"one context per engine for life" rule disappears entirely. Without a
+context TouchEngine picks the default GPU, which matters only on
+multi-GPU machines (`TEInstanceAssociateAdapter` covers that).
+
+Either route removes the D3D11 device and Spout. TouchDesigner renders in
+Vulkan with both; they differ only in how the frame crosses into GL.
 
 ### Sharing across the three plugin bundles
 

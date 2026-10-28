@@ -1362,8 +1362,10 @@ static std::string CheckOutputGlShared(Engine& e, Gl& gl, const std::string& lin
 	gl.f.CreateMemoryObjectsEXT(1, &mem);
 	GLint dedicated = GL_TRUE;
 	gl.f.MemoryObjectParameterivEXT(mem, GL_DEDICATED_MEMORY_OBJECT_EXT, &dedicated);
-	GLuint64 size = ((GLuint64)w * h * 4 + 0xFFFF) & ~(GLuint64)0xFFFF;
-	gl.f.ImportMemoryWin32HandleEXT(mem, size, glMemType, handle);
+	// Size 0: for D3D11 image handles the driver takes the size from the
+	// resource. A nonzero size imports without error but makes the texture
+	// storage call below fail with GL_INVALID_VALUE (seen on NVIDIA 591.86).
+	gl.f.ImportMemoryWin32HandleEXT(mem, 0, glMemType, handle);
 	errors.Check("import memory");
 	GLuint glTex = 0;
 	glGenTextures(1, &glTex);

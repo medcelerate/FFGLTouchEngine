@@ -245,11 +245,13 @@ static double FirstFrame(Engine& e) {
 
 static double UnloadAndWait(Engine& e) {
 	TEInstanceSuspend(e.instance);
-	int before = Count(e, TEEventInstanceReady);
+	// TEInstance.h says Unload ends in InstanceReady, but the engine sends
+	// InstanceDidUnload; Ready only follows the next Configure.
+	int before = Count(e, TEEventInstanceDidUnload);
 	double t0 = Now();
 	TEInstanceUnload(e.instance);
-	if (WaitFor(e, TEEventInstanceReady, before, 60) < 0) {
-		std::printf("  %s: timed out waiting for Ready after Unload\n", e.name.c_str());
+	if (WaitFor(e, TEEventInstanceDidUnload, before, 60) < 0) {
+		std::printf("  %s: timed out waiting for DidUnload\n", e.name.c_str());
 		return -1;
 	}
 	return Now() - t0;

@@ -327,7 +327,7 @@ Limits found:
 #### Windows: keyed-mutex handoff, with no graphics context at all
 
 The simpler alternative, verified with `te_pool_spike --only glshared` on
-TouchDesigner 2023.12000 (same machine): the engine gets **no graphics
+TouchDesigner 2023.12000 and 2025.30280 (same machine): the engine gets **no graphics
 context**, delivers its usual D3D shared texture (a KMT handle,
 `DXGI_FORMAT_B8G8R8A8_UNORM`), and GL imports it directly:
 
@@ -340,8 +340,10 @@ context**, delivers its usual D3D shared texture (a KMT handle,
   `TEInstanceGetTextureTransfer`, then `TEInstanceAddTextureTransfer` — the
   same keys the plugin's D3D11 path uses today, but with a timeout instead
   of `AcquireSync(INFINITE)`.
-- Two engines, three rounds each, real pixels every round; import plus
-  full readback took 4–6 ms against 16–43 ms on the Vulkan route.
+- Two engines, three rounds each, real pixels every round on both versions;
+  import plus full readback took 4–7 ms against 16–43 ms on the Vulkan
+  route. On 2025 an engine's very first frame was slower (640–675 ms
+  against ~400 ms on 2023).
 
 Compared with the Vulkan route it needs no Vulkan device, no allocation
 sizing, no host semaphore and no NVIDIA-only extension — only

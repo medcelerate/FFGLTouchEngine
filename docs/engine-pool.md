@@ -382,9 +382,11 @@ Still to verify on this route:
   loaded both plugins from `feat/keyed-mutex-output`; a TouchEngine source
   (`NoiseOutOnly5Param.tox`) and a TouchEngineFX on a clip
   (`InputOutput5Param.tox`) rendered right side up, without flicker, and
-  kept running together, with no plugin errors logged. Not yet checked
-  there: reloading or restarting a clip, which drops the cached imports,
-  and red/blue against a tox with a known colour.
+  kept running together, with no plugin errors logged. Switching a running
+  clip's tox and back, the Reload pulse, and stopping and retriggering both
+  clips all kept output up (no new engine process: the tox switch reused
+  the running engine, and stopped clips kept theirs). Not yet checked
+  there: red/blue against a tox with a known colour.
 
 ### Sharing across the three plugin bundles
 

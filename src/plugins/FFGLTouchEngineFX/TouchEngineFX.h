@@ -32,13 +32,10 @@ private:
 
 	//Spout Configs
 	std::string SpoutIDInput;
-	std::string SpoutIDOutput;
 
 	Spout InputInterop;
-	Spout OutputInterop;
 
 	uint32_t SpoutSenderID = 0;
-	GLuint SpoutTextureOutput = 0;
 	GLuint SpoutTextureInput = 0;
 #endif
 

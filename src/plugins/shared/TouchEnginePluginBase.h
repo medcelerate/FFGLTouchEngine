@@ -32,6 +32,7 @@
 #ifdef _WIN32
 #include "TouchEngine/TED3D11.h"
 #include "SpoutGL/SpoutSender.h"
+#include "TEOutputGL.h"
 #endif
 
 FFResult FailAndLog(std::string message);
@@ -102,10 +103,19 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D11Device> D3DDevice;
 	TouchObject<TED3D11Context> D3DContext;
 	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureInput = nullptr;
-	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureOutput = nullptr;
 	std::map<ID3D11Texture2D*, IDXGIKeyedMutex*> TextureMutexMap;
 
 	DXGI_FORMAT DXFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
+
+	// TouchEngine's output, taken straight into GL. It needs no D3D11 device
+	// and no TouchEngine graphics context.
+	TEOutputGL OutputGL;
+
+	// Only plugins that send TouchEngine textures need a D3D11 device and a
+	// TouchEngine graphics context: the FX plugin's input still goes through
+	// D3D11. The Source plugin clears this and its engine runs with no
+	// graphics context at all.
+	bool SendsD3DTextures = true;
 #endif
 #ifdef __APPLE__
 	id<MTLDevice> MetalDevice = nil;

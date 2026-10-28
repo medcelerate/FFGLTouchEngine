@@ -154,6 +154,10 @@ FFGLTouchEnginePluginBase::~FFGLTouchEnginePluginBase()
 FFResult FFGLTouchEnginePluginBase::InitializeDevice()
 {
 #ifdef _WIN32
+	if (!SendsD3DTextures) {
+		return FF_SUCCESS;
+	}
+
 	// Create D3D11 device
 	HRESULT hr = D3D11CreateDevice(
 		nullptr,
@@ -238,6 +242,12 @@ bool FFGLTouchEnginePluginBase::LoadTEGraphicsContext(bool reload) {
 	// Load the TouchEngine graphics context
 
 #ifdef _WIN32
+	if (!SendsD3DTextures) {
+		// Output arrives as D3D shared textures with no context associated.
+		isGraphicsContextLoaded = true;
+		return true;
+	}
+
 	if (D3DDevice == nullptr) {
 		FFGLLog::LogToHost("D3D11 Device Not Available, You Probably Failed Somewhere...In Your Life");
 	}

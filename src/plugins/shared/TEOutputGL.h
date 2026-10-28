@@ -63,6 +63,16 @@ private:
 	void Delete(Import& import);
 	bool Fail(const std::string& message);
 
+	// GL names belong to the context that made them, and framebuffers are
+	// never shared, even between contexts that share textures. Deleting them
+	// with another context current deletes that context's objects instead.
+	// (Arena once logged "Invalid framebuffer configuration" on its own
+	// framebuffer while shutting down, which would fit.) So GL objects are
+	// only deleted, or used, on the context that created them.
+	bool OwnsCurrentContext() const;
+	void AdoptCurrentContext();
+	HGLRC glContext = nullptr;
+
 	std::vector<Import> imports;
 	uint64_t frameCount = 0;
 	bool checkedExtensions = false;

@@ -62,6 +62,7 @@ bool TEOutputGL::Receive(TEInstance* instance, const TouchObject<TETexture>& tex
 	if (!hasExtensions) {
 		return false;
 	}
+	AdoptCurrentContext();
 	if (TETextureGetType(texture) != TETextureTypeD3DShared) {
 		return Fail("TouchEngine output is not a D3D shared texture");
 	}
@@ -254,35 +255,48 @@ void TEOutputGL::DropImports()
 
 void TEOutputGL::Release()
 {
+	bool owned = OwnsCurrentContext();
+	bool hadObjects = !imports.empty() || output != 0 || readFBO != 0 || drawFBO != 0;
 	DropImports();
-	if (output != 0) {
-		glDeleteTextures(1, &output);
-		output = 0;
-	}
-	if (readFBO != 0) {
-		glDeleteFramebuffers(1, &readFBO);
-		readFBO = 0;
-	}
-	if (drawFBO != 0) {
-		glDeleteFramebuffers(1, &drawFBO);
-		drawFBO = 0;
-	}
+	if (owned && output != 0) glDeleteTextures(1, &output);
+	if (owned && readFBO != 0) glDeleteFramebuffers(1, &readFBO);
+	if (owned && drawFBO != 0) glDeleteFramebuffers(1, &drawFBO);
+	output = 0;
+	readFBO = 0;
+	drawFBO = 0;
 	outputWidth = 0;
 	outputHeight = 0;
 	outputFormat = 0;
 	outputSwapRedBlue = false;
+	if (!owned && hadObjects) {
+		// Left for the context that owns them to free when it is destroyed.
+		FFGLLog::LogToHost("FFGLTouchEngine: GL cleanup ran without the plugin's GL context current; its GL objects were left alone");
+	}
+	glContext = nullptr;
+}
+
+bool TEOutputGL::OwnsCurrentContext() const
+{
+	return glContext != nullptr && wglGetCurrentContext() == glContext;
+}
+
+void TEOutputGL::AdoptCurrentContext()
+{
+	HGLRC current = wglGetCurrentContext();
+	if (glContext != nullptr && current != glContext) {
+		// The host renders on another context now: start again there.
+		Release();
+	}
+	glContext = current;
 }
 
 void TEOutputGL::Delete(Import& import)
 {
-	if (import.glTexture != 0) {
-		glDeleteTextures(1, &import.glTexture);
-		import.glTexture = 0;
-	}
-	if (import.memory != 0) {
-		glDeleteMemoryObjectsEXT(1, &import.memory);
-		import.memory = 0;
-	}
+	bool owned = OwnsCurrentContext();
+	if (owned && import.glTexture != 0) glDeleteTextures(1, &import.glTexture);
+	if (owned && import.memory != 0) glDeleteMemoryObjectsEXT(1, &import.memory);
+	import.glTexture = 0;
+	import.memory = 0;
 	import.texture.reset();
 }
 

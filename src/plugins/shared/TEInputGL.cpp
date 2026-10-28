@@ -44,6 +44,7 @@ bool TEInputGL::Send(TEInstance* instance, const std::string& link, ID3D11Device
 	if (device == nullptr) {
 		return Fail("No D3D11 device to allocate input textures");
 	}
+	AdoptCurrentContext();
 
 	GLint previousTexture = 0;
 	GLint hostFormat = 0;
@@ -190,33 +191,48 @@ bool TEInputGL::Allocate(ID3D11Device* device, int width, int height, GLint host
 
 void TEInputGL::Release()
 {
+	bool owned = OwnsCurrentContext();
+	bool hadObjects = buffers[0].glTexture != 0 || buffers[1].glTexture != 0 || readFBO != 0 || drawFBO != 0;
 	for (Buffer& buffer : buffers) {
 		Delete(buffer);
 	}
-	if (readFBO != 0) {
-		glDeleteFramebuffers(1, &readFBO);
-		readFBO = 0;
-	}
-	if (drawFBO != 0) {
-		glDeleteFramebuffers(1, &drawFBO);
-		drawFBO = 0;
-	}
+	if (owned && readFBO != 0) glDeleteFramebuffers(1, &readFBO);
+	if (owned && drawFBO != 0) glDeleteFramebuffers(1, &drawFBO);
+	readFBO = 0;
+	drawFBO = 0;
 	bufferWidth = 0;
 	bufferHeight = 0;
 	bufferHostFormat = 0;
 	next = 0;
+	if (!owned && hadObjects) {
+		// Left for the context that owns them to free when it is destroyed.
+		FFGLLog::LogToHost("FFGLTouchEngine: GL cleanup ran without the plugin's GL context current; its GL objects were left alone");
+	}
+	glContext = nullptr;
+}
+
+bool TEInputGL::OwnsCurrentContext() const
+{
+	return glContext != nullptr && wglGetCurrentContext() == glContext;
+}
+
+void TEInputGL::AdoptCurrentContext()
+{
+	HGLRC current = wglGetCurrentContext();
+	if (glContext != nullptr && current != glContext) {
+		// The host renders on another context now: start again there.
+		Release();
+	}
+	glContext = current;
 }
 
 void TEInputGL::Delete(Buffer& buffer)
 {
-	if (buffer.glTexture != 0) {
-		glDeleteTextures(1, &buffer.glTexture);
-		buffer.glTexture = 0;
-	}
-	if (buffer.memory != 0) {
-		glDeleteMemoryObjectsEXT(1, &buffer.memory);
-		buffer.memory = 0;
-	}
+	bool owned = OwnsCurrentContext();
+	if (owned && buffer.glTexture != 0) glDeleteTextures(1, &buffer.glTexture);
+	if (owned && buffer.memory != 0) glDeleteMemoryObjectsEXT(1, &buffer.memory);
+	buffer.glTexture = 0;
+	buffer.memory = 0;
 	buffer.shared.reset();
 	buffer.texture.Reset();
 	buffer.key = 0;

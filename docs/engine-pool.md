@@ -45,16 +45,26 @@ Verified by the spike (Windows, TouchDesigner 2023.12000 unless noted):
 - **A realistic tox loads in ~65–75 ms on a warm engine**
   (`Samples/Palette/PointClouds/pointGenerator.tox`, 3.2 MB). Its first
   frame took 438 ms the first time and 38 ms when the same engine loaded it
-  again, so a Cached slot also skips that first-cook cost. Steady frames
-  were 1.5 ms median.
+  again. Steady frames were 1.5 ms median.
 - `TERelease` on the instance ends the process.
-- **Re-associating a loaded engine with another device's TE context crashes
-  the host process** (`STATUS_STACK_OVERFLOW` inside TouchEngine). The
-  engine rendered correctly on device A; suspending it and calling
-  `TEInstanceAssociateGraphicsContext` with a context made from a second
-  D3D11 device killed the process before the call returned. See
-  [Graphics device](#graphics-device): engines are never moved between
-  contexts.
+- **One TE graphics context can serve several loaded engines at once**
+  (2023.12000 and 2025.30280). Two engines, each associated once with the
+  same context right after spawning, rendered interleaved at 1.5–1.8 ms per
+  frame, and every readback through the shared device had real content.
+  Handing an engine to another clip without touching its context worked
+  both with the tox still loaded and after unload + reload.
+- **Re-associating an engine with another device's TE context crashes the
+  host process** (`STATUS_STACK_OVERFLOW` inside TouchEngine), whether the
+  tox is loaded or already unloaded. The call never returns and the engine
+  process is left orphaned. See [Graphics device](#graphics-device): an
+  engine keeps the context it was given at spawn for life.
+- **Keeping a tox loaded between clips saves nothing.** After a
+  suspend/resume handoff the first frame took 95–117 ms; unload + reload of
+  the same small tox took ~8 ms in all, and the realistic tox's reload plus
+  first frame ~100 ms. So released engines are unloaded (see
+  [Release](#release)).
+- TouchDesigner 2025.30280 engines are ~130 MB larger than 2023.12000 ones
+  (~1.26 GB against ~1.13 GB idle).
 - **A different TouchDesigner version is always a new process.** Changing
   the preferred engine path on a running instance returns success, but the
   next Configure replaces the process (11–16 s). Loading a tox pinned by a
@@ -64,14 +74,13 @@ Verified by the spike (Windows, TouchDesigner 2023.12000 unless noted):
 
 Not yet verified:
 
-1. **One TE graphics context shared by several loaded engines at once**,
-   each delivering readable output. The header says a context "may be
-   shared between several instances"; the spike's graphics section now
-   tests it.
-2. **Re-association after Unload** (as opposed to while loaded), and the
-   same question for Metal. Only matters if a context ever has to change,
-   which the shared-context design avoids.
-3. All of the above on macOS and on TouchDesigner 2025.
+1. **Everything above on macOS** (Metal, IOSurface output path). Needs a
+   licensed Mac; the spike's graphics section is Windows-only so far.
+2. **Real show toxes.** The realistic tox loaded in ~70 ms, but a large
+   show tox may take seconds, which the pool cannot hide. If it does,
+   keeping toxes loaded between clips is worth revisiting.
+3. **In Resolume**: one binary load shared by all instances, and the whole
+   pool end to end (see [Plan](#plan)).
 
 ## How Resolume hosts plugin instances
 
@@ -106,7 +115,8 @@ Consequences:
 ```
           one per process (phase 1: per plugin bundle)
 ┌──────────────────────── EnginePool ────────────────────────┐
-│ slots: [EngineSlot] (Spawning | Empty | Cached(tox) | Leased)│
+│ slots: [EngineSlot] (Spawning | Empty | Leased | Dead)       │
+│ owns:  one D3D11/Metal device + one TE graphics context      │
 │ policy: warm count, idle cap, eviction                       │
 └──────────────┬───────────────────────────────────────────────┘
                │ Acquire(tox, enginePath) → EngineLease
@@ -121,10 +131,9 @@ Owns one `TEInstance` for its whole life. `TEInstanceCreate` binds the
 callback target permanently, so the slot — never a plugin — is the
 `callback_info`. States:
 
-- **Spawning** — created, `Configure(NULL)` sent, waiting for `Ready`.
+- **Spawning** — created, `Configure(NULL)` sent, waiting for `Ready`. On
+  `Ready` the slot associates the pool's TE context, once.
 - **Empty** — engine up, no tox.
-- **Cached(tox)** — tox loaded and suspended, nobody using it. Keeping the
-  tox loaded makes re-arming the same clip skip even the tox load.
 - **Leased** — attached to a plugin instance.
 - **Dead** — load failed in a way that leaves the engine unusable, or the
   process went away. Released and replaced, never reused.
@@ -156,31 +165,34 @@ too keeps the host's parameter queries current.
 
 ### Acquire
 
-`Acquire(tox, enginePath)` picks, in order:
+`Acquire(tox, enginePath)` resolves the engine key (see
+[Engine version](#engine-version)), then:
 
-1. A `Cached(tox)` slot with the same engine path — no load at all; the new
-   owner pushes **all** its parameter values, not only dirty ones, since the
-   tox still holds the previous owner's.
-2. An `Empty` slot — Configure + Load, ~10 ms plus the tox's own cost.
-3. The least recently used `Cached(other)` slot — Unload, then as in 2.
-4. Otherwise spawn a new slot. The lease is returned immediately in a
-   Spawning state, and the plugin renders black / passes input through, as
-   it does during any load today.
+1. Takes an `Empty` slot with that key — Configure + Load, ~1 ms plus the
+   tox's own load (5 ms for the examples, ~70 ms for the realistic tox).
+2. Otherwise spawns a new slot (10–16 s). The lease is returned
+   immediately in a Spawning state, and the plugin renders black / passes
+   input through, as it does during any load today.
 
 After each acquire the pool tops the Empty count back up to the warm target
 in the background, so the next new clip finds an engine already running.
 
-An engine's very first frame took ~0.5 s in the spike whether or not it was
-pre-warmed, against 10–50 ms for later frames on the same process. That is
-per process, not per tox, so a pre-warmed engine still shows a short
-hitch on its first clip.
+An engine's very first frame took 350–550 ms in the spike whether or not it
+was pre-warmed, against 1–8 ms for first frames on a process that had
+already rendered. So a pre-warmed engine still shows a short hitch on its
+first clip.
+
+An earlier draft kept released toxes loaded (a "Cached" state) to skip the
+load on re-arm. The spike showed the suspend/resume handoff costs about as
+much as an unload + reload, and a kept tox would carry its previous clip's
+internal state into the next one, so it was dropped.
 
 ### Release
 
 `EngineLease::Release()` suspends the engine, cancels any frame in flight
 (`TEInstanceCancelFrame`, then wait for `FrameDidFinish`), detaches the
-lease, and marks the slot `Cached(tox)`. It does not unload: unloading
-happens lazily in step 3 of Acquire, or on eviction.
+lease, and unloads the tox (2–4 ms, ending in `InstanceDidUnload`). The
+slot is Empty again. It never touches the graphics context.
 
 Every place that currently throws the engine away goes through Release
 instead:
@@ -203,11 +215,11 @@ clips disagree):
 | Setting | Default | Meaning |
 |---|---|---|
 | `WarmEngines` | 1 | Empty engines kept ready for new clips |
-| `MaxIdleEngines` | 2 | Empty + Cached engines kept beyond the leased ones |
-| `IdleEvictSeconds` | 300 | A Cached engine unused this long is released |
+| `MaxIdleEngines` | 2 | Empty engines kept at most, beyond the leased ones |
+| `IdleEvictSeconds` | 300 | An Empty engine above `WarmEngines` unused this long is released |
 
-Over the cap, the least recently used Cached slot is released first, then
-Empty slots. Leased slots are never evicted. Peak memory is then
+Over the cap, the least recently used Empty slot is released. Leased slots
+are never evicted. Peak memory is then
 `(leased + MaxIdleEngines) × ~1.2 GB` instead of growing with every clip
 fired during a set.
 
@@ -238,8 +250,10 @@ mismatch is logged so the rule can be added.
 
 Each plugin today creates its own D3D11 device (`InitializeDevice`) and its
 own TE graphics context, and associates its engine with that context on
-`DidLoad`. A pooled engine cannot follow that pattern: moving a loaded
-engine to another device's context crashed the host process in the spike.
+`DidLoad`. A pooled engine cannot follow that pattern: moving an engine to
+another device's context crashed the host process in the spike, with the
+tox loaded or unloaded, while one context shared by several engines worked
+on both TouchDesigner versions tested.
 
 So the pool owns the GPU side, from phase 1:
 
@@ -295,11 +309,10 @@ the fork has already fixed. Take these first (`drmbt/modernize-te`):
 
 ## Plan
 
-1. **Spike the shared context**: two loaded engines on one TE context,
-   both delivering readable output, and a handoff between "plugins" with no
-   re-association (`te_pool_spike --only graphics`). Then the same on
-   macOS once licensed. Done so far: process reuse, pinned and changed
-   engine paths, a realistic tox, and the crash on re-association.
+1. **Spike** — done on Windows: process reuse, pinned and changed engine
+   paths, a realistic tox, one context shared by several engines, and the
+   crash on re-association. Remaining: macOS (needs a Metal path in the
+   spike and a licensed Mac), and a real show tox's load time.
 2. **Port the fork's lifecycle fixes** listed above.
 3. **Phase 1 pool**: `src/plugins/shared/EnginePool.{h,cpp}` owning the
    device, the TE context and the engines; the event queue and drain;

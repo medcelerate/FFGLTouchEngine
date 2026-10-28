@@ -373,10 +373,20 @@ Still to verify on this route:
 - **FX input**: the pool's D3D11 device creates a shared texture (NT
   handle, keyed mutex); GL imports it with size 0, draws Resolume's input
   into it between keyed-mutex acquire/release, and TouchEngine takes it as
-  a `TED3DSharedTexture` with no context, which the header allows. The
-  channels section got as far as TouchEngine accepting a KMT-shared,
-  keyed-mutex orange texture on an input link with no context, but the
-  example tox's output didn't show whether the input was used.
+  a `TED3DSharedTexture` with no context, which the header allows.
+  Verified with `--only fxinput` and a pass-through tox (`in1` wired to
+  `out1`): the output followed GL-written input exactly, orange then blue,
+  as it did on the old D3D11-context route. The example toxes ignore
+  `in1` on both routes, so they cannot test input. Sync: the host acquires
+  at its key, writes, releases at key + 1 and hands that key over with
+  `TEInstanceAddTextureTransfer(texture, NULL, key + 1)`; TouchEngine set
+  no transfer back, and the next acquire at key + 1 succeeded, so it gives
+  the mutex back at the key it took. Two textures alternate. Input bytes
+  are RGBA on both sides (`R8G8B8A8_UNORM`), so no swizzle.
+- **Static output**: TouchEngine sets an output transfer only when it hands
+  over a new texture; with unchanged content `TEInstanceGetTextureTransfer`
+  returns "No matching entity". The host keeps its last frame then, without
+  touching the mutex.
 - **AMD and Intel**: both extensions need confirming there.
 - **Inside Resolume** — output verified: Arena 7.20.1 on the same machine
   loaded both plugins from `feat/keyed-mutex-output`; a TouchEngine source
@@ -386,7 +396,7 @@ Still to verify on this route:
   clip's tox and back, the Reload pulse, and stopping and retriggering both
   clips all kept output up (no new engine process: the tox switch reused
   the running engine, and stopped clips kept theirs). Not yet checked
-  there: red/blue against a tox with a known colour.
+  there: nothing; a solid-red tox shows pure red.
 
 ### Sharing across the three plugin bundles
 
@@ -435,9 +445,11 @@ the fork has already fixed. Take these first (`drmbt/modernize-te`):
    and independent of the pool: output in both plugins first, then FX
    input. Drops the engine's D3D11 context association, the Spout interop
    and `AcquireSync(INFINITE)`. Output is on branch
-   `feat/keyed-mutex-output` (`src/plugins/shared/TEOutputGL.{h,cpp}`):
-   the Source plugin runs with no D3D11 device or context, and the FX
-   plugin keeps both only for its Spout input.
+   `feat/keyed-mutex-output` (`src/plugins/shared/TEOutputGL.{h,cpp}`),
+   verified in Arena. Input is on `feat/keyed-mutex-input`
+   (`TEInputGL.{h,cpp}`), built but not yet run in Arena: no plugin
+   associates a graphics context or links Spout, and only the FX plugin
+   creates a D3D11 device, to allocate input textures.
 4. **Phase 1 pool**: `src/plugins/shared/EnginePool.{h,cpp}` owning the
    engines and the per-platform GPU objects above; the event queue and
    drain; `EngineLease` replacing `instance` in the plugin base;

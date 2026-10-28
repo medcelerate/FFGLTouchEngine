@@ -359,6 +359,12 @@ need checking on AMD and Intel. And with no context to associate, the pool's
 context TouchEngine picks the default GPU, which matters only on
 multi-GPU machines (`TEInstanceAssociateAdapter` covers that).
 
+**Red and blue are swapped** in the import, as expected for BGRA bytes read
+as `GL_RGBA8`: `te_pool_spike --only channels` read the same output frame
+through D3D as (33, 89, 240) and through GL as (240, 89, 33), every round on
+both versions, with an identity component map from TouchEngine. The plugin
+swizzles red and blue back on the texture it draws from.
+
 Either route removes the D3D11 device and Spout. TouchDesigner renders in
 Vulkan with both; they differ only in how the frame crosses into GL.
 
@@ -367,11 +373,13 @@ Still to verify on this route:
 - **FX input**: the pool's D3D11 device creates a shared texture (NT
   handle, keyed mutex); GL imports it with size 0, draws Resolume's input
   into it between keyed-mutex acquire/release, and TouchEngine takes it as
-  a `TED3DSharedTexture` with no context, which the header allows.
+  a `TED3DSharedTexture` with no context, which the header allows. The
+  channels section got as far as TouchEngine accepting a KMT-shared,
+  keyed-mutex orange texture on an input link with no context, but the
+  example tox's output didn't show whether the input was used.
 - **AMD and Intel**: both extensions need confirming there.
 - **Inside Resolume**: that the plugin's GL calls run on a context where
-  these extensions resolve (`wglGetProcAddress` needs a current context),
-  and the red/blue swizzle for `B8G8R8A8` output.
+  these extensions resolve (`wglGetProcAddress` needs a current context).
 
 ### Sharing across the three plugin bundles
 
@@ -419,7 +427,10 @@ the fork has already fixed. Take these first (`drmbt/modernize-te`):
 3. **Replace Spout with the keyed-mutex GL handoff (Windows)**, per plugin
    and independent of the pool: output in both plugins first, then FX
    input. Drops the engine's D3D11 context association, the Spout interop
-   and `AcquireSync(INFINITE)`.
+   and `AcquireSync(INFINITE)`. Output is on branch
+   `feat/keyed-mutex-output` (`src/plugins/shared/TEOutputGL.{h,cpp}`):
+   the Source plugin runs with no D3D11 device or context, and the FX
+   plugin keeps both only for its Spout input.
 4. **Phase 1 pool**: `src/plugins/shared/EnginePool.{h,cpp}` owning the
    engines and the per-platform GPU objects above; the event queue and
    drain; `EngineLease` replacing `instance` in the plugin base;

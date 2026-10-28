@@ -3,17 +3,23 @@
 //
 // Usage:
 //   te_pool_spike <toxA> <toxB> [--engine DIR] [--alt-engine DIR] [--heavy TOX]
-//                 [--only basic,graphics,path,pin,heavy] [--log FILE]
+//                 [--only basic,graphics,path,pin,heavy,reassoc-unloaded,reassoc-loaded]
+//                 [--log FILE]
 //
 //   basic     Unload keeps the process; a different tox loads on it.
-//   graphics  A loaded engine moved to another D3D11 device's TE context still
-//             delivers output textures (Windows only). toxA must output a
-//             texture with visible content, e.g. Example/NoiseOutOnly5Param.tox.
+//   graphics  Two engines on one shared D3D11 device and TE context, each
+//             delivering readable output, and handoffs with no re-association
+//             (Windows only). toxA must output a texture with visible content,
+//             e.g. Example/NoiseOutOnly5Param.tox.
 //   path      Changing the preferred engine path on a running instance
 //             (needs --alt-engine).
 //   pin       A tox pinned to another TouchDesigner by a TouchEngine link next to
 //             it, loaded on a running engine (needs --alt-engine).
 //   heavy     Load and frame times of a realistic tox on a warm engine (needs --heavy).
+//   reassoc-unloaded, reassoc-loaded
+//             Move an engine to another device's TE context, after Unload or
+//             while loaded. Not run by default: the loaded variant crashed the
+//             process on TouchDesigner 2023.12000.
 //
 // --engine and --alt-engine are TouchDesigner installs: the install folder on
 // Windows, the .app on macOS. Sections whose inputs are missing are skipped.
@@ -24,6 +30,7 @@
 // Build and run (Windows): build.bat in this folder, then run.bat.
 
 #ifdef _WIN32
+#define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
 #include <d3d11.h>
 #include <wrl/client.h>
@@ -573,8 +580,51 @@ static void RenderAndCheck(Engine& e, Gpu& g, const std::string& label) {
 	Note(label + ": output", link.empty() ? "no output texture link" : CheckOutput(e, g, link));
 }
 
+// The pool's setup: one device and TE context shared by every engine, each
+// associated once after it spawns and never again.
 static void SectionGraphics(const char* toxA, const char* engine) {
-	Out("\n== graphics: move a loaded engine between two plugins' D3D11 devices\n");
+	Out("\n== graphics: two engines on one shared device and TE context\n");
+	Gpu shared;
+	if (!MakeGpu(shared, "shared device")) return;
+	Engine g1, g2;
+	if (!Create(g1, "G1", engine) || !Create(g2, "G2", engine)) return;
+
+	// Associate right after the engine is up, before any tox, as a pool slot would.
+	Record("G1 spawn (configure NULL)", ConfigureAndWait(g1, nullptr));
+	Associate(g1, shared, "G1 after spawn");
+	Record("G2 spawn (configure NULL)", ConfigureAndWait(g2, nullptr));
+	Associate(g2, shared, "G2 after spawn");
+
+	Record("G1 configure A", ConfigureAndWait(g1, toxA));
+	Record("G1 load A", LoadAndWait(g1));
+	Record("G2 configure A", ConfigureAndWait(g2, toxA));
+	Record("G2 load A", LoadAndWait(g2));
+	RenderAndCheck(g1, shared, "G1 shared");
+	RenderAndCheck(g2, shared, "G2 shared");
+	// Interleaved, as two clips on screen at once would render.
+	RenderAndCheck(g1, shared, "G1 shared again");
+	RenderAndCheck(g2, shared, "G2 shared again");
+
+	Out("\n== graphics: hand G1 to another plugin with its tox still loaded (Cached reuse)\n");
+	TEInstanceSuspend(g1.instance);
+	RenderAndCheck(g1, shared, "G1 cached handoff");
+
+	Out("\n== graphics: hand G1 over after unload and reload (Empty reuse)\n");
+	Record("G1 unload", UnloadAndWait(g1));
+	Record("G1 configure A again", ConfigureAndWait(g1, toxA));
+	Record("G1 load A again", LoadAndWait(g1));
+	RenderAndCheck(g1, shared, "G1 reloaded handoff");
+
+	Release(g1);
+	Release(g2);
+	TERelease(&shared.te);
+}
+
+// Moving an engine to another device's TE context. With the tox loaded this
+// crashed the process (STATUS_STACK_OVERFLOW) on 2023.12000, so both variants
+// run only when named in --only.
+static void SectionReassoc(const char* toxA, const char* engine, bool unloadFirst) {
+	Out("\n== %s: move an engine from device A's context to device B's\n", unloadFirst ? "reassoc-unloaded" : "reassoc-loaded");
 	Gpu a, b;
 	if (!MakeGpu(a, "device A") || !MakeGpu(b, "device B")) return;
 	Engine g;
@@ -582,20 +632,21 @@ static void SectionGraphics(const char* toxA, const char* engine) {
 
 	Record("G configure A", ConfigureAndWait(g, toxA));
 	Record("G load A", LoadAndWait(g));
-	Associate(g, a, "G1 own device");
-	RenderAndCheck(g, a, "G1 own device");
+	Associate(g, a, "G on A");
+	RenderAndCheck(g, a, "G on A");
 
-	Out("\n== graphics: hand the still-loaded engine to device B (pool reuse with tox cached)\n");
 	TEInstanceSuspend(g.instance);
-	Associate(g, b, "G2 cached tox");
-	RenderAndCheck(g, b, "G2 cached tox");
-
-	Out("\n== graphics: unload, reload, and hand back to device A\n");
-	Record("G unload", UnloadAndWait(g));
-	Record("G configure A again", ConfigureAndWait(g, toxA));
-	Record("G load A again", LoadAndWait(g));
-	Associate(g, a, "G3 reloaded");
-	RenderAndCheck(g, a, "G3 reloaded");
+	if (unloadFirst) {
+		Record("G unload", UnloadAndWait(g));
+		Associate(g, b, "G unloaded");
+		Record("G configure A again", ConfigureAndWait(g, toxA));
+		Record("G load A again", LoadAndWait(g));
+	}
+	else {
+		Out("  associating while loaded; this crashed on TouchDesigner 2023.12000\n");
+		Associate(g, b, "G loaded");
+	}
+	RenderAndCheck(g, b, "G on B");
 
 	Release(g);
 	TERelease(&a.te);
@@ -710,7 +761,7 @@ int main(int argc, char** argv) {
 	}
 	if (positional.size() < 2) {
 		std::printf("usage: %s <toxA> <toxB> [--engine DIR] [--alt-engine DIR] [--heavy TOX] "
-			"[--only basic,graphics,path,pin,heavy] [--log FILE]\n", argv[0]);
+			"[--only basic,graphics,path,pin,heavy,reassoc-unloaded,reassoc-loaded] [--log FILE]\n", argv[0]);
 		return 2;
 	}
 	if (!logPath.empty()) gLog = std::fopen(logPath.c_str(), "w");
@@ -718,7 +769,8 @@ int main(int argc, char** argv) {
 	const char* toxA = positional[0].c_str();
 	const char* toxB = positional[1].c_str();
 	const char* enginePtr = engine.empty() ? nullptr : engine.c_str();
-	auto wanted = [&](const char* s) { return only.empty() || ("," + only + ",").find(std::string(",") + s + ",") != std::string::npos; };
+	auto named = [&](const char* s) { return ("," + only + ",").find(std::string(",") + s + ",") != std::string::npos; };
+	auto wanted = [&](const char* s) { return only.empty() || named(s); };
 
 	Out("toxA %s\ntoxB %s\nengine %s\nalt-engine %s\nheavy %s\n", toxA, toxB,
 		engine.empty() ? "(TouchEngine's choice)" : engine.c_str(), alt.empty() ? "(none)" : alt.c_str(),
@@ -728,6 +780,8 @@ int main(int argc, char** argv) {
 	if (wanted("basic")) SectionBasic(toxA, toxB, enginePtr);
 #ifdef _WIN32
 	if (wanted("graphics")) SectionGraphics(toxA, enginePtr);
+	if (named("reassoc-unloaded")) SectionReassoc(toxA, enginePtr, true);
+	if (named("reassoc-loaded")) SectionReassoc(toxA, enginePtr, false);
 #else
 	if (wanted("graphics")) Note("graphics", "skipped: Windows only for now");
 #endif

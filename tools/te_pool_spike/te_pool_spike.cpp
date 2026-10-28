@@ -3,7 +3,8 @@
 //
 // Usage:
 //   te_pool_spike <toxA> <toxB> [--engine DIR] [--alt-engine DIR] [--heavy TOX]
-//                 [--only basic,graphics,vulkan,path,pin,heavy,reassoc-unloaded,reassoc-loaded]
+//                 [--only basic,graphics,vulkan,glshared,path,pin,heavy,
+//                         reassoc-unloaded,reassoc-loaded]
 //                 [--log FILE]
 //
 //   basic     Unload keeps the process; a different tox loads on it.
@@ -15,6 +16,9 @@
 //             UUIDs; each output imported into GL with GL_EXT_memory_object and
 //             GL_EXT_semaphore, read back, and handed back to TouchEngine. No D3D11
 //             or Spout (Windows only; needs Vulkan headers, see build.bat).
+//   glshared  The D3D shared output imported into GL and synchronised with
+//             GL_EXT_win32_keyed_mutex: no graphics context, D3D11 device, Spout
+//             or Vulkan sync (Windows only; built alongside vulkan).
 //   path      Changing the preferred engine path on a running instance
 //             (needs --alt-engine).
 //   pin       A tox pinned to another TouchDesigner by a TouchEngine link next to
@@ -666,6 +670,7 @@ static void SectionReassoc(const char* toxA, const char* engine, bool unloadFirs
 // time (build.bat defines TE_SPIKE_VULKAN when it finds them).
 #if defined(_WIN32) && defined(TE_SPIKE_VULKAN)
 #include <GL/gl.h>
+#define VK_USE_PLATFORM_WIN32_KHR
 #include <TouchEngine/TEVulkan.h>
 #pragma comment(lib, "opengl32.lib")
 
@@ -677,7 +682,9 @@ typedef uint64_t GLuint64;
 #define GL_OPTIMAL_TILING_EXT 0x9584
 #define GL_HANDLE_TYPE_OPAQUE_WIN32_EXT 0x9587
 #define GL_HANDLE_TYPE_OPAQUE_WIN32_KMT_EXT 0x9588
+#define GL_HANDLE_TYPE_D3D12_RESOURCE_EXT 0x958A
 #define GL_HANDLE_TYPE_D3D11_IMAGE_EXT 0x958B
+#define GL_HANDLE_TYPE_D3D11_IMAGE_KMT_EXT 0x958C
 #define GL_LAYOUT_GENERAL_EXT 0x958D
 #define GL_LAYOUT_COLOR_ATTACHMENT_EXT 0x958E
 #define GL_LAYOUT_SHADER_READ_ONLY_EXT 0x9591
@@ -714,6 +721,9 @@ struct GlFns {
 	void (APIENTRY* ImportSemaphoreWin32HandleEXT)(GLuint, GLenum, void*) = nullptr;
 	void (APIENTRY* SemaphoreParameterui64vEXT)(GLuint, GLenum, const GLuint64*) = nullptr;
 	void (APIENTRY* SemaphoreParameterivNV)(GLuint, GLenum, const GLint*) = nullptr;
+	void (APIENTRY* CreateSemaphoresNV)(GLsizei, GLuint*) = nullptr;
+	GLboolean (APIENTRY* AcquireKeyedMutexWin32EXT)(GLuint, GLuint64, GLuint) = nullptr;
+	GLboolean (APIENTRY* ReleaseKeyedMutexWin32EXT)(GLuint, GLuint64) = nullptr;
 	void (APIENTRY* WaitSemaphoreEXT)(GLuint, GLuint, const GLuint*, GLuint, const GLuint*, const GLenum*) = nullptr;
 	void (APIENTRY* SignalSemaphoreEXT)(GLuint, GLuint, const GLuint*, GLuint, const GLuint*, const GLenum*) = nullptr;
 };
@@ -782,7 +792,7 @@ static bool MakeGl(Gl& g) {
 		reinterpret_cast<const char*>(glGetString(GL_VERSION)));
 	std::string have;
 	for (const char* name : { "GL_EXT_memory_object", "GL_EXT_memory_object_win32", "GL_EXT_semaphore",
-		"GL_EXT_semaphore_win32", "GL_NV_timeline_semaphore" }) {
+		"GL_EXT_semaphore_win32", "GL_NV_timeline_semaphore", "GL_EXT_win32_keyed_mutex" }) {
 		have += std::string(HasExt(g, name) ? "+" : "-") + name + " ";
 	}
 	Note("GL extensions", have);
@@ -801,6 +811,9 @@ static bool MakeGl(Gl& g) {
 		LoadGl(g.f.WaitSemaphoreEXT, "glWaitSemaphoreEXT") &&
 		LoadGl(g.f.SignalSemaphoreEXT, "glSignalSemaphoreEXT");
 	LoadGl(g.f.SemaphoreParameterivNV, "glSemaphoreParameterivNV");
+	LoadGl(g.f.CreateSemaphoresNV, "glCreateSemaphoresNV");
+	LoadGl(g.f.AcquireKeyedMutexWin32EXT, "glAcquireKeyedMutexWin32EXT");
+	LoadGl(g.f.ReleaseKeyedMutexWin32EXT, "glReleaseKeyedMutexWin32EXT");
 	if (!ok) {
 		Out("  GL: external memory/semaphore functions missing\n");
 		return false;
@@ -824,16 +837,22 @@ static void DestroyGl(Gl& g) {
 	if (g.wnd) DestroyWindow(g.wnd);
 }
 
-// A throwaway Vulkan device on the same GPU, used only to learn how large
-// TouchEngine's image allocation is: glImportMemoryWin32HandleEXT needs the
-// size and TouchEngine does not report it.
+// A throwaway Vulkan device on the same GPU. It sizes TouchEngine's image
+// allocation (glImportMemoryWin32HandleEXT needs the size and TouchEngine does
+// not report it) and creates the exportable timeline semaphore the host hands
+// back to TouchEngine, since GL can import semaphores but not create shareable
+// ones.
 struct VkProbe {
 	HMODULE lib = nullptr;
 	VkInstance inst = VK_NULL_HANDLE;
 	VkDevice dev = VK_NULL_HANDLE;
+	bool canExportSemaphores = false;
 	PFN_vkCreateImage createImage = nullptr;
 	PFN_vkDestroyImage destroyImage = nullptr;
 	PFN_vkGetImageMemoryRequirements requirements = nullptr;
+	PFN_vkCreateSemaphore createSemaphore = nullptr;
+	PFN_vkDestroySemaphore destroySemaphore = nullptr;
+	PFN_vkGetSemaphoreWin32HandleKHR getSemaphoreHandle = nullptr;
 	PFN_vkDestroyDevice destroyDevice = nullptr;
 	PFN_vkDestroyInstance destroyInstance = nullptr;
 };
@@ -845,7 +864,7 @@ static bool MakeVkProbe(VkProbe& p, const uint8_t uuid[VK_UUID_SIZE]) {
 	if (!gipa) return false;
 	auto createInstance = reinterpret_cast<PFN_vkCreateInstance>(gipa(nullptr, "vkCreateInstance"));
 	VkApplicationInfo ai = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
-	ai.apiVersion = VK_API_VERSION_1_1;
+	ai.apiVersion = VK_API_VERSION_1_2;
 	VkInstanceCreateInfo ici = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
 	ici.pApplicationInfo = &ai;
 	if (!createInstance || createInstance(&ici, nullptr, &p.inst) != VK_SUCCESS) return false;
@@ -875,14 +894,32 @@ static bool MakeVkProbe(VkProbe& p, const uint8_t uuid[VK_UUID_SIZE]) {
 	q.queueFamilyIndex = 0;
 	q.queueCount = 1;
 	q.pQueuePriorities = &priority;
+	// Timeline semaphores exportable as Win32 handles; fall back to a plain
+	// device (sizing only) if the driver refuses.
+	const char* extensions[] = { VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME };
+	VkPhysicalDeviceTimelineSemaphoreFeatures timelineFeature = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES };
+	timelineFeature.timelineSemaphore = VK_TRUE;
 	VkDeviceCreateInfo dci = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+	dci.pNext = &timelineFeature;
 	dci.queueCreateInfoCount = 1;
 	dci.pQueueCreateInfos = &q;
-	if (createDevice(match, &dci, nullptr, &p.dev) != VK_SUCCESS) return false;
+	dci.enabledExtensionCount = 1;
+	dci.ppEnabledExtensionNames = extensions;
+	p.canExportSemaphores = createDevice(match, &dci, nullptr, &p.dev) == VK_SUCCESS;
+	if (!p.canExportSemaphores) {
+		dci.pNext = nullptr;
+		dci.enabledExtensionCount = 0;
+		dci.ppEnabledExtensionNames = nullptr;
+		if (createDevice(match, &dci, nullptr, &p.dev) != VK_SUCCESS) return false;
+	}
 	p.createImage = reinterpret_cast<PFN_vkCreateImage>(gdpa(p.dev, "vkCreateImage"));
 	p.destroyImage = reinterpret_cast<PFN_vkDestroyImage>(gdpa(p.dev, "vkDestroyImage"));
 	p.requirements = reinterpret_cast<PFN_vkGetImageMemoryRequirements>(gdpa(p.dev, "vkGetImageMemoryRequirements"));
+	p.createSemaphore = reinterpret_cast<PFN_vkCreateSemaphore>(gdpa(p.dev, "vkCreateSemaphore"));
+	p.destroySemaphore = reinterpret_cast<PFN_vkDestroySemaphore>(gdpa(p.dev, "vkDestroySemaphore"));
+	p.getSemaphoreHandle = reinterpret_cast<PFN_vkGetSemaphoreWin32HandleKHR>(gdpa(p.dev, "vkGetSemaphoreWin32HandleKHR"));
 	p.destroyDevice = reinterpret_cast<PFN_vkDestroyDevice>(gdpa(p.dev, "vkDestroyDevice"));
+	p.canExportSemaphores = p.canExportSemaphores && p.createSemaphore && p.getSemaphoreHandle;
 	return p.createImage && p.destroyImage && p.requirements;
 }
 
@@ -963,9 +1000,141 @@ static std::string TextureTypes(Engine& e) {
 	return s.empty() ? "(none)" : s;
 }
 
+// Collects GL errors by step, so one failure does not hide the next.
+struct GlErrors {
+	std::vector<std::string> list;
+	void Check(const char* what) {
+		GLenum err = glGetError();
+		if (err != GL_NO_ERROR) {
+			char code[16];
+			std::snprintf(code, sizeof code, " 0x%04x", err);
+			list.push_back(what + std::string(code));
+		}
+	}
+	void Clear() { while (glGetError() != GL_NO_ERROR) {} }
+	void Append(std::ostringstream& os) const { for (auto& e : list) os << ", GL error at " << e; }
+};
+
+// Reads the bound GL texture back and summarises a 16x16 sample grid.
+static std::string SampleTexture(int w, int h) {
+	std::vector<uint8_t> pixels((size_t)w * h * 4);
+	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+	std::set<uint32_t> distinct;
+	int nonzero = 0, samples = 0;
+	for (int y = 0; y < 16; y++) {
+		for (int x = 0; x < 16; x++) {
+			uint32_t v;
+			std::memcpy(&v, &pixels[((size_t)(y * h / 16) * w + (size_t)(x * w / 16)) * 4], 4);
+			distinct.insert(v);
+			nonzero += v != 0;
+			samples++;
+		}
+	}
+	return std::to_string(nonzero) + "/" + std::to_string(samples) + " samples nonzero, " +
+		std::to_string(distinct.size()) + " distinct";
+}
+
+static GLenum GlSemaphoreHandleType(VkExternalSemaphoreHandleTypeFlagBits t) {
+	switch (t) {
+	case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT: return GL_HANDLE_TYPE_OPAQUE_WIN32_EXT;
+	case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT: return GL_HANDLE_TYPE_OPAQUE_WIN32_KMT_EXT;
+	case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_D3D12_FENCE_BIT: return GL_HANDLE_TYPE_D3D12_FENCE_EXT;
+	default: return 0;
+	}
+}
+
+// Imports a Vulkan semaphore handle into GL. A timeline semaphore has to be
+// created with glCreateSemaphoresNV (glGenSemaphoresEXT only reserves a name,
+// so its type cannot be set) and typed before the import. If the handle's own
+// type is refused, a timeline semaphore is retried as a D3D12 fence, which is
+// what NVIDIA exports underneath on Windows. Returns 0 on failure.
+static GLuint ImportGlSemaphore(Gl& gl, HANDLE handle, VkExternalSemaphoreHandleTypeFlagBits type, bool timeline, std::string& how) {
+	std::vector<std::pair<GLenum, const char*>> candidates = { { GlSemaphoreHandleType(type), "as exported" } };
+	if (timeline && type != VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_D3D12_FENCE_BIT) {
+		candidates.push_back({ GL_HANDLE_TYPE_D3D12_FENCE_EXT, "as D3D12 fence" });
+	}
+	if (timeline && (!gl.f.CreateSemaphoresNV || !gl.f.SemaphoreParameterivNV)) {
+		how = "timeline semaphore needs GL_NV_timeline_semaphore";
+		return 0;
+	}
+	for (auto& c : candidates) {
+		if (!c.first) continue;
+		GlErrors errors;
+		errors.Clear();
+		GLuint s = 0;
+		if (timeline) {
+			gl.f.CreateSemaphoresNV(1, &s);
+			errors.Check("create");
+			GLint t = GL_SEMAPHORE_TYPE_TIMELINE_NV;
+			gl.f.SemaphoreParameterivNV(s, GL_SEMAPHORE_TYPE_NV, &t);
+			errors.Check("set timeline type");
+		}
+		else {
+			gl.f.GenSemaphoresEXT(1, &s);
+		}
+		gl.f.ImportSemaphoreWin32HandleEXT(s, c.first, handle);
+		errors.Check("import");
+		std::ostringstream os;
+		os << c.second;
+		errors.Append(os);
+		how += (how.empty() ? "" : "; ") + os.str();
+		if (errors.list.empty()) return s;
+		gl.f.DeleteSemaphoresEXT(1, &s);
+	}
+	return 0;
+}
+
+static void NoopVkSemaphoreCallback(HANDLE, TEObjectEvent, void*) {}
+
+// A timeline semaphore the host owns: created and exported by the probe
+// device, wrapped for TouchEngine, and imported into GL so the host can
+// signal it after reading a texture.
+struct HostSemaphore {
+	VkSemaphore vk = VK_NULL_HANDLE;
+	TEVulkanSemaphore* te = nullptr;
+	GLuint gl = 0;
+	uint64_t value = 0;
+};
+
+static bool MakeHostSemaphore(VkProbe& p, Gl& g, HostSemaphore& s, std::string& how) {
+	VkSemaphoreTypeCreateInfo type = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
+	type.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+	VkExportSemaphoreCreateInfo exp = { VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO };
+	exp.pNext = &type;
+	exp.handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+	VkSemaphoreCreateInfo sci = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+	sci.pNext = &exp;
+	if (p.createSemaphore(p.dev, &sci, nullptr, &s.vk) != VK_SUCCESS) {
+		how = "vkCreateSemaphore failed";
+		return false;
+	}
+	VkSemaphoreGetWin32HandleInfoKHR hi = { VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR };
+	hi.semaphore = s.vk;
+	hi.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+	HANDLE handle = nullptr;
+	if (p.getSemaphoreHandle(p.dev, &hi, &handle) != VK_SUCCESS || !handle) {
+		how = "vkGetSemaphoreWin32HandleKHR failed";
+		return false;
+	}
+	// Both TouchEngine (which duplicates NT handles) and GL take their own reference.
+	s.te = TEVulkanSemaphoreCreate(VK_SEMAPHORE_TYPE_TIMELINE, handle, VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT,
+		NoopVkSemaphoreCallback, nullptr);
+	s.gl = ImportGlSemaphore(g, handle, VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT, true, how);
+	CloseHandle(handle);
+	if (!s.te) how = "TEVulkanSemaphoreCreate failed; " + how;
+	return s.te && s.gl;
+}
+
+static void DestroyHostSemaphore(VkProbe& p, Gl& g, HostSemaphore& s) {
+	if (s.gl) g.f.DeleteSemaphoresEXT(1, &s.gl);
+	if (s.te) TERelease(&s.te);
+	if (s.vk && p.destroySemaphore) p.destroySemaphore(p.dev, s.vk, nullptr);
+}
+
 // Imports the current output into GL as the host would, waits on TE's
-// semaphore, reads it back, then signals and hands the texture back to TE.
-static std::string CheckOutputVk(Engine& e, Gl& gl, VkProbe* probe, const std::string& link) {
+// semaphore, reads it back, then signals and hands the texture back to TE —
+// with TE's own semaphore, or with `host` when given.
+static std::string CheckOutputVk(Engine& e, Gl& gl, VkProbe* probe, HostSemaphore* host, const std::string& link) {
 	wglMakeCurrent(gl.dc, gl.rc);
 	TETexture* tex = nullptr;
 	TEResult r = TEInstanceLinkGetTextureValue(e.instance, link.c_str(), TELinkValueCurrent, &tex);
@@ -983,119 +1152,94 @@ static std::string CheckOutputVk(Engine& e, Gl& gl, VkProbe* probe, const std::s
 	VkExternalMemoryHandleTypeFlagBits memType = TEVulkanTextureGetHandleType(vt);
 	VkFormat format = TEVulkanTextureGetFormat(vt);
 	int w = TEVulkanTextureGetWidth(vt), h = TEVulkanTextureGetHeight(vt);
-	os << w << "x" << h << " VkFormat " << (int)format << " mem 0x" << std::hex << (unsigned)memType << std::dec;
+	os << w << "x" << h << " VkFormat " << (int)format;
 
 	GLenum glFormat = GlFormat(format);
 	GLenum glMemType = memType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT ? GL_HANDLE_TYPE_OPAQUE_WIN32_EXT :
 		memType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT ? GL_HANDLE_TYPE_OPAQUE_WIN32_KMT_EXT :
 		memType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT ? GL_HANDLE_TYPE_D3D11_IMAGE_EXT : 0;
 	if (!glFormat || !glMemType) {
-		os << ", no GL mapping for this format or handle type";
+		os << ", no GL mapping for format or memory handle type 0x" << std::hex << (unsigned)memType;
 		TERelease(&tex);
 		return os.str();
 	}
 	GLuint64 size = probe ? VkImageSize(*probe, format, w, h, memType) : 0;
-	bool estimated = size == 0;
-	if (estimated) size = ((GLuint64)w * h * VkBytesPerPixel(format) + 0xFFFF) & ~(GLuint64)0xFFFF;
-	os << ", size " << size << (estimated ? " (estimated)" : "");
+	if (size == 0) size = ((GLuint64)w * h * VkBytesPerPixel(format) + 0xFFFF) & ~(GLuint64)0xFFFF;
 
 	VkImageLayout oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, newLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	TESemaphore* sem = nullptr;
 	uint64_t wait = 0;
-	bool hasTransfer = TEInstanceHasVulkanTextureTransfer(e.instance, tex);
-	if (hasTransfer) {
+	if (TEInstanceHasVulkanTextureTransfer(e.instance, tex)) {
 		r = TEInstanceGetVulkanTextureTransfer(e.instance, tex, &oldLayout, &newLayout, &sem, &wait);
 		if (r != TEResultSuccess) os << ", GetVulkanTextureTransfer: " << TEResultGetDescription(r);
 	}
-	bool vkSem = sem && TESemaphoreGetType(sem) == TESemaphoreTypeVulkan;
-	bool timeline = false;
-	HANDLE semHandle = nullptr;
-	VkExternalSemaphoreHandleTypeFlagBits semType = (VkExternalSemaphoreHandleTypeFlagBits)0;
-	if (vkSem) {
-		TEVulkanSemaphore* vs = (TEVulkanSemaphore*)sem;
-		timeline = TEVulkanSemaphoreGetType(vs) == VK_SEMAPHORE_TYPE_TIMELINE;
-		semHandle = TEVulkanSemaphoreGetHandle(vs);
-		semType = TEVulkanSemaphoreGetHandleType(vs);
-		os << ", " << (timeline ? "timeline" : "binary") << " semaphore 0x" << std::hex << (unsigned)semType << std::dec
-			<< " wait " << wait << ", layouts " << (int)oldLayout << "->" << (int)newLayout;
-	}
 	else {
-		os << (hasTransfer ? ", transfer has no Vulkan semaphore" : ", no pending transfer");
+		os << ", no pending transfer";
 	}
 
-	std::vector<std::string> glErrors;
-	auto check = [&](const char* what) {
-		GLenum err = glGetError();
-		if (err != GL_NO_ERROR) {
-			char code[16];
-			std::snprintf(code, sizeof code, " 0x%04x", err);
-			glErrors.push_back(what + std::string(code));
-		}
-	};
-	while (glGetError() != GL_NO_ERROR) {}
-
+	GlErrors errors;
+	errors.Clear();
 	GLuint mem = 0;
 	gl.f.CreateMemoryObjectsEXT(1, &mem);
 	GLint dedicated = GL_TRUE;
 	gl.f.MemoryObjectParameterivEXT(mem, GL_DEDICATED_MEMORY_OBJECT_EXT, &dedicated);
 	gl.f.ImportMemoryWin32HandleEXT(mem, size, glMemType, memHandle);
-	check("import memory");
+	errors.Check("import memory");
 	GLuint glTex = 0;
 	glGenTextures(1, &glTex);
 	glBindTexture(GL_TEXTURE_2D, glTex);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_TILING_EXT, GL_OPTIMAL_TILING_EXT);
 	gl.f.TexStorageMem2DEXT(GL_TEXTURE_2D, 1, glFormat, w, h, mem, 0);
-	check("texture storage");
+	errors.Check("texture storage");
 
-	GLuint glSem = 0;
+	// Acquire: wait on TouchEngine's semaphore before reading.
 	GLenum layout = GlLayout(newLayout);
-	bool semUsable = vkSem && (!timeline || gl.f.SemaphoreParameterivNV);
-	if (vkSem && !semUsable) os << ", timeline semaphore but no GL_NV_timeline_semaphore";
-	if (semUsable) {
-		GLenum glSemType = semType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT ? GL_HANDLE_TYPE_OPAQUE_WIN32_EXT :
-			semType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT ? GL_HANDLE_TYPE_OPAQUE_WIN32_KMT_EXT :
-			semType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_D3D12_FENCE_BIT ? GL_HANDLE_TYPE_D3D12_FENCE_EXT : 0;
-		gl.f.GenSemaphoresEXT(1, &glSem);
-		if (timeline) {
-			GLint t = GL_SEMAPHORE_TYPE_TIMELINE_NV;
-			gl.f.SemaphoreParameterivNV(glSem, GL_SEMAPHORE_TYPE_NV, &t);
-		}
-		gl.f.ImportSemaphoreWin32HandleEXT(glSem, glSemType, semHandle);
-		check("import semaphore");
-		if (timeline) gl.f.SemaphoreParameterui64vEXT(glSem, GL_TIMELINE_SEMAPHORE_VALUE_NV, &wait);
-		gl.f.WaitSemaphoreEXT(glSem, 0, nullptr, 1, &glTex, &layout);
-		check("wait semaphore");
-	}
-
-	std::vector<uint8_t> pixels((size_t)w * h * 4);
-	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
-	check("readback");
-	std::set<uint32_t> distinct;
-	int nonzero = 0, samples = 0;
-	for (int y = 0; y < 16; y++) {
-		for (int x = 0; x < 16; x++) {
-			uint32_t v;
-			std::memcpy(&v, &pixels[((size_t)(y * h / 16) * w + (size_t)(x * w / 16)) * 4], 4);
-			distinct.insert(v);
-			nonzero += v != 0;
-			samples++;
+	GLuint teSem = 0;
+	bool timeline = false;
+	if (sem && TESemaphoreGetType(sem) == TESemaphoreTypeVulkan) {
+		TEVulkanSemaphore* vs = (TEVulkanSemaphore*)sem;
+		timeline = TEVulkanSemaphoreGetType(vs) == VK_SEMAPHORE_TYPE_TIMELINE;
+		std::string how;
+		teSem = ImportGlSemaphore(gl, TEVulkanSemaphoreGetHandle(vs), TEVulkanSemaphoreGetHandleType(vs), timeline, how);
+		os << ", acquire " << (timeline ? "timeline" : "binary") << " wait " << wait << " import " << (teSem ? "ok " : "FAILED ") << "(" << how << ")";
+		if (teSem) {
+			if (timeline) gl.f.SemaphoreParameterui64vEXT(teSem, GL_TIMELINE_SEMAPHORE_VALUE_NV, &wait);
+			gl.f.WaitSemaphoreEXT(teSem, 0, nullptr, 1, &glTex, &layout);
+			errors.Check("wait");
 		}
 	}
-	os << ", " << nonzero << "/" << samples << " samples nonzero, " << distinct.size() << " distinct";
 
-	if (semUsable) {
-		uint64_t release = wait + 1;
-		if (timeline) gl.f.SemaphoreParameterui64vEXT(glSem, GL_TIMELINE_SEMAPHORE_VALUE_NV, &release);
-		gl.f.SignalSemaphoreEXT(glSem, 0, nullptr, 1, &glTex, &layout);
-		check("signal semaphore");
-		glFinish();
-		r = TEInstanceAddVulkanTextureTransfer(e.instance, tex, newLayout, oldLayout, sem, timeline ? release : 0);
-		if (r != TEResultSuccess) os << ", AddVulkanTextureTransfer: " << TEResultGetDescription(r);
+	os << ", " << SampleTexture(w, h);
+	errors.Check("readback");
+
+	// Release: signal a semaphore TouchEngine will wait on, then hand the texture back.
+	TESemaphore* releaseSem = nullptr;
+	GLuint releaseGl = 0;
+	uint64_t releaseValue = 0;
+	if (host) {
+		releaseSem = (TESemaphore*)host->te;
+		releaseGl = host->gl;
+		releaseValue = ++host->value;
+		os << ", release on host semaphore " << releaseValue;
+	}
+	else if (teSem) {
+		releaseSem = sem;
+		releaseGl = teSem;
+		releaseValue = timeline ? wait + 1 : 0;
+		os << ", release on TE's semaphore " << releaseValue;
+	}
+	if (releaseSem && releaseGl) {
+		if (releaseValue) gl.f.SemaphoreParameterui64vEXT(releaseGl, GL_TIMELINE_SEMAPHORE_VALUE_NV, &releaseValue);
+		gl.f.SignalSemaphoreEXT(releaseGl, 0, nullptr, 1, &glTex, &layout);
+		errors.Check("signal");
+		glFlush();
+		r = TEInstanceAddVulkanTextureTransfer(e.instance, tex, newLayout, oldLayout, releaseSem, releaseValue);
+		os << ", AddVulkanTextureTransfer " << (r == TEResultSuccess ? "ok" : TEResultGetDescription(r));
 	}
 	os << ", " << Secs(Now() - t0) << " import+readback";
-	for (auto& err : glErrors) os << ", GL error at " << err;
+	errors.Append(os);
 
-	if (glSem) gl.f.DeleteSemaphoresEXT(1, &glSem);
+	if (teSem) gl.f.DeleteSemaphoresEXT(1, &teSem);
 	glDeleteTextures(1, &glTex);
 	gl.f.DeleteMemoryObjectsEXT(1, &mem);
 	if (sem) TERelease(&sem);
@@ -1103,11 +1247,11 @@ static std::string CheckOutputVk(Engine& e, Gl& gl, VkProbe* probe, const std::s
 	return os.str();
 }
 
-static void RenderAndCheckVk(Engine& e, Gl& gl, VkProbe* probe, const std::string& label) {
+static void RenderAndCheckVk(Engine& e, Gl& gl, VkProbe* probe, HostSemaphore* host, const std::string& label) {
 	TEInstanceResume(e.instance);
 	Note(label + ": frames", FrameStats(RenderFrames(e, 5)));
 	std::string link = FindOutputTexture(e);
-	Note(label + ": output", link.empty() ? "no output texture link" : CheckOutputVk(e, gl, probe, link));
+	Note(label + ": output", link.empty() ? "no output texture link" : CheckOutputVk(e, gl, probe, host, link));
 }
 
 static void SectionVulkan(const char* toxA, const char* engine) {
@@ -1119,7 +1263,8 @@ static void SectionVulkan(const char* toxA, const char* engine) {
 	}
 	VkProbe probeStore;
 	VkProbe* probe = MakeVkProbe(probeStore, gl.deviceUUID) ? &probeStore : nullptr;
-	Note("Vulkan size probe", probe ? "ok" : "unavailable, sizes estimated");
+	Note("Vulkan probe", !probe ? "unavailable, sizes estimated" :
+		probe->canExportSemaphores ? "ok, can export timeline semaphores" : "ok, sizing only");
 
 	TEVulkanContext* vk = nullptr;
 	TEResult r = TEVulkanContextCreate(gl.deviceUUID, gl.driverUUID, gl.luid, gl.luidValid, TETextureOriginBottomLeft, &vk);
@@ -1128,6 +1273,16 @@ static void SectionVulkan(const char* toxA, const char* engine) {
 		if (probe) DestroyVkProbe(*probe);
 		DestroyGl(gl);
 		return;
+	}
+
+	// V1 hands textures back on TouchEngine's own semaphore, V2 on one the
+	// host created, to tell which TEInstanceAddVulkanTextureTransfer accepts.
+	HostSemaphore host;
+	bool haveHost = false;
+	if (probe && probe->canExportSemaphores) {
+		std::string how;
+		haveHost = MakeHostSemaphore(*probe, gl, host, how);
+		Note("host semaphore", (haveHost ? "ok (" : "FAILED (") + how + ")");
 	}
 
 	Engine v1, v2;
@@ -1146,20 +1301,135 @@ static void SectionVulkan(const char* toxA, const char* engine) {
 		// Interleaved, as two clips on screen at once would render, and repeated
 		// so the hand-back to TouchEngine is exercised.
 		for (int round = 1; round <= 3; round++) {
-			RenderAndCheckVk(v1, gl, probe, "V1 round " + std::to_string(round));
-			RenderAndCheckVk(v2, gl, probe, "V2 round " + std::to_string(round));
+			RenderAndCheckVk(v1, gl, probe, nullptr, "V1 round " + std::to_string(round));
+			RenderAndCheckVk(v2, gl, probe, haveHost ? &host : nullptr, "V2 round " + std::to_string(round));
 		}
 
 		Out("\n== vulkan: hand V1 over after unload and reload\n");
 		Record("V1 unload", UnloadAndWait(v1));
 		Record("V1 configure A again", ConfigureAndWait(v1, toxA));
 		Record("V1 load A again", LoadAndWait(v1));
-		RenderAndCheckVk(v1, gl, probe, "V1 reloaded handoff");
+		RenderAndCheckVk(v1, gl, probe, nullptr, "V1 reloaded handoff");
 	}
 	Release(v1);
 	Release(v2);
+	if (probe) DestroyHostSemaphore(*probe, gl, host);
 	TERelease(&vk);
 	if (probe) DestroyVkProbe(*probe);
+	DestroyGl(gl);
+}
+
+// ---- glshared ----------------------------------------------------------------
+
+// The D3D shared texture TouchEngine already produces, imported into GL with
+// GL_EXT_memory_object and synchronised with GL_EXT_win32_keyed_mutex using
+// the same keys the plugin's D3D11 path uses — no D3D11 device, no Spout, no
+// Vulkan. The engines get no graphics context at all.
+static std::string CheckOutputGlShared(Engine& e, Gl& gl, const std::string& link) {
+	wglMakeCurrent(gl.dc, gl.rc);
+	TETexture* tex = nullptr;
+	TEResult r = TEInstanceLinkGetTextureValue(e.instance, link.c_str(), TELinkValueCurrent, &tex);
+	if (r != TEResultSuccess || !tex) return std::string("no texture: ") + TEResultGetDescription(r);
+	std::ostringstream os;
+	TETextureType type = TETextureGetType(tex);
+	if (type != TETextureTypeD3DShared) {
+		os << "texture type " << (int)type << ", not D3DShared";
+		TERelease(&tex);
+		return os.str();
+	}
+	double t0 = Now();
+	TED3DSharedTexture* st = (TED3DSharedTexture*)tex;
+	HANDLE handle = TED3DSharedTextureGetHandle(st);
+	TED3DHandleType handleType = TED3DSharedTextureGetHandleType(st);
+	int w = (int)TED3DSharedTextureGetWidth(st), h = (int)TED3DSharedTextureGetHeight(st);
+	DXGI_FORMAT format = TED3DSharedTextureGetFormat(st);
+	os << w << "x" << h << " DXGI " << (int)format << " handle type " << (int)handleType;
+	GLenum glFormat = format == DXGI_FORMAT_B8G8R8A8_UNORM || format == DXGI_FORMAT_R8G8B8A8_UNORM ? GL_RGBA8 :
+		format == DXGI_FORMAT_R16G16B16A16_FLOAT ? GL_RGBA16F :
+		format == DXGI_FORMAT_R32G32B32A32_FLOAT ? GL_RGBA32F : 0;
+	GLenum glMemType = handleType == TED3DHandleTypeD3D11NT ? GL_HANDLE_TYPE_D3D11_IMAGE_EXT :
+		handleType == TED3DHandleTypeD3D11Global ? GL_HANDLE_TYPE_D3D11_IMAGE_KMT_EXT :
+		handleType == TED3DHandleTypeD3D12ResourceNT ? GL_HANDLE_TYPE_D3D12_RESOURCE_EXT : 0;
+	if (!glFormat || !glMemType) {
+		os << ", no GL mapping";
+		TERelease(&tex);
+		return os.str();
+	}
+
+	GlErrors errors;
+	errors.Clear();
+	GLuint mem = 0;
+	gl.f.CreateMemoryObjectsEXT(1, &mem);
+	GLint dedicated = GL_TRUE;
+	gl.f.MemoryObjectParameterivEXT(mem, GL_DEDICATED_MEMORY_OBJECT_EXT, &dedicated);
+	GLuint64 size = ((GLuint64)w * h * 4 + 0xFFFF) & ~(GLuint64)0xFFFF;
+	gl.f.ImportMemoryWin32HandleEXT(mem, size, glMemType, handle);
+	errors.Check("import memory");
+	GLuint glTex = 0;
+	glGenTextures(1, &glTex);
+	glBindTexture(GL_TEXTURE_2D, glTex);
+	gl.f.TexStorageMem2DEXT(GL_TEXTURE_2D, 1, glFormat, w, h, mem, 0);
+	errors.Check("texture storage");
+
+	TESemaphore* sem = nullptr;
+	uint64_t wait = 0;
+	r = TEInstanceGetTextureTransfer(e.instance, tex, &sem, &wait);
+	if (r != TEResultSuccess) {
+		os << ", GetTextureTransfer: " << TEResultGetDescription(r);
+	}
+	else if (!gl.f.AcquireKeyedMutexWin32EXT) {
+		os << ", no GL_EXT_win32_keyed_mutex";
+	}
+	else {
+		GLboolean acquired = gl.f.AcquireKeyedMutexWin32EXT(mem, wait, 2000);
+		errors.Check("acquire keyed mutex");
+		os << ", keyed mutex " << wait << (acquired ? " acquired" : " NOT acquired");
+		os << ", " << SampleTexture(w, h);
+		errors.Check("readback");
+		if (acquired) {
+			gl.f.ReleaseKeyedMutexWin32EXT(mem, wait + 1);
+			errors.Check("release keyed mutex");
+			glFlush();
+			r = TEInstanceAddTextureTransfer(e.instance, tex, sem, wait + 1);
+			os << ", AddTextureTransfer " << (r == TEResultSuccess ? "ok" : TEResultGetDescription(r));
+		}
+	}
+	os << ", " << Secs(Now() - t0) << " import+readback";
+	errors.Append(os);
+
+	glDeleteTextures(1, &glTex);
+	gl.f.DeleteMemoryObjectsEXT(1, &mem);
+	if (sem) TERelease(&sem);
+	TERelease(&tex);
+	return os.str();
+}
+
+static void SectionGlShared(const char* toxA, const char* engine) {
+	Out("\n== glshared: D3D shared output imported into GL with a GL keyed mutex\n");
+	Gl gl;
+	if (!MakeGl(gl)) {
+		DestroyGl(gl);
+		return;
+	}
+	Engine w1, w2;
+	if (Create(w1, "W1", engine) && Create(w2, "W2", engine)) {
+		for (Engine* w : { &w1, &w2 }) {
+			Record(w->name + " configure A", ConfigureAndWait(*w, toxA));
+			Note(w->name + " supported texture types", TextureTypes(*w));
+			Record(w->name + " load A", LoadAndWait(*w));
+		}
+		for (int round = 1; round <= 3; round++) {
+			for (Engine* w : { &w1, &w2 }) {
+				TEInstanceResume(w->instance);
+				std::string label = w->name + " round " + std::to_string(round);
+				Note(label + ": frames", FrameStats(RenderFrames(*w, 5)));
+				std::string link = FindOutputTexture(*w);
+				Note(label + ": output", link.empty() ? "no output texture link" : CheckOutputGlShared(*w, gl, link));
+			}
+		}
+	}
+	Release(w1);
+	Release(w2);
 	DestroyGl(gl);
 }
 #endif
@@ -1271,7 +1541,7 @@ int main(int argc, char** argv) {
 	}
 	if (positional.size() < 2) {
 		std::printf("usage: %s <toxA> <toxB> [--engine DIR] [--alt-engine DIR] [--heavy TOX] "
-			"[--only basic,graphics,vulkan,path,pin,heavy,reassoc-unloaded,reassoc-loaded] [--log FILE]\n", argv[0]);
+			"[--only basic,graphics,vulkan,glshared,path,pin,heavy,reassoc-unloaded,reassoc-loaded] [--log FILE]\n", argv[0]);
 		return 2;
 	}
 	if (!logPath.empty()) gLog = std::fopen(logPath.c_str(), "w");
@@ -1294,12 +1564,15 @@ int main(int argc, char** argv) {
 	if (named("reassoc-loaded")) SectionReassoc(toxA, enginePtr, false);
 #ifdef TE_SPIKE_VULKAN
 	if (wanted("vulkan")) SectionVulkan(toxA, enginePtr);
+	if (wanted("glshared")) SectionGlShared(toxA, enginePtr);
 #else
 	if (wanted("vulkan")) Note("vulkan", "skipped: built without Vulkan headers (see build.bat)");
+	if (wanted("glshared")) Note("glshared", "skipped: built without Vulkan headers (see build.bat)");
 #endif
 #else
 	if (wanted("graphics")) Note("graphics", "skipped: Windows only for now");
 	if (wanted("vulkan")) Note("vulkan", "skipped: Windows only for now");
+	if (wanted("glshared")) Note("glshared", "skipped: Windows only for now");
 #endif
 	if (wanted("path")) {
 		if (alt.empty()) Note("path", "skipped: needs --alt-engine");

@@ -59,6 +59,34 @@ Not yet verified — each needs a spike step before the code depends on it:
    A heavy tox still pays its own load and cook, which the pool cannot hide.
 4. **Changing the preferred engine path** on a running instance.
 
+## How Resolume hosts plugin instances
+
+The host loads a plugin binary once per process. Every clip or effect slot
+using it sends `FF_INSTANTIATE_GL`, which runs the factory (`new
+FFGLTouchEngine`) and hands the object pointer back as the instance ID
+(`src/lib/FFGL/ffgl/FFGL.cpp`, `instantiateGL`). All instances therefore
+share the binary's statics — the SDK itself relies on this for
+`g_CurrPluginInfo` and `s_pPrototype` — so a pool is an ordinary static in
+the shared code, and moving an engine between instances is moving a
+`TEInstance*` within one address space.
+
+Consequences:
+
+- **The prototype instance.** On `FF_INITIALISE` the SDK constructs one
+  extra instance of the plugin class, used only to read parameter info and
+  defaults. Never acquire an engine from the constructor, or the prototype
+  takes one. Acquire from `InitGL` or when the tox path is set.
+- **Shutdown order.** A static pool's destructor runs when the binary
+  unloads, possibly after `TouchEngine.dll`/framework teardown has begun.
+  Release all engines explicitly from the library deinitialise hook
+  (`FF_DEINITIALISE`) instead.
+- **One pool per binary.** Source, FX and FX Presets are different
+  binaries, and so is the same bundle installed in two folders; each has
+  its own statics. Sharing across them is phase 3 below.
+- **To confirm in Resolume** before relying on it: log a process-wide
+  counter of live instances from the constructor and destructor, and check
+  two clips of the same plugin report the same counter address.
+
 ## Shape
 
 ```

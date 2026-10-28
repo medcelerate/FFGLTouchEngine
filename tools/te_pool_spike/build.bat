@@ -21,7 +21,7 @@ cl /nologo /std:c++17 /EHsc /O1 /W3 ^
 	/I"%REPO%\include" ^
 	/Fo"%HERE%out\\" /Fe"%HERE%out\te_pool_spike.exe" ^
 	"%HERE%te_pool_spike.cpp" ^
-	/link "%REPO%\lib\TouchEngine\TouchEngine.lib" user32.lib
+	/link "%REPO%\lib\TouchEngine\TouchEngine.lib" user32.lib d3d11.lib
 if errorlevel 1 exit /b 1
 
 copy /y "%REPO%\lib\TouchEngine\TouchEngine.dll" "%HERE%out\" >nul

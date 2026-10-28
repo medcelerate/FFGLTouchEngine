@@ -1701,11 +1701,24 @@ static std::string OutputMean(Engine& e, Gpu& gpu, const std::string& link) {
 	TEResult r = TEInstanceLinkGetTextureValue(e.instance, link.c_str(), TELinkValueCurrent, &tex);
 	if (r != TEResultSuccess || !tex) return "no output";
 	std::ostringstream os;
+	if (TETextureGetType(tex) != TETextureTypeD3DShared) {
+		os << "output type " << (int)TETextureGetType(tex);
+		TERelease(&tex);
+		return os.str();
+	}
 	TED3DSharedTexture* st = (TED3DSharedTexture*)tex;
 	bool bgra = TED3DSharedTextureGetFormat(st) == DXGI_FORMAT_B8G8R8A8_UNORM;
 	ComPtr<ID3D11Texture2D> shared, staging;
 	ComPtr<IDXGIKeyedMutex> km;
-	HRESULT hr = gpu.device->OpenSharedResource(TED3DSharedTextureGetHandle(st), IID_PPV_ARGS(&shared));
+	HRESULT hr;
+	if (TED3DSharedTextureGetHandleType(st) == TED3DHandleTypeD3D11NT) {
+		ComPtr<ID3D11Device1> device1;
+		hr = gpu.device.As(&device1);
+		if (SUCCEEDED(hr)) hr = device1->OpenSharedResource1(TED3DSharedTextureGetHandle(st), IID_PPV_ARGS(&shared));
+	}
+	else {
+		hr = gpu.device->OpenSharedResource(TED3DSharedTextureGetHandle(st), IID_PPV_ARGS(&shared));
+	}
 	if (SUCCEEDED(hr)) hr = shared.As(&km);
 	D3D11_TEXTURE2D_DESC desc = {};
 	if (SUCCEEDED(hr)) {
@@ -1757,116 +1770,222 @@ struct GlInput {
 	uint64_t key = 0; // the key the mutex is free at, as far as we know
 };
 
+static const int InW = 640, InH = 360;
+
+static void InputColour(std::vector<uint8_t>& pixels, bool orange) {
+	pixels.resize((size_t)InW * InH * 4);
+	for (size_t p = 0; p < (size_t)InW * InH; p++) {
+		pixels[p * 4 + 0] = orange ? 255 : 0;
+		pixels[p * 4 + 1] = orange ? 128 : 64;
+		pixels[p * 4 + 2] = orange ? 0 : 255;
+		pixels[p * 4 + 3] = 255;
+	}
+}
+
+// Mean RGB of an R8G8B8A8 input texture read through D3D at `key`, released
+// at the same key so the next owner's key is unchanged.
+static std::string InputMean(Gpu& gpu, ID3D11Texture2D* texture, uint64_t key) {
+	ComPtr<IDXGIKeyedMutex> km;
+	if (FAILED(texture->QueryInterface(IID_PPV_ARGS(&km)))) return "no keyed mutex";
+	D3D11_TEXTURE2D_DESC desc;
+	texture->GetDesc(&desc);
+	desc.Usage = D3D11_USAGE_STAGING;
+	desc.BindFlags = 0;
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+	desc.MiscFlags = 0;
+	ComPtr<ID3D11Texture2D> staging;
+	if (FAILED(gpu.device->CreateTexture2D(&desc, nullptr, &staging))) return "staging failed";
+	if (km->AcquireSync(key, 1000) != S_OK) return "D3D key " + std::to_string(key) + " not acquired";
+	gpu.context->CopyResource(staging.Get(), texture);
+	km->ReleaseSync(key);
+	D3D11_MAPPED_SUBRESOURCE m;
+	if (FAILED(gpu.context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &m))) return "map failed";
+	const uint8_t* p = (const uint8_t*)m.pData + (size_t)(InH / 2) * m.RowPitch + (size_t)(InW / 2) * 4;
+	std::string s = "input as D3D sees it " + std::to_string(p[0]) + " " + std::to_string(p[1]) + " " + std::to_string(p[2]);
+	gpu.context->Unmap(staging.Get(), 0);
+	return s;
+}
+
+// The GL route: input written from GL into keyed-mutex shared textures, no context.
+static void InputViaGl(Engine& w, Gl& gl, Gpu& gpu, const std::string& label) {
+	std::string inLink = FindTexture(w, TEScopeInput), outLink = FindTexture(w, TEScopeOutput);
+	if (inLink.empty() || outLink.empty()) {
+		Note(label, "in '" + inLink + "', out '" + outLink + "': needs both");
+		return;
+	}
+	GlInput in[2];
+	std::string err;
+	wglMakeCurrent(gl.dc, gl.rc);
+	for (GlInput& i : in) {
+		D3D11_TEXTURE2D_DESC desc = {};
+		desc.Width = InW;
+		desc.Height = InH;
+		desc.MipLevels = 1;
+		desc.ArraySize = 1;
+		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		desc.SampleDesc.Count = 1;
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
+		ComPtr<IDXGIResource> res;
+		HANDLE handle = nullptr;
+		HRESULT hr = gpu.device->CreateTexture2D(&desc, nullptr, &i.texture);
+		if (SUCCEEDED(hr)) hr = i.texture.As(&res);
+		if (SUCCEEDED(hr)) hr = res->GetSharedHandle(&handle);
+		if (FAILED(hr)) { err = "input texture creation failed"; break; }
+		gpu.context->Flush();
+		i.te = TED3DSharedTextureCreate(handle, TED3DHandleTypeD3D11Global, DXGI_FORMAT_R8G8B8A8_UNORM, InW, InH,
+			TETextureOriginTopLeft, kTETextureComponentMapIdentity, nullptr, nullptr);
+		GlErrors errors;
+		errors.Clear();
+		gl.f.CreateMemoryObjectsEXT(1, &i.mem);
+		GLint dedicated = GL_TRUE;
+		gl.f.MemoryObjectParameterivEXT(i.mem, GL_DEDICATED_MEMORY_OBJECT_EXT, &dedicated);
+		gl.f.ImportMemoryWin32HandleEXT(i.mem, 0, GL_HANDLE_TYPE_D3D11_IMAGE_KMT_EXT, handle);
+		glGenTextures(1, &i.glTex);
+		glBindTexture(GL_TEXTURE_2D, i.glTex);
+		gl.f.TexStorageMem2DEXT(GL_TEXTURE_2D, 1, GL_RGBA8, InW, InH, i.mem, 0);
+		errors.Check("input import");
+		if (!errors.list.empty()) { err = errors.list[0]; break; }
+	}
+	if (!err.empty()) {
+		Note(label, err);
+	}
+	else {
+		RenderFrames(w, 2);
+		Note(label + " before input", OutputMean(w, gpu, outLink));
+		std::vector<uint8_t> pixels;
+		for (int f = 0; f < 8; f++) {
+			GlInput& i = in[f % 2];
+			bool orange = f < 4;
+			std::ostringstream os;
+			uint64_t key = i.key;
+			if (TEInstanceHasTextureTransfer(w.instance, (TETexture*)i.te)) {
+				TESemaphore* sem = nullptr;
+				uint64_t teKey = 0;
+				TEResult r = TEInstanceGetTextureTransfer(w.instance, (TETexture*)i.te, &sem, &teKey);
+				os << "TE transfer " << (r == TEResultSuccess ? std::to_string(teKey) : TEResultGetDescription(r)) << ", ";
+				if (r == TEResultSuccess) key = teKey;
+				if (sem) TERelease(&sem);
+			}
+			wglMakeCurrent(gl.dc, gl.rc);
+			if (!gl.f.AcquireKeyedMutexWin32EXT(i.mem, key, 1000)) {
+				os << "GL key " << key << " NOT acquired";
+				Note(label + " frame " + std::to_string(f), os.str());
+				continue;
+			}
+			InputColour(pixels, orange);
+			glBindTexture(GL_TEXTURE_2D, i.glTex);
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, InW, InH, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+			gl.f.ReleaseKeyedMutexWin32EXT(i.mem, key + 1);
+			glFinish();
+			i.key = key + 1;
+			if (f < 2) os << InputMean(gpu, i.texture.Get(), key + 1) << ", ";
+			TEResult r = TEInstanceAddTextureTransfer(w.instance, (TETexture*)i.te, nullptr, key + 1);
+			if (r == TEResultSuccess) r = TEInstanceLinkSetTextureValue(w.instance, inLink.c_str(), (TETexture*)i.te, nullptr);
+			os << (orange ? "orange" : "blue") << " at key " << key << "->" << key + 1
+				<< ", set " << (r == TEResultSuccess ? "ok" : TEResultGetDescription(r));
+			RenderFrames(w, 1);
+			os << ", " << OutputMean(w, gpu, outLink);
+			Note(label + " frame " + std::to_string(f), os.str());
+		}
+	}
+	wglMakeCurrent(gl.dc, gl.rc);
+	for (GlInput& i : in) {
+		if (i.glTex) glDeleteTextures(1, &i.glTex);
+		if (i.mem) gl.f.DeleteMemoryObjectsEXT(1, &i.mem);
+		if (i.te) TERelease(&i.te);
+	}
+}
+
+// The control: the plugin's old route, a plain D3D11 texture on the engine's
+// associated D3D11 context.
+static void InputViaD3D11(Engine& w, Gpu& gpu, const std::string& label) {
+	std::string inLink = FindTexture(w, TEScopeInput), outLink = FindTexture(w, TEScopeOutput);
+	if (inLink.empty() || outLink.empty()) {
+		Note(label, "in '" + inLink + "', out '" + outLink + "': needs both");
+		return;
+	}
+	D3D11_TEXTURE2D_DESC desc = {};
+	desc.Width = InW;
+	desc.Height = InH;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.SampleDesc.Count = 1;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+	ComPtr<ID3D11Texture2D> texture;
+	if (FAILED(gpu.device->CreateTexture2D(&desc, nullptr, &texture))) {
+		Note(label, "texture creation failed");
+		return;
+	}
+	RenderFrames(w, 2);
+	Note(label + " before input", OutputMean(w, gpu, outLink));
+	std::vector<uint8_t> pixels;
+	for (int f = 0; f < 8; f++) {
+		bool orange = f < 4;
+		InputColour(pixels, orange);
+		gpu.context->UpdateSubresource(texture.Get(), 0, nullptr, pixels.data(), InW * 4, 0);
+		gpu.context->Flush();
+		TED3D11Texture* te = TED3D11TextureCreate(texture.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, nullptr, nullptr);
+		TEResult r = TEInstanceLinkSetTextureValue(w.instance, inLink.c_str(), (TETexture*)te, gpu.te);
+		TERelease(&te);
+		std::ostringstream os;
+		os << (orange ? "orange" : "blue") << ", set " << (r == TEResultSuccess ? "ok" : TEResultGetDescription(r));
+		RenderFrames(w, 1);
+		os << ", " << OutputMean(w, gpu, outLink);
+		Note(label + " frame " + std::to_string(f), os.str());
+	}
+}
+
 static void SectionFxInput(const char* toxB, const char* engine) {
-	Out("\n== fxinput: GL-written D3D shared input with a keyed mutex, no graphics context\n");
+	Out("\n== fxinput: input with no context (GL route) against the old D3D11-context route\n");
+	std::string dir = toxB;
+	size_t slash = dir.find_last_of("\\/");
+	dir = slash == std::string::npos ? "" : dir.substr(0, slash + 1);
+	std::vector<std::string> toxes = { toxB, dir + "InputOutput5ParamDifferentOutput.tox", dir + "SyphonTestInput.tox" };
+
 	Gl gl;
-	Gpu gpu;
-	gpu.name = "allocator";
+	Gpu plain, ctx;
+	plain.name = "allocator";
 	HRESULT hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, nullptr, 0, D3D11_SDK_VERSION,
-		gpu.device.GetAddressOf(), nullptr, gpu.context.GetAddressOf());
-	if (FAILED(hr) || !MakeGl(gl)) {
-		Note("fxinput", "could not create D3D11 device or GL context");
+		plain.device.GetAddressOf(), nullptr, plain.context.GetAddressOf());
+	if (FAILED(hr) || !MakeGl(gl) || !MakeGpu(ctx, "d3d11 context")) {
+		Note("fxinput", "could not create D3D11 devices or GL context");
 		DestroyGl(gl);
 		return;
 	}
-	Engine w;
-	if (Create(w, "FI", engine)) {
-		Record("FI configure B", ConfigureAndWait(w, toxB));
-		Record("FI load B", LoadAndWait(w));
-		Note("FI supported D3D formats", D3DFormats(w));
-		TEInstanceResume(w.instance);
-		std::string inLink = FindTexture(w, TEScopeInput), outLink = FindTexture(w, TEScopeOutput);
-		Note("FI links", "in '" + inLink + "', out '" + outLink + "'");
-		const int W = 640, H = 360;
-		GlInput in[2];
-		std::string err;
-		wglMakeCurrent(gl.dc, gl.rc);
-		for (GlInput& i : in) {
-			D3D11_TEXTURE2D_DESC desc = {};
-			desc.Width = W;
-			desc.Height = H;
-			desc.MipLevels = 1;
-			desc.ArraySize = 1;
-			desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			desc.SampleDesc.Count = 1;
-			desc.Usage = D3D11_USAGE_DEFAULT;
-			desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
-			desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
-			ComPtr<IDXGIResource> res;
-			HANDLE handle = nullptr;
-			hr = gpu.device->CreateTexture2D(&desc, nullptr, &i.texture);
-			if (SUCCEEDED(hr)) hr = i.texture.As(&res);
-			if (SUCCEEDED(hr)) hr = res->GetSharedHandle(&handle);
-			if (FAILED(hr)) { err = "input texture creation failed"; break; }
-			gpu.context->Flush();
-			i.te = TED3DSharedTextureCreate(handle, TED3DHandleTypeD3D11Global, DXGI_FORMAT_R8G8B8A8_UNORM, W, H,
-				TETextureOriginTopLeft, kTETextureComponentMapIdentity, nullptr, nullptr);
-			GlErrors errors;
-			errors.Clear();
-			gl.f.CreateMemoryObjectsEXT(1, &i.mem);
-			GLint dedicated = GL_TRUE;
-			gl.f.MemoryObjectParameterivEXT(i.mem, GL_DEDICATED_MEMORY_OBJECT_EXT, &dedicated);
-			gl.f.ImportMemoryWin32HandleEXT(i.mem, 0, GL_HANDLE_TYPE_D3D11_IMAGE_KMT_EXT, handle);
-			glGenTextures(1, &i.glTex);
-			glBindTexture(GL_TEXTURE_2D, i.glTex);
-			gl.f.TexStorageMem2DEXT(GL_TEXTURE_2D, 1, GL_RGBA8, W, H, i.mem, 0);
-			errors.Check("input import");
-			if (!errors.list.empty()) { err = errors.list[0]; break; }
-		}
-		Note("FI inputs", err.empty() ? "2 x 640x360 R8G8B8A8, global handle, keyed mutex, imported into GL" : err);
-		if (err.empty() && !inLink.empty() && !outLink.empty()) {
-			RenderFrames(w, 2);
-			Note("FI before input", OutputMean(w, gpu, outLink));
-			std::vector<uint8_t> pixels((size_t)W * H * 4);
-			for (int f = 0; f < 12; f++) {
-				GlInput& i = in[f % 2];
-				bool orange = f < 6;
-				std::ostringstream os;
-				uint64_t key = i.key;
-				if (TEInstanceHasTextureTransfer(w.instance, (TETexture*)i.te)) {
-					TESemaphore* sem = nullptr;
-					uint64_t teKey = 0;
-					TEResult r = TEInstanceGetTextureTransfer(w.instance, (TETexture*)i.te, &sem, &teKey);
-					os << "TE transfer " << (r == TEResultSuccess ? std::to_string(teKey) : TEResultGetDescription(r))
-						<< (sem ? " (semaphore)" : "") << ", ";
-					if (r == TEResultSuccess) key = teKey;
-					if (sem) TERelease(&sem);
-				}
-				else os << "no TE transfer, ";
-				wglMakeCurrent(gl.dc, gl.rc);
-				if (!gl.f.AcquireKeyedMutexWin32EXT(i.mem, key, 1000)) {
-					os << "key " << key << " NOT acquired";
-					Note("FI frame " + std::to_string(f), os.str());
+
+	// One engine per route; each tox loads onto the running engine.
+	Engine g, d;
+	if (Create(g, "FG", engine) && Create(d, "FD", engine)) {
+		bool associated = false;
+		for (size_t t = 0; t < toxes.size(); t++) {
+			std::string name = toxes[t].substr(toxes[t].find_last_of("\\/") + 1);
+			for (Engine* w : { &g, &d }) {
+				TEResult ready = TEResultSuccess, loaded = TEResultSuccess;
+				Record(w->name + " configure " + name, ConfigureAndWait(*w, toxes[t].c_str(), &ready));
+				Record(w->name + " load " + name, LoadAndWait(*w, &loaded));
+				if (loaded != TEResultSuccess && loaded != TEResultComponentWarnings) {
+					Note(w->name + " " + name, std::string("load failed: ") + TEResultGetDescription(loaded));
 					continue;
 				}
-				for (size_t p = 0; p < (size_t)W * H; p++) {
-					pixels[p * 4 + 0] = orange ? 255 : 0;
-					pixels[p * 4 + 1] = orange ? 128 : 64;
-					pixels[p * 4 + 2] = orange ? 0 : 255;
-					pixels[p * 4 + 3] = 255;
+				if (w == &d && !associated) {
+					// Once, after the first load, as the plugin did. Never again: re-association crashes.
+					TEResult r = TEInstanceAssociateGraphicsContext(d.instance, ctx.te);
+					Note("FD associate D3D11 context", r == TEResultSuccess ? "ok" : TEResultGetDescription(r));
+					associated = true;
 				}
-				glBindTexture(GL_TEXTURE_2D, i.glTex);
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, W, H, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
-				gl.f.ReleaseKeyedMutexWin32EXT(i.mem, key + 1);
-				glFlush();
-				i.key = key + 1;
-				TEResult r = TEInstanceAddTextureTransfer(w.instance, (TETexture*)i.te, nullptr, key + 1);
-				if (r == TEResultSuccess) r = TEInstanceLinkSetTextureValue(w.instance, inLink.c_str(), (TETexture*)i.te, nullptr);
-				os << (orange ? "orange" : "blue") << " written at key " << key << ", released " << key + 1
-					<< ", set " << (r == TEResultSuccess ? "ok" : TEResultGetDescription(r));
-				RenderFrames(w, 1);
-				os << ", " << OutputMean(w, gpu, outLink);
-				Note("FI frame " + std::to_string(f), os.str());
+				TEInstanceResume(w->instance);
+				if (w == &g) InputViaGl(g, gl, plain, "FG " + name);
+				else InputViaD3D11(d, ctx, "FD " + name);
+				TEInstanceSuspend(w->instance);
 			}
 		}
-		wglMakeCurrent(gl.dc, gl.rc);
-		for (GlInput& i : in) {
-			if (i.glTex) glDeleteTextures(1, &i.glTex);
-			if (i.mem) gl.f.DeleteMemoryObjectsEXT(1, &i.mem);
-			if (i.te) TERelease(&i.te);
-		}
 	}
-	Release(w);
+	Release(g);
+	Release(d);
 	DestroyGl(gl);
 }
 #endif

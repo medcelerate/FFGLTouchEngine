@@ -274,6 +274,60 @@ That removes a device per clip as a side benefit. It also means the
 cross-bundle sharing below has to share the device and context, not just
 the engines.
 
+#### Windows: Vulkan handoff instead of D3D11 and Spout
+
+TouchDesigner renders in Vulkan whatever context the host associates; the
+context only decides how output is handed over. A `TEVulkanContext` hands it
+over as Vulkan memory that GL imports directly, which removes the D3D11
+device, the Spout interop and the copies between them. Verified with
+`te_pool_spike --only vulkan` on TouchDesigner 2023.12000 and 2025.30280
+(RTX 2070 Super, NVIDIA 591.86, GL 4.6), two engines sharing one context:
+
+- **The context is made from Resolume's GL context alone.**
+  `TEVulkanContextCreate` takes the GPU's device UUID, driver UUID and LUID,
+  which GL reports (`GL_DEVICE_UUID_EXT`, `GL_DRIVER_UUID_EXT`,
+  `GL_DEVICE_LUID_EXT`). Both engines then reported `Vulkan, D3DShared` as
+  supported and delivered Vulkan textures.
+- **Output imports into GL** with `GL_EXT_memory_object_win32`
+  (`glImportMemoryWin32HandleEXT` + `glTexStorageMem2DEXT`, optimal tiling,
+  dedicated). Output was `VK_FORMAT_B8G8R8A8_UNORM`, so the GL texture needs
+  a red/blue swizzle.
+- **The import needs the allocation size**, which TouchEngine does not
+  report. A small Vulkan device on the same GPU (matched by UUID, loaded from
+  the driver's `vulkan-1.dll`) sizes an identical image: 8,847,360 bytes at
+  1920×1080.
+- **Acquire**: TouchEngine's transfer semaphore is a *timeline* semaphore
+  (opaque Win32 handle). GL imports it only into a semaphore created with
+  `glCreateSemaphoresNV` and typed timeline first; `glGenSemaphoresEXT`
+  fails with `GL_INVALID_VALUE`. Then `glWaitSemaphoreEXT` on the wait value.
+- **Release**: `TEInstanceAddVulkanTextureTransfer` rejects TouchEngine's
+  own semaphore ("API client usage error"). It accepts a timeline semaphore
+  the host created and exported — from the same small Vulkan device, wrapped
+  with `TEVulkanSemaphoreCreate` and imported into GL so GL can signal it.
+  One such semaphore per process, with a rising value, served every engine.
+
+So on Windows the pool owns, instead of a D3D11 device: one
+`TEVulkanContext`, one small Vulkan device (sizing and the release
+semaphore), and the host semaphore. Engines are associated with the context
+once, as above. The plugins need no device of their own.
+
+Limits found:
+
+- **Timeline semaphores in GL need `GL_NV_timeline_semaphore`**, which only
+  NVIDIA drivers provide. AMD and Intel need another sync route. The spike's
+  `glshared` section is that candidate: TouchEngine's D3D shared output
+  imported into GL and synchronised with `GL_EXT_win32_keyed_mutex` using
+  the plugin's existing keys. Its keyed mutex already works; binding the
+  texture storage does not yet (`GL_INVALID_VALUE`, being narrowed down).
+  The current D3D11 + Spout path remains the fallback.
+- **FX input** is untested. GL can import memory but not create shareable
+  memory, so the input texture must come from an allocator — the same
+  small Vulkan device, or a D3D shared texture, which TouchEngine accepts
+  as input without a context.
+- Per-frame cost is unmeasured without the spike's full-image readback.
+  A plugin should cache the GL import per TouchEngine texture handle, since
+  TouchEngine reuses a small set of output textures.
+
 ### Sharing across the three plugin bundles
 
 Source, FX and the fork's FX Presets are separate binaries with separate

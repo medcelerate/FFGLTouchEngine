@@ -116,7 +116,8 @@ Consequences:
           one per process (phase 1: per plugin bundle)
 ┌──────────────────────── EnginePool ────────────────────────┐
 │ slots: [EngineSlot] (Spawning | Empty | Leased | Dead)       │
-│ owns:  one D3D11/Metal device + one TE graphics context      │
+│ owns:  Windows: a D3D11 device for FX input textures only    │
+│        macOS:   one Metal device + one TE graphics context   │
 │ policy: warm count, idle cap, eviction                       │
 └──────────────┬───────────────────────────────────────────────┘
                │ Acquire(tox, enginePath) → EngineLease
@@ -132,7 +133,8 @@ callback target permanently, so the slot — never a plugin — is the
 `callback_info`. States:
 
 - **Spawning** — created, `Configure(NULL)` sent, waiting for `Ready`. On
-  `Ready` the slot associates the pool's TE context, once.
+  macOS the slot then associates the pool's TE context, once. Windows
+  engines get no context (see [Graphics device](#graphics-device)).
 - **Empty** — engine up, no tox.
 - **Leased** — attached to a plugin instance.
 - **Dead** — load failed in a way that leaves the engine unusable, or the
@@ -255,26 +257,30 @@ another device's context crashed the host process in the spike, with the
 tox loaded or unloaded, while one context shared by several engines worked
 on both TouchDesigner versions tested.
 
-So the pool owns the GPU side, from phase 1:
+**Decision (2026-10-28): on Windows, engines get no graphics context, and
+the plugin imports TouchEngine's D3D shared texture straight into GL with a
+GL keyed mutex** ([below](#windows-chosen-keyed-mutex-handoff-with-no-graphics-context)).
+That avoids the re-association crash by never associating, works on both
+TouchDesigner versions tested, and removes Spout and the per-plugin D3D11
+devices. The Vulkan route also works and is recorded as the alternative.
 
-- One D3D11 device (Windows) or Metal device and command queue (macOS),
-  and one TE graphics context made from it.
-- Every engine is associated with that context once, right after it
-  spawns and before its first Resume, and never again.
-- Plugins take the pool's device instead of creating their own. On Windows
-  the Spout interop, the input/output D3D textures and the immediate-context
-  copies all use `D3DDevice` today, so `InitializeDevice` returning the
-  pool's device is the whole change there. Turn on
-  `ID3D10Multithread::SetMultithreadProtected` for it, since several
-  plugins now share one immediate context. On macOS the plugins already
+What the pool owns, from phase 1:
+
+- **Windows**: no TE context. One D3D11 device, used only to allocate the
+  shared textures that carry FX input to TouchEngine (GL can import shared
+  memory but not create it). Output needs no device at all.
+- **macOS**: one Metal device and command queue, and one `TEMetalContext`
+  made from it. Every engine is associated with it once, right after it
+  spawns and before its first Resume, and never again. The plugins already
   share the system default `MTLDevice`; what changes is that they stop
-  creating a `TEMetalContext` each.
+  creating a `TEMetalContext` each. (A context-free route, taking
+  `IOSurface` output straight into GL as the current code already does
+  after its Metal copy, may also be possible; untested.)
 
-That removes a device per clip as a side benefit. It also means the
-cross-bundle sharing below has to share the device and context, not just
-the engines.
+Cross-bundle sharing (phase 2) has to share these too, not just the
+engines.
 
-#### Windows: Vulkan handoff instead of D3D11 and Spout
+#### Windows (alternative): Vulkan handoff
 
 TouchDesigner renders in Vulkan whatever context the host associates; the
 context only decides how output is handed over. A `TEVulkanContext` hands it
@@ -324,7 +330,7 @@ Limits found:
   A plugin should cache the GL import per TouchEngine texture handle, since
   TouchEngine reuses a small set of output textures.
 
-#### Windows: keyed-mutex handoff, with no graphics context at all
+#### Windows (chosen): keyed-mutex handoff, with no graphics context
 
 The simpler alternative, verified with `te_pool_spike --only glshared` on
 TouchDesigner 2023.12000 and 2025.30280 (same machine): the engine gets **no graphics
@@ -355,6 +361,17 @@ multi-GPU machines (`TEInstanceAssociateAdapter` covers that).
 
 Either route removes the D3D11 device and Spout. TouchDesigner renders in
 Vulkan with both; they differ only in how the frame crosses into GL.
+
+Still to verify on this route:
+
+- **FX input**: the pool's D3D11 device creates a shared texture (NT
+  handle, keyed mutex); GL imports it with size 0, draws Resolume's input
+  into it between keyed-mutex acquire/release, and TouchEngine takes it as
+  a `TED3DSharedTexture` with no context, which the header allows.
+- **AMD and Intel**: both extensions need confirming there.
+- **Inside Resolume**: that the plugin's GL calls run on a context where
+  these extensions resolve (`wglGetProcAddress` needs a current context),
+  and the red/blue swizzle for `B8G8R8A8` output.
 
 ### Sharing across the three plugin bundles
 
@@ -392,18 +409,24 @@ the fork has already fixed. Take these first (`drmbt/modernize-te`):
 ## Plan
 
 1. **Spike** — done on Windows: process reuse, pinned and changed engine
-   paths, a realistic tox, one context shared by several engines, and the
-   crash on re-association. Remaining: macOS (needs a Metal path in the
-   spike and a licensed Mac), and a real show tox's load time.
-2. **Port the fork's lifecycle fixes** listed above.
-3. **Phase 1 pool**: `src/plugins/shared/EnginePool.{h,cpp}` owning the
-   device, the TE context and the engines; the event queue and drain;
-   `EngineLease` replacing `instance` in the plugin base;
-   `InitializeDevice` taking the pool's device;
+   paths, a realistic tox, one context shared by several engines, the
+   crash on re-association, and both GL handoff routes. Remaining: macOS
+   (needs a licensed Mac), FX input over the keyed-mutex route, and a real
+   show tox's load time.
+2. **Port the fork's lifecycle fixes** listed above — done on branch
+   `fix/te-lifecycle` (not merged), plus a fix for load bookkeeping on
+   error results and the fork's unique Spout mutex names.
+3. **Replace Spout with the keyed-mutex GL handoff (Windows)**, per plugin
+   and independent of the pool: output in both plugins first, then FX
+   input. Drops the engine's D3D11 context association, the Spout interop
+   and `AcquireSync(INFINITE)`.
+4. **Phase 1 pool**: `src/plugins/shared/EnginePool.{h,cpp}` owning the
+   engines and the per-platform GPU objects above; the event queue and
+   drain; `EngineLease` replacing `instance` in the plugin base;
    `ClearTouchInstance`/destructor/`DeInitGL` calling Release; engine-key
    resolution; INI settings. Per bundle.
-4. **Verify in Resolume**: N clips fired in sequence; engine count, memory
+5. **Verify in Resolume**: N clips fired in sequence; engine count, memory
    and arm-to-first-frame latency against the current build; clip deleted
    while loading; Clear Instance while a frame is in flight; Source and FX
    clips running together.
-5. **Phase 2**: shared pool, device and context across bundles.
+6. **Phase 2**: shared pool and GPU objects across bundles.

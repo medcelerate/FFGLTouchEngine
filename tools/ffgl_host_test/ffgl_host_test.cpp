@@ -19,8 +19,11 @@
 //      time to first output and the TouchEngine process count.
 //   2. Edge cases on the Source plugin: a clip closed while its engine is
 //      still cold-starting (the pool should give that engine up after its
-//      unload timeout), and Clear Instance sent with a frame in flight,
-//      then Reload.
+//      unload timeout); Clear Instance sent with a frame in flight, then
+//      Reload; FF_INITIALISE_V2 and FF_DEINITIALISE while a clip is running,
+//      as Arena does when a new clip loads the binary again (the clip must
+//      keep its engine); and FF_DEINITIALISE with no clips, after which a
+//      new clip must still get an engine.
 //   3. With --fx: an FX clip fed a solid orange input through a pass-through
 //      tox (an In TOP 'in1' wired to an Out TOP 'out1'), running alongside a
 //      Source clip. Its output should be the same orange.
@@ -263,6 +266,23 @@ static void Run(Host& h, std::vector<Clip*>& clips, double seconds, Clip* until 
 	}
 }
 
+// Renders 'seconds' and says whether 'c' showed output on every frame.
+static bool KeptShowing(Host& h, std::vector<Clip*>& clips, Clip& c, double seconds)
+{
+	bool kept = true;
+	double end = Seconds() + seconds;
+	while (Seconds() < end) {
+		for (Clip* other : clips) {
+			unsigned char centre[4];
+			bool output = RenderClip(h, *other, centre);
+			if (other == &c && !output) kept = false;
+		}
+		SwapBuffers(h.dc);
+		std::this_thread::sleep_for(std::chrono::milliseconds(16));
+	}
+	return kept;
+}
+
 static void SetFloat(Clip& c, FFUInt32 index, float value)
 {
 	SetParameterStruct set = { index };
@@ -397,7 +417,7 @@ int main(int argc, char** argv)
 	if (!Load(source, "Source", dll)) return 1;
 
 	std::vector<Clip*> live;
-	Clip a, b, c, d, e1, e2, x, s;
+	Clip a, b, c, d, e1, e2, e3, e4, x, s;
 
 	if (!edgeOnly) {
 		Out("== 1. pool");
@@ -455,7 +475,30 @@ int main(int argc, char** argv)
 	Out("E1: reload sent");
 	Run(h, live, 60, &e1);
 	Run(h, live, 3);
+
+	Out("-- FF_INITIALISE_V2 then FF_DEINITIALISE with E1 running, as Arena did when a new clip loaded the binary again");
+	int before = CountEngines();
+	source.Call(FF_INITIALISE_V2, nullptr, nullptr);
+	source.Call(FF_DEINITIALISE, nullptr, nullptr);
+	bool kept = KeptShowing(h, live, e1, 5);
+	Out("E1: %s; TouchEngine processes %d before, %d after", kept ? "kept showing output" : "LOST its output",
+		before, CountEngines());
+	Out("-- E3 opened after that deinitialise: should still get an engine");
+	Open(source, live, e3, "E3", tox);
+	Run(h, live, 60, &e3);
+	Run(h, live, 3);
+	Close(live, e3);
 	Close(live, e1);
+
+	Out("-- FF_DEINITIALISE with no clips, then E4: the pool should release everything, then start again");
+	source.Call(FF_DEINITIALISE, nullptr, nullptr);
+	for (int i = 0; i < 40 && CountEngines() > 0; i++) std::this_thread::sleep_for(std::chrono::milliseconds(250));
+	Out("TouchEngine processes after deinitialising with no clips: %d", CountEngines());
+	source.Call(FF_INITIALISE_V2, nullptr, nullptr);
+	Open(source, live, e4, "E4", tox);
+	Run(h, live, 60, &e4);
+	Run(h, live, 3);
+	Close(live, e4);
 
 	Plugin fx;
 	if (!fxDll.empty() && !edgeOnly) {
@@ -513,7 +556,7 @@ int main(int argc, char** argv)
 	Out("plugins unloaded (%d TouchEngine processes)", CountEngines());
 
 	Out("== Summary");
-	for (Clip* clip : { &a, &b, &c, &d, &e1, &x, &s }) Report(*clip);
+	for (Clip* clip : { &a, &b, &c, &d, &e1, &e3, &e4, &x, &s }) Report(*clip);
 	if (gLog) std::fclose(gLog);
 	return 0;
 }

@@ -86,14 +86,18 @@ public:
 	static std::string KeyForTox(const std::string& toxPath);
 
 	// An engine with 'key': an idle one if there is one, else one still
-	// starting, else a new one. Empty after Shutdown().
+	// starting, else a new one. Starts the pool again after a Shutdown().
 	EngineLease Acquire(const std::string& key);
 
 	// Releases idle engines over the limits and starts warm ones. Cheap;
 	// called from every plugin's frame.
 	void Tick();
 
-	// Releases every engine. Called once, from the library deinitialise hook.
+	// Releases every engine, from the library deinitialise hook. Arena
+	// deinitialises a plugin binary while clips using it are still alive
+	// (seen when a new clip loaded the binary again), so with engines still
+	// leased this only asks for a shutdown, done once the last is handed
+	// back. Either way the next Acquire starts the pool again.
 	void Shutdown();
 
 private:
@@ -103,6 +107,8 @@ private:
 	std::shared_ptr<EngineSlot> Spawn(const std::string& key, bool warm);
 	void Retire(const std::shared_ptr<EngineSlot>& slot, const char* why);
 	void TopUpWarmEngines();
+	int LeasedCount();
+	void ReleaseAll();
 
 	std::mutex mutex;
 	std::vector<std::shared_ptr<EngineSlot>> slots;
@@ -110,6 +116,7 @@ private:
 	// callback still finds a live object.
 	std::vector<std::shared_ptr<EngineSlot>> retired;
 	bool shutDown = false;
+	bool shutdownRequested = false;
 	bool used = false;
 	double lastTick = 0;
 

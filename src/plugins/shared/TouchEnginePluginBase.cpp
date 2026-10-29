@@ -350,6 +350,17 @@ void FFGLTouchEnginePluginBase::DrainEngineEvents()
 	if (!Engine) {
 		return;
 	}
+	if (Engine.IsDead()) {
+		// The pool gave this engine up (it failed, or never finished
+		// unloading). Never touch its instance again; load on a new one.
+		FFGLLog::LogToHost("FFGLTouchEngine: this clip's engine went away; loading the tox on another");
+		ReleaseEngine();
+		ResetBaseParameters();
+		if (!FilePath.empty()) {
+			LoadTEFile();
+		}
+		return;
+	}
 	std::vector<EngineEvent> events;
 	Engine.TakeEvents(events);
 	for (const EngineEvent& e : events) {

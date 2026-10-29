@@ -299,8 +299,11 @@ EngineLease EnginePool::Acquire(const std::string& key)
 	std::lock_guard<std::mutex> lock(mutex);
 	EngineLease lease;
 	if (shutDown) {
-		return lease;
+		Log("starting again after the library was deinitialised");
+		shutDown = false;
 	}
+	// A clip asking for an engine means the host is still using the pool.
+	shutdownRequested = false;
 	used = true;
 
 	std::shared_ptr<EngineSlot> chosen;
@@ -400,20 +403,25 @@ void EnginePool::Release(EngineLease& lease)
 		}
 		// A slot still starting simply turns Empty on InstanceReady.
 	}
-	if (!unload) {
-		return;
+
+	if (unload) {
+		// Outside the slot lock: TouchEngine may report synchronously.
+		TEInstanceSuspend(slot->instance);
+		TEInstanceCancelFrame(slot->instance);
+		TEResult result = TEInstanceUnload(slot->instance);
+		if (result != TEResultSuccess) {
+			// Nothing was loaded, so no InstanceDidUnload is coming.
+			std::lock_guard<std::mutex> slotLock(slot->mutex);
+			if (slot->state == SlotState::Unloading) {
+				slot->SetState(SlotState::Empty);
+			}
+		}
 	}
 
-	// Outside the slot lock: TouchEngine may report synchronously.
-	TEInstanceSuspend(slot->instance);
-	TEInstanceCancelFrame(slot->instance);
-	TEResult result = TEInstanceUnload(slot->instance);
-	if (result != TEResultSuccess) {
-		// Nothing was loaded, so no InstanceDidUnload is coming.
-		std::lock_guard<std::mutex> slotLock(slot->mutex);
-		if (slot->state == SlotState::Unloading) {
-			slot->SetState(SlotState::Empty);
-		}
+	std::lock_guard<std::mutex> lock(mutex);
+	if (shutdownRequested && LeasedCount() == 0) {
+		Log("the last clip handed its engine back after the library was deinitialised");
+		ReleaseAll();
 	}
 }
 
@@ -511,13 +519,20 @@ void EnginePool::Tick()
 	TopUpWarmEngines();
 }
 
-void EnginePool::Shutdown()
+int EnginePool::LeasedCount()
 {
-	std::lock_guard<std::mutex> lock(mutex);
-	if (shutDown) {
-		return;
+	int leased = 0;
+	for (auto& slot : slots) {
+		std::lock_guard<std::mutex> slotLock(slot->mutex);
+		if (slot->channel) leased++;
 	}
+	return leased;
+}
+
+void EnginePool::ReleaseAll()
+{
 	shutDown = true;
+	shutdownRequested = false;
 	while (!slots.empty()) {
 		Retire(slots.front(), "shutting down");
 	}
@@ -525,6 +540,23 @@ void EnginePool::Shutdown()
 	PoolMetalContext.reset();
 	PoolMetalDevice = nil;
 #endif
+}
+
+void EnginePool::Shutdown()
+{
+	std::lock_guard<std::mutex> lock(mutex);
+	if (shutDown) {
+		return;
+	}
+	int leased = LeasedCount();
+	if (leased > 0) {
+		// Releasing these would leave live clips holding freed instances.
+		shutdownRequested = true;
+		Log("library deinitialised with " + std::to_string(leased) +
+			" engine(s) still held by clips; releasing once they are handed back");
+		return;
+	}
+	ReleaseAll();
 }
 
 void __stdcall EnginePoolDeinitialise()

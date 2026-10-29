@@ -466,7 +466,22 @@ the fork has already fixed. Take these first (`drmbt/modernize-te`):
 
    Four TouchEngine processes at most (three clips plus one warm), and
    `FF_DEINITIALISE` released all of them: none were left after the plugin
-   unloaded, and the process exited cleanly. Not built yet: re-keying a
+   unloaded, and the process exited cleanly.
+
+   A second run added the FX plugin and the edge cases:
+   - **FX input**: an FX clip on its own pool fed a solid input through a
+     pass-through tox; when the input turned from orange to blue the next
+     frame was still orange and every later one blue, so the input made the
+     round trip through TouchEngine.
+   - **Source and FX together**: both rendered at once; each plugin's
+     `FF_DEINITIALISE` released only its own engines.
+   - **Clear Instance with a frame in flight, then Reload**: output back
+     0.02 s after the reload, on a pooled engine.
+   - **Clip closed while its engine was still starting** (run with
+     `WarmEngines=0`, `MaxIdleEngines=0` so it had to start cold): the
+     engine never reported its tox unloaded, and the pool released it after
+     its 5 s unload timeout. An engine handed back mid-start is therefore
+     thrown away rather than kept, which costs a cold start but not a leak. Not built yet: re-keying a
    slot from `TEInstanceGetConfiguredEnginePath`; the slot only trusts the
    folder link.
 5. **Verify in Resolume**: N clips fired in sequence; engine count, memory

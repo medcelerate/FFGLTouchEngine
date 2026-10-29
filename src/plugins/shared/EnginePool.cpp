@@ -470,22 +470,28 @@ void EnginePool::Tick()
 		std::shared_ptr<EngineSlot> slot;
 		double since;
 	};
-	std::vector<std::shared_ptr<EngineSlot>> dead;
+	std::vector<std::shared_ptr<EngineSlot>> dead, stuck;
 	std::vector<Idle> idle;
 	for (auto& slot : slots) {
 		std::lock_guard<std::mutex> slotLock(slot->mutex);
 		// Never one a clip still holds: it would be left with a freed instance.
 		// The clip swaps it on its next load (EngineLease::IsDead).
-		if ((slot->state == SlotState::Dead && !slot->channel) ||
-			(slot->state == SlotState::Unloading && now - slot->since > UnloadTimeoutSeconds)) {
+		if (slot->state == SlotState::Dead && !slot->channel) {
 			dead.push_back(slot);
+		}
+		else if (slot->state == SlotState::Unloading && now - slot->since > UnloadTimeoutSeconds) {
+			// Typically an engine handed back while it was still starting.
+			stuck.push_back(slot);
 		}
 		else if (slot->state == SlotState::Empty) {
 			idle.push_back({ slot, slot->since });
 		}
 	}
 	for (auto& slot : dead) {
-		Retire(slot, "it stopped responding or failed to start");
+		Retire(slot, "it failed to start");
+	}
+	for (auto& slot : stuck) {
+		Retire(slot, "it was handed back but never reported its tox unloaded");
 	}
 
 	// Least recently used first.

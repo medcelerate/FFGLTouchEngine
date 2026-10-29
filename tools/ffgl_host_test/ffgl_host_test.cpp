@@ -1,7 +1,12 @@
 // A headless FFGL host for testing the engine pool without Resolume.
 //
 //   ffgl_host_test.exe <source.dll> <tox> [--fx <fx.dll> <passthrough.tox>]
-//                      [--te-dir DIR] [--log FILE]
+//                      [--edge-only] [--te-dir DIR] [--log FILE]
+//
+// --edge-only runs only the edge cases (2). Run it with an
+// FFGLTouchEngine.ini next to the Source plugin holding WarmEngines=0 and
+// MaxIdleEngines=0, so every clip has to start its engine cold and the
+// clip closed early really is closed while its engine is starting.
 //
 // --te-dir is where TouchEngine.dll is, if not next to the plugin.
 //
@@ -358,10 +363,12 @@ int main(int argc, char** argv)
 		return 2;
 	}
 	std::string dll = argv[1], tox = argv[2], teDir, fxDll, fxTox;
+	bool edgeOnly = false;
 	for (int i = 3; i < argc; i++) {
 		std::string arg = argv[i];
 		if (arg == "--log" && i + 1 < argc) gLog = std::fopen(argv[++i], "w");
 		else if (arg == "--te-dir" && i + 1 < argc) teDir = argv[++i];
+		else if (arg == "--edge-only") edgeOnly = true;
 		else if (arg == "--fx" && i + 2 < argc) {
 			fxDll = argv[++i];
 			fxTox = argv[++i];
@@ -392,40 +399,42 @@ int main(int argc, char** argv)
 	std::vector<Clip*> live;
 	Clip a, b, c, d, e1, e2, x, s;
 
-	Out("== 1. pool");
-	Out("-- A: first clip, needs a cold engine");
-	if (!Open(source, live, a, "A", tox)) return 1;
-	Run(h, live, 60, &a);
-	Out("-- let the warm engine start");
-	Run(h, live, 25);
-	Out("TouchEngine processes with one clip and a warm engine: %d", CountEngines());
+	if (!edgeOnly) {
+		Out("== 1. pool");
+		Out("-- A: first clip, needs a cold engine");
+		if (!Open(source, live, a, "A", tox)) return 1;
+		Run(h, live, 60, &a);
+		Out("-- let the warm engine start");
+		Run(h, live, 25);
+		Out("TouchEngine processes with one clip and a warm engine: %d", CountEngines());
 
-	Out("-- B: should take the warm engine");
-	Open(source, live, b, "B", tox);
-	Run(h, live, 60, &b);
-	Run(h, live, 3);
+		Out("-- B: should take the warm engine");
+		Open(source, live, b, "B", tox);
+		Run(h, live, 60, &b);
+		Run(h, live, 3);
 
-	Out("-- close A, then C: should take A's engine back");
-	Close(live, a);
-	Run(h, live, 3);
-	Open(source, live, c, "C", tox);
-	Run(h, live, 60, &c);
-	Run(h, live, 3);
+		Out("-- close A, then C: should take A's engine back");
+		Close(live, a);
+		Run(h, live, 3);
+		Open(source, live, c, "C", tox);
+		Run(h, live, 60, &c);
+		Run(h, live, 3);
 
-	Out("-- D: takes whatever is idle or warm");
-	Open(source, live, d, "D", tox);
-	Run(h, live, 60, &d);
-	Run(h, live, 3);
+		Out("-- D: takes whatever is idle or warm");
+		Open(source, live, d, "D", tox);
+		Run(h, live, 60, &d);
+		Run(h, live, 3);
 
-	Out("-- close B, C and D");
-	Close(live, b);
-	Close(live, c);
-	Close(live, d);
-	Run(h, live, 2);
-	Out("TouchEngine processes with no clips: %d", CountEngines());
+		Out("-- close B, C and D");
+		Close(live, b);
+		Close(live, c);
+		Close(live, d);
+		Run(h, live, 2);
+		Out("TouchEngine processes with no clips: %d", CountEngines());
+	}
 
 	Out("== 2. edge cases");
-	Out("-- E1 and E2 back to back: E2 should find no idle engine and start one cold; close E2 at once");
+	Out("-- E1 and E2 back to back; close E2 at once. With no idle or warm engine left (see --edge-only), E2's is still starting when it closes");
 	Open(source, live, e1, "E1", tox);
 	Open(source, live, e2, "E2", tox);
 	Run(h, live, 0.1);
@@ -449,7 +458,7 @@ int main(int argc, char** argv)
 	Close(live, e1);
 
 	Plugin fx;
-	if (!fxDll.empty()) {
+	if (!fxDll.empty() && !edgeOnly) {
 		Out("== 3. FX with an orange input, alongside a Source clip");
 		if (Load(fx, "FX", fxDll)) {
 			GLuint orange = MakeInput(255, 128, 0);
@@ -488,7 +497,7 @@ int main(int argc, char** argv)
 		}
 	}
 	else {
-		Out("== 3. skipped: no --fx");
+		Out("== 3. skipped: %s", edgeOnly ? "--edge-only" : "no --fx");
 	}
 
 	Out("== 4. FF_DEINITIALISE and unload");

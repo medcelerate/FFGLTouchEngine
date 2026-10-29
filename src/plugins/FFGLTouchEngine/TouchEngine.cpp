@@ -251,6 +251,11 @@ FFResult FFGLTouchEngine::DeInitGL()
 {
 	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 
+#ifdef _WIN32
+	// Before the unload: it holds TouchEngine textures.
+	OutputGL.Release();
+#endif
+
 	if (instance != nullptr)
 	{
 		if (isTouchEngineLoaded)
@@ -262,9 +267,6 @@ FFResult FFGLTouchEngine::DeInitGL()
 		}
 	}
 
-#ifdef _WIN32
-	OutputGL.Release();
-#endif
 #ifdef __APPLE__
 	if (OutputTextureGL != 0) {
 		glDeleteTextures(1, &OutputTextureGL);
@@ -387,14 +389,15 @@ void FFGLTouchEngine::ClearTouchInstance() {
 	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 	if (instance != nullptr)
 	{
+#ifdef _WIN32
+		// Before the unload: the imports hold TouchEngine textures.
+		OutputGL.DropImports();
+#endif
 		if (isTouchEngineLoaded)
 		{
 			TEInstanceSuspend(instance);
 			TEInstanceUnload(instance);
 		}
-#ifdef _WIN32
-		OutputGL.DropImports();
-#endif
 #ifdef __APPLE__
 		MetalContext.reset();
 		if (OutputTextureGL != 0) {

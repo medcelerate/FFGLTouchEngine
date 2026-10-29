@@ -108,6 +108,17 @@ FFGLTouchEnginePluginBase::~FFGLTouchEnginePluginBase()
 	// Mark as destroying so event callbacks are ignored
 	isBeingDestroyed = true;
 
+#ifdef _WIN32
+	// The GL helpers hold references to TouchEngine textures. Release them
+	// while the instance is still alive: as members they would otherwise be
+	// destroyed after this body has released the instance. Arena crashed on
+	// exit in a TERelease from this plugin's teardown (a null call inside
+	// TouchEngine.dll), which fits. Hosts may destroy an instance without calling
+	// DeInitGL first; with no GL context current these skip their GL deletes.
+	OutputGL.Release();
+	InputGL.Release();
+#endif
+
 	if (instance != nullptr) {
 		if (isTouchEngineLoaded) {
 			isTouchEngineLoaded = false;

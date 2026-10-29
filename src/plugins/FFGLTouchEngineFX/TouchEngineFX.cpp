@@ -593,16 +593,17 @@ void FFGLTouchEngineFX::ClearTouchInstance() {
 	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 	if (instance != nullptr)
 	{
+#ifdef _WIN32
+		// Before the unload: both hold TouchEngine textures.
+		InputGL.Release();
+		InputInteropInitialized = false;
+		OutputGL.DropImports();
+#endif
 		if (isTouchEngineLoaded)
 		{
 			TEInstanceSuspend(instance);
 			TEInstanceUnload(instance);
 		}
-#ifdef _WIN32
-		InputGL.Release();
-		InputInteropInitialized = false;
-		OutputGL.DropImports();
-#endif
 #ifdef __APPLE__
 		MetalContext.reset();
 		InputInteropInitialized = false;

@@ -261,7 +261,16 @@ int main(int argc, char** argv)
 	}
 	Out("TouchEngine processes before loading the plugin: %d", CountEngines());
 
-	HMODULE module = LoadLibraryA(dll.c_str());
+	// By full path with the altered search order, as hosts load plugins, so
+	// the plugin's own folder is searched for TouchEngine.dll. Plain
+	// LoadLibrary only searches this program's folder and the system ones.
+	char fullDll[MAX_PATH];
+	DWORD fullLength = GetFullPathNameA(dll.c_str(), MAX_PATH, fullDll, nullptr);
+	if (fullLength == 0 || fullLength >= MAX_PATH) {
+		Out("could not resolve %s", dll.c_str());
+		return 1;
+	}
+	HMODULE module = LoadLibraryExA(fullDll, nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
 	if (!module) {
 		Out("LoadLibrary failed: %lu", GetLastError());
 		return 1;

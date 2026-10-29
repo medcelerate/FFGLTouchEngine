@@ -438,23 +438,37 @@ the fork has already fixed. Take these first (`drmbt/modernize-te`):
    crash on re-association, and both GL handoff routes. Remaining: macOS
    (needs a licensed Mac), FX input over the keyed-mutex route, and a real
    show tox's load time.
-2. **Port the fork's lifecycle fixes** listed above — done on branch
-   `fix/te-lifecycle` (not merged), plus a fix for load bookkeeping on
-   error results and the fork's unique Spout mutex names.
+2. **Port the fork's lifecycle fixes** listed above — done, released in
+   v3.0.0, plus a fix for load bookkeeping on error results and the fork's
+   unique Spout mutex names.
 3. **Replace Spout with the keyed-mutex GL handoff (Windows)**, per plugin
    and independent of the pool: output in both plugins first, then FX
    input. Drops the engine's D3D11 context association, the Spout interop
-   and `AcquireSync(INFINITE)`. Output is on branch
-   `feat/keyed-mutex-output` (`src/plugins/shared/TEOutputGL.{h,cpp}`),
-   verified in Arena. Input is on `feat/keyed-mutex-input`
-   (`TEInputGL.{h,cpp}`), built but not yet run in Arena: no plugin
-   associates a graphics context or links Spout, and only the FX plugin
-   creates a D3D11 device, to allocate input textures.
+   and `AcquireSync(INFINITE)`. Done, released in v3.0.0 (a pre-release)
+   as `src/plugins/shared/TEOutputGL.{h,cpp}` and `TEInputGL.{h,cpp}`,
+   both verified in Arena. Not yet verified: the exit-crash fix (TouchEngine
+   textures released before the instance) on an Arena exit.
 4. **Phase 1 pool**: `src/plugins/shared/EnginePool.{h,cpp}` owning the
    engines and the per-platform GPU objects above; the event queue and
    drain; `EngineLease` replacing `instance` in the plugin base;
    `ClearTouchInstance`/destructor/`DeInitGL` calling Release; engine-key
-   resolution; INI settings. Per bundle.
+   resolution; INI settings. Per bundle. Built on branch
+   `feat/engine-pool`. `tools/ffgl_host_test` drives a plugin DLL the way
+   a host does; on Windows (RTX 2070 SUPER, TouchDesigner 2023) with
+   `NoiseOutOnly5Param.tox` it gave:
+
+   | Clip | Engine | First output after the tox was set |
+   |---|---|---|
+   | A | cold start | 12.2 s |
+   | B | the warm engine | 0.58 s |
+   | C | A's, handed back when A closed | 0.05 s |
+   | D | started warm while B and C ran | 1.66 s |
+
+   Four TouchEngine processes at most (three clips plus one warm), and
+   `FF_DEINITIALISE` released all of them: none were left after the plugin
+   unloaded, and the process exited cleanly. Not built yet: re-keying a
+   slot from `TEInstanceGetConfiguredEnginePath`; the slot only trusts the
+   folder link.
 5. **Verify in Resolume**: N clips fired in sequence; engine count, memory
    and arm-to-first-frame latency against the current build; clip deleted
    while loading; Clear Instance while a frame is in flight; Source and FX

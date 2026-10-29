@@ -242,7 +242,17 @@ int main(int argc, char** argv)
 		if (arg == "--log") gLog = std::fopen(argv[++i], "w");
 		else if (arg == "--te-dir") teDir = argv[++i];
 	}
-	if (!teDir.empty()) SetDllDirectoryA(teDir.c_str());
+	if (!teDir.empty()) {
+		// SetDllDirectory wants a full path; a relative one was not searched.
+		char full[MAX_PATH];
+		DWORD length = GetFullPathNameA(teDir.c_str(), MAX_PATH, full, nullptr);
+		if (length == 0 || length >= MAX_PATH || !SetDllDirectoryA(full)) {
+			Out("could not add %s to the DLL search path", teDir.c_str());
+		}
+		else {
+			Out("TouchEngine.dll search path: %s", full);
+		}
+	}
 
 	Host h;
 	if (!MakeContext(h)) {

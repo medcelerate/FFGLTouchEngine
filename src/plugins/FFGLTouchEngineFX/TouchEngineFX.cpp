@@ -69,27 +69,17 @@ out vec4 fragColor;
 void main()
 {
 	vec4 color = texture( InputTexture, uv );
-	// IOSurface comes as BGRA, swizzle to RGBA
-	fragColor = color.bgra;
+	// No swizzle: CGLTexImageIOSurface2D binds the BGRA IOSurface with
+	// GL_BGRA + GL_UNSIGNED_INT_8_8_8_8_REV, so sampling already yields RGBA.
+	// A .bgra here double-corrects and swaps red/blue.
+	fragColor = color;
 }
 )";
-#endif
-
-#ifdef _WIN32
-void textureCallback(TED3D11Texture* texture, TEObjectEvent event, void* info)
-{
-	if (event == TEObjectEventRelease) {
-		FFGLLog::LogToHost("Releasing texture");
-	}
-	return;
-}
 #endif
 
 FFGLTouchEngineFX::FFGLTouchEngineFX()
 	: FFGLTouchEnginePluginBase()
 {
-	srand(static_cast<long int>(time(0)));
-
 	// Input properties
 	SetMinInputs(0);
 	SetMaxInputs(1);
@@ -97,7 +87,8 @@ FFGLTouchEngineFX::FFGLTouchEngineFX()
 	ConstructBaseParameters();
 
 #ifdef _WIN32
-	EnableSpoutLogFile("FFGLTouchEngineFX.log");
+	// Allocates the shared textures the input is sent in.
+	NeedsD3DDevice = true;
 #endif
 
 }
@@ -116,14 +107,6 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 
 	//Load TouchEngine
 	LoadTouchEngine();
-
-#ifdef _WIN32
-	SpoutIDInput = GenerateRandomString(15);
-	SpoutIDOutput = GenerateRandomString(15);
-
-	SpoutTextureOutput = 0;
-	SpoutTextureInput = 0;
-#endif
 
 	result = InitializeShader(vertexShaderCode, fragmentShaderCode);
 	if (result != FF_SUCCESS)
@@ -160,16 +143,41 @@ FFResult FFGLTouchEngineFX::InitGL(const FFGLViewportStruct* vp)
 
 FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 {
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 
 	if (instance == nullptr || !isTouchEngineLoaded || !isTouchEngineReady || isTouchFrameBusy)
 	{
 #ifdef _WIN32
-		ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
-		ffglex::ScopedSamplerActivation activateSampler(0);
-		ffglex::Scoped2DTextureBinding textureBinding(SpoutTextureOutput);
-		shader.Set("InputTexture", 0);
-		shader.Set("MaxUV", 1.0f, 1.0f);
-		quad.Draw();
+		// Keep showing the last frame while TouchEngine is busy, as on macOS
+		// below. This used to draw it and then return FF_FAIL, which Resolume
+		// shows as a transparent frame.
+		if (OutputGL.Texture() != 0) {
+			ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
+			ffglex::ScopedSamplerActivation activateSampler(0);
+			ffglex::Scoped2DTextureBinding textureBinding(OutputGL.Texture());
+			shader.Set("InputTexture", 0);
+			shader.Set("MaxUV", 1.0f, 1.0f);
+			quad.Draw();
+			return FF_SUCCESS;
+		}
+#endif
+#ifdef __APPLE__
+		// Persist the last valid TE output while the engine is mid-cook or not yet
+		// ready. Without this the FX draws nothing and returns FF_FAIL, so Resolume
+		// shows a transparent frame on every busy frame -> constant flicker on heavy
+		// toxes. Redraw the cached IOSurface-backed frame and report success so the
+		// host keeps the previous image. Falls through to FF_FAIL only when we have
+		// no cached frame yet (e.g. during the very first load).
+		if (OutputTextureGL != 0) {
+			ffglex::ScopedShaderBinding shaderBinding(rectShader.GetGLID());
+			ffglex::ScopedSamplerActivation activateSampler(0);
+			glBindTexture(GL_TEXTURE_RECTANGLE, OutputTextureGL);
+			rectShader.Set("InputTexture", 0);
+			rectShader.Set("TextureSize", (float)OutputWidth, (float)OutputHeight);
+			quad.Draw();
+			glBindTexture(GL_TEXTURE_RECTANGLE, 0);
+			return FF_SUCCESS;
+		}
 #endif
 		return FF_FAIL;
 	}
@@ -186,10 +194,19 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		return FF_FAIL;
 	}
 
-	shader.Set("InputTexture", 0);
-	FFGLTexCoords maxCoords = GetMaxGLTexCoords(*pGL->inputTextures[0]);
-	shader.Set("MaxUV", maxCoords.s, maxCoords.t);
-	quad.Draw();
+	// Draw the input as the base pass. This needs the shader and the input texture
+	// actually bound; previously the uniforms/draw ran with no program or texture
+	// bound (a no-op / garbage draw on both platforms). Any TE output is drawn over
+	// this below, so it only shows through until TE produces its first frame.
+	{
+		ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
+		ffglex::ScopedSamplerActivation activateSampler(0);
+		ffglex::Scoped2DTextureBinding textureBinding(pGL->inputTextures[0]->Handle);
+		shader.Set("InputTexture", 0);
+		FFGLTexCoords maxCoords = GetMaxGLTexCoords(*pGL->inputTextures[0]);
+		shader.Set("MaxUV", maxCoords.s, maxCoords.t);
+		quad.Draw();
+	}
 
 	if (hasVideoOutput) {
 		TouchObject<TETexture> TETextureToSend;
@@ -197,102 +214,20 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 		TEResult result = TEInstanceLinkGetTextureValue(instance, OutputOpName.c_str(), TELinkValueCurrent, TETextureToSend.take());
 #ifdef _WIN32
 		if (result == TEResultSuccess && TETextureToSend != nullptr) {
-			if (TETextureGetType(TETextureToSend) == TETextureTypeD3DShared && result == TEResultSuccess) {
-				TouchObject<TED3D11Texture> D3DTextureToSend;
-				result = TED3D11ContextGetTexture(D3DContext, static_cast<TED3DSharedTexture*>(TETextureToSend.get()), D3DTextureToSend.take());
-				if (result != TEResultSuccess)
-				{
-					return FF_FALSE;
-				}
-				ID3D11Texture2D* RawTextureToSend = TED3D11TextureGetTexture(D3DTextureToSend);
-
-				if (RawTextureToSend == nullptr) {
-					return FF_FALSE;
-				}
-
-				D3D11_TEXTURE2D_DESC RawTextureDesc;
-				ZeroMemory(&RawTextureDesc, sizeof(RawTextureDesc));
-
-				RawTextureToSend->GetDesc(&RawTextureDesc);
-
-				if (!OutputInteropInitialized || RawTextureDesc.Width != OutputWidth
-					|| RawTextureDesc.Height != OutputHeight
-					|| RawTextureDesc.Format != DXFormat) {
-
-					OutputWidth = RawTextureDesc.Width;
-					OutputHeight = RawTextureDesc.Height;
-
-					OutputInterop.SetSenderName(SpoutIDOutput.c_str());
-
-					if (!OutputInterop.OpenDirectX11(D3DDevice.Get())) {
-						return FailAndLog("Failed to open DirectX11");
-					}
-
-					if (!OutputInterop.CreateInterop(OutputWidth, OutputHeight, RawTextureDesc.Format, false)) {
-						return FailAndLog("Failed to create interop");
-					}
-
-					OutputInterop.frame.CreateAccessMutex("mutex2");
-
-					if (!OutputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), OutputWidth, OutputHeight, RawTextureDesc.Format, &D3DTextureOutput)) {
-						return FailAndLog("Failed to create DX11 texture");
-					}
-
-					InitializeGlTexture(SpoutTextureOutput, OutputWidth, OutputHeight, GetGlType(RawTextureDesc.Format));
-					DXFormat = RawTextureDesc.Format;
-
-					OutputInteropInitialized = true;
-				}
-
-				IDXGIKeyedMutex* keyedMutex;
-				RawTextureToSend->QueryInterface<IDXGIKeyedMutex>(&keyedMutex);
-				if (keyedMutex == nullptr) {
-					return FF_FAIL;
-				}
-
-				TESemaphore* semaphore = nullptr;
-				uint64_t waitValue = 0;
-				if (TEInstanceHasTextureTransfer(instance, TETextureToSend) == false)
-				{
-					result = TEInstanceAddTextureTransfer(instance, TETextureToSend, semaphore, waitValue);
-					if (result != TEResultSuccess)
-					{
-						return FF_FAIL;
-					}
-				}
-				result = TEInstanceGetTextureTransfer(instance, TETextureToSend, &semaphore, &waitValue);
-				if (result != TEResultSuccess)
-				{
-					return FF_FALSE;
-				}
-				keyedMutex->AcquireSync(waitValue, INFINITE);
-
-				Microsoft::WRL::ComPtr<ID3D11DeviceContext> devContext;
-				D3DDevice->GetImmediateContext(&devContext);
-				devContext->CopyResource(D3DTextureOutput.Get(), RawTextureToSend);
-				OutputInterop.WriteTexture(D3DTextureOutput.GetAddressOf());
-				keyedMutex->ReleaseSync(waitValue + 1);
-
-				result = TEInstanceAddTextureTransfer(instance, TETextureToSend, semaphore, waitValue + 1);
-				if (result != TEResultSuccess)
-				{
-					return FF_FAIL;
-				}
-				devContext->Flush();
-				devContext->Release();
-				keyedMutex->Release();
-			}
-
+			OutputGL.Receive(instance, TETextureToSend, pGL->HostFBO);
 		}
 
-		OutputInterop.ReadGLDXtexture(SpoutTextureOutput, GL_TEXTURE_2D, OutputWidth, OutputHeight, true, pGL->HostFBO);
-
-		ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
-		ffglex::ScopedSamplerActivation activateSampler(0);
-		ffglex::Scoped2DTextureBinding textureBinding(SpoutTextureOutput);
-		shader.Set("InputTexture", 0);
-		shader.Set("MaxUV", 1.0f, 1.0f);
-		quad.Draw();
+		// Always draw the last frame received
+		if (OutputGL.Texture() != 0) {
+			OutputWidth = OutputGL.Width();
+			OutputHeight = OutputGL.Height();
+			ffglex::ScopedShaderBinding shaderBinding(shader.GetGLID());
+			ffglex::ScopedSamplerActivation activateSampler(0);
+			ffglex::Scoped2DTextureBinding textureBinding(OutputGL.Texture());
+			shader.Set("InputTexture", 0);
+			shader.Set("MaxUV", 1.0f, 1.0f);
+			quad.Draw();
+		}
 #endif
 
 #ifdef __APPLE__
@@ -378,24 +313,7 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 			InputWidth = pGL->inputTextures[0]->Width;
 			InputHeight = pGL->inputTextures[0]->Height;
 #ifdef _WIN32
-			InputInterop.SetSenderName(SpoutIDInput.c_str());
-
-			if (!InputInterop.OpenDirectX11(D3DDevice.Get())) {
-				return FailAndLog("Failed to open DirectX11");
-			}
-
-			if (!InputInterop.CreateInterop(InputWidth, InputHeight, GlToDXFromat(InputFormat), false)) {
-				return FailAndLog("Failed to create interop");
-			}
-
-			InputInterop.frame.CreateAccessMutex("mutex1");
-
-			if (!InputInterop.spoutdx.CreateDX11Texture(D3DDevice.Get(), InputWidth, InputHeight, GlToDXFromat(InputFormat), &D3DTextureInput)) {
-				return FailAndLog("Failed to create DX11 texture");
-			}
-
-			InitializeGlTexture(SpoutTextureInput, InputWidth, InputHeight, GetGlType(InputFormat));
-
+			// TEInputGL reallocates its shared textures itself when these change.
 			InputInteropInitialized = true;
 #endif
 
@@ -424,20 +342,9 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 
 #ifdef _WIN32
-		InputInterop.WriteGLDXtexture(pGL->inputTextures[0]->Handle, GL_TEXTURE_2D, InputWidth, InputHeight, true, pGL->HostFBO);
-
-		InputInterop.ReadTexture(D3DTextureInput.GetAddressOf());
-
-		TouchObject<TED3D11Texture> TETextureToReceive;
-		TETextureToReceive.take(TED3D11TextureCreate(D3DTextureInput.Get(), TETextureOriginTopLeft, kTETextureComponentMapIdentity, (TED3D11TextureCallback)textureCallback, nullptr));
-
-		TEResult result = TEInstanceLinkSetTextureValue(instance, InputOpName.c_str(), TETextureToReceive, D3DContext);
-
-		if (result != TEResultSuccess)
-		{
-			isTouchFrameBusy = false;
-			return FF_FAIL;
-		}
+		// On failure (logged once) the frame still starts: TouchEngine keeps
+		// the last input it was given, and the output drawn above stays.
+		InputGL.Send(instance, InputOpName, D3DDevice.Get(), pGL->inputTextures[0]->Handle, InputWidth, InputHeight, pGL->HostFBO);
 #endif
 
 #ifdef __APPLE__
@@ -508,12 +415,11 @@ FFResult FFGLTouchEngineFX::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 
 FFResult FFGLTouchEngineFX::DeInitGL()
 {
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 
 #ifdef _WIN32
-	for (auto it : TextureMutexMap)
-		it.second->Release();
-
-	TextureMutexMap.clear();
+	InputGL.Release();
+	OutputGL.Release();
 #endif
 
 #ifdef __APPLE__
@@ -671,6 +577,7 @@ void FFGLTouchEngineFX::HandleOperatorLink(const TouchObject<TELinkInfo>& linkIn
 
 
 void FFGLTouchEngineFX::ResumeTouchEngine() {
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 	TEResult result = TEInstanceResume(instance);
 	if (result != TEResultSuccess)
 	{
@@ -683,18 +590,20 @@ void FFGLTouchEngineFX::ResumeTouchEngine() {
 }
 
 void FFGLTouchEngineFX::ClearTouchInstance() {
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 	if (instance != nullptr)
 	{
+#ifdef _WIN32
+		// Before the unload: both hold TouchEngine textures.
+		InputGL.Release();
+		InputInteropInitialized = false;
+		OutputGL.DropImports();
+#endif
 		if (isTouchEngineLoaded)
 		{
 			TEInstanceSuspend(instance);
 			TEInstanceUnload(instance);
 		}
-#ifdef _WIN32
-		InputInteropInitialized = !InputInterop.CleanupInterop();
-		OutputInteropInitialized = !OutputInterop.CleanupInterop();
-		D3DContext.reset();
-#endif
 #ifdef __APPLE__
 		MetalContext.reset();
 		InputInteropInitialized = false;

@@ -24,18 +24,23 @@
 #endif
 
 #include "FFGL/FFGLSDK.h"
+#include <atomic>
 #include <map>
+#include <mutex>
+#include <set>
 #include <string>
+#include <unordered_map>
+#include <vector>
 #include "TouchEngine/TouchObject.h"
 
 #ifdef _WIN32
 #include "TouchEngine/TED3D11.h"
-#include "SpoutGL/SpoutSender.h"
+#include "TEOutputGL.h"
+#include "TEInputGL.h"
 #endif
 
 FFResult FailAndLog(std::string message);
 std::string GetSeverityString(TESeverity severity);
-std::string GenerateRandomString(size_t length);
 
 #ifdef _WIN32
 DXGI_FORMAT GlToDXFromat(GLint format);
@@ -99,12 +104,21 @@ protected:
 	TouchObject<TEInstance> instance;
 #ifdef _WIN32
 	Microsoft::WRL::ComPtr<ID3D11Device> D3DDevice;
-	TouchObject<TED3D11Context> D3DContext;
-	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureInput = nullptr;
-	Microsoft::WRL::ComPtr <ID3D11Texture2D> D3DTextureOutput = nullptr;
-	std::map<ID3D11Texture2D*, IDXGIKeyedMutex*> TextureMutexMap;
 
 	DXGI_FORMAT DXFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
+
+	// TouchEngine's output, taken straight into GL. It needs no D3D11 device
+	// and no TouchEngine graphics context.
+	TEOutputGL OutputGL;
+
+	// The host's input, sent to TouchEngine the same way. FX plugin only.
+	TEInputGL InputGL;
+
+	// No plugin associates a TouchEngine graphics context on Windows: input
+	// and output both cross as D3D shared textures. The D3D11 device only
+	// allocates the shared input textures, so only plugins that send input
+	// set this and create one.
+	bool NeedsD3DDevice = false;
 #endif
 #ifdef __APPLE__
 	id<MTLDevice> MetalDevice = nil;
@@ -122,8 +136,30 @@ protected:
 #endif
 	GLint GLFormat = 0;
 
+	// Serializes TE instance lifecycle (load/unload/reload), parameter map
+	// mutation (enumeration on the TE callback thread), and the render thread's
+	// per-frame TE section. TE callbacks race the render thread otherwise —
+	// observed as a segfault when Reload invalidated links mid-frame
+	// (TEInstanceLinkSetTextureValue on a freed link) and as per-frame pushes
+	// into dead instances after failed loads. Recursive because lifecycle
+	// paths nest (SetFloatParameter -> LoadTEFile, eventCallback ->
+	// ResumeTouchEngine -> GetAllParameters -> ResetBaseParameters). All TE
+	// load/unload calls under it are asynchronous, so worst-case hold time is
+	// milliseconds. Never hold it while blocking on TE completion.
+	std::recursive_mutex TEStateMutex;
+
 	std::atomic_bool isTouchEngineLoaded;
 	std::atomic_bool isTouchEngineReady;
+	// True from a successful TEInstanceLoad until its TEEventInstanceDidLoad
+	// arrives. Reload/Unload pulses are ignored while set: configuring a second
+	// load onto an in-flight one makes TE free the first load's links after
+	// we've already enumerated them and gone ready — the render thread then
+	// pushes a dead link identifier and the host segfaults inside TE.
+	std::atomic_bool isLoadPending{ false };
+	// A load/reload request arrived while a load was in flight. Rather than
+	// dropping it (which silently left the OLD tox running after a path
+	// change), it is replayed as soon as the in-flight load completes.
+	std::atomic_bool isReloadQueued{ false };
 	std::atomic_bool isGraphicsContextLoaded;
 	std::atomic_bool isTouchFrameBusy;
 	std::atomic_bool isBeingDestroyed;
@@ -150,7 +186,8 @@ protected:
 	std::set<FFUInt32> ActiveVectorParams;
 	std::vector<VectorParameterInfo> VectorParameters;
 
-	//Texture Name
+	//Operator link identifiers (input is only set by FX-style toxes)
+	std::string InputOpName;
 	std::string OutputOpName;
 
 	int OutputWidth = 0;

@@ -1,4 +1,5 @@
 #include "TouchEnginePluginBase.h"
+#include <algorithm>
 
 FFResult FailAndLog(std::string message)
 {
@@ -18,18 +19,13 @@ std::string GetSeverityString(TESeverity severity) {
 
 }
 
-std::string GenerateRandomString(size_t length) {
-	auto randchar = []() -> char {
-		const char charset[] =
-			"0123456789"
-			"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-			"abcdefghijklmnopqrstuvwxyz";
-		const size_t max_index = (sizeof(charset) - 1);
-		return charset[rand() % max_index];
-		};
-	std::string str(length, 0);
-	std::generate_n(str.begin(), length, randchar);
-	return str;
+// Log (but do not abort enumeration) when a single link cannot be read. Keeping
+// the walk alive is the whole point of the enumeration-robustness work: a bad or
+// unknown link must skip itself, never drop every parameter that follows it.
+static void LogLinkSkip(const char* identifier, const char* reason) {
+	std::string msg = std::string("FFGLTouchEngine: skipping parameter '") +
+		(identifier ? identifier : "?") + "' — " + reason;
+	FFGLLog::LogToHost(msg.c_str());
 }
 
 #ifdef _WIN32
@@ -50,6 +46,11 @@ DXGI_FORMAT GlToDXFromat(GLint format) {
 	default:
 		auto s = "Unsupported Format:: " + std::to_string(format);
 		FFGLLog::LogToHost(s.c_str());
+		// Falling off the end here was undefined behaviour: an unsupported
+		// format returned whatever happened to be in the return register, and
+		// that value went on to describe a D3D texture. B8G8R8A8_UNORM is the
+		// format this plugin assumes everywhere else, so it is the safe guess.
+		return DXGI_FORMAT_B8G8R8A8_UNORM;
 	}
 }
 #endif
@@ -60,6 +61,10 @@ GLenum GetGlType(GLint format) {
 		return GL_RGBA;
 	case GL_RGBA16:
 		return GL_UNSIGNED_SHORT;
+	default:
+		// Same undefined-behaviour fall-through as above. GL_RGBA matches the
+		// 8-bit path the rest of the plugin is built around.
+		return GL_RGBA;
 	}
 }
 
@@ -103,6 +108,17 @@ FFGLTouchEnginePluginBase::~FFGLTouchEnginePluginBase()
 	// Mark as destroying so event callbacks are ignored
 	isBeingDestroyed = true;
 
+#ifdef _WIN32
+	// The GL helpers hold references to TouchEngine textures. Release them
+	// while the instance is still alive: as members they would otherwise be
+	// destroyed after this body has released the instance. Arena crashed on
+	// exit in a TERelease from this plugin's teardown (a null call inside
+	// TouchEngine.dll), which fits. Hosts may destroy an instance without calling
+	// DeInitGL first; with no GL context current these skip their GL deletes.
+	OutputGL.Release();
+	InputGL.Release();
+#endif
+
 	if (instance != nullptr) {
 		if (isTouchEngineLoaded) {
 			isTouchEngineLoaded = false;
@@ -122,6 +138,10 @@ FFGLTouchEnginePluginBase::~FFGLTouchEnginePluginBase()
 FFResult FFGLTouchEnginePluginBase::InitializeDevice()
 {
 #ifdef _WIN32
+	if (!NeedsD3DDevice) {
+		return FF_SUCCESS;
+	}
+
 	// Create D3D11 device
 	HRESULT hr = D3D11CreateDevice(
 		nullptr,
@@ -206,19 +226,10 @@ bool FFGLTouchEnginePluginBase::LoadTEGraphicsContext(bool reload) {
 	// Load the TouchEngine graphics context
 
 #ifdef _WIN32
-	if (D3DDevice == nullptr) {
-		FFGLLog::LogToHost("D3D11 Device Not Available, You Probably Failed Somewhere...In Your Life");
-	}
-
-	TEResult result = TED3D11ContextCreate(D3DDevice.Get(), D3DContext.take());
-	if (result != TEResultSuccess) {
-		return false;
-	}
-
-	result = TEInstanceAssociateGraphicsContext(instance, D3DContext);
-	if (result != TEResultSuccess) {
-		return false;
-	}
+	// Nothing to associate: input and output cross as D3D shared textures
+	// (TEInputGL, TEOutputGL). Associating a context from another device
+	// later would crash the host, so the pool can never move an engine
+	// that has one.
 	isGraphicsContextLoaded = true;
 #endif
 #ifdef __APPLE__
@@ -245,6 +256,7 @@ bool FFGLTouchEnginePluginBase::LoadTEGraphicsContext(bool reload) {
 
 bool FFGLTouchEnginePluginBase::LoadTEFile()
 {
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 	// Load the tox file into the TouchEngine
 	// 1. Create a TouchEngine object
 
@@ -253,26 +265,53 @@ bool FFGLTouchEnginePluginBase::LoadTEFile()
 		return false;
 	}
 
+	// No tox assigned yet (fresh instance): nothing to load, and attempting it
+	// would log a spurious "TEInstanceLoad failed for ''".
+	if (FilePath.empty()) {
+		return false;
+	}
+
+	if (isLoadPending) {
+		// Queue instead of dropping: replayed from the in-flight load's DidLoad.
+		FFGLLog::LogToHost("FFGLTouchEngine: load already in progress — queueing reload");
+		isReloadQueued = true;
+		return false;
+	}
+
 	isTouchEngineReady = false;
 
 	// 2. Load the tox file into the TouchEngine
 	TEResult result = TEInstanceConfigure(instance, FilePath.c_str(), TETimeExternal);
 	if (result != TEResultSuccess) {
+		const char* desc = TEResultGetDescription(result);
+		std::string msg = std::string("FFGLTouchEngine: TEInstanceConfigure failed for '") +
+			FilePath + "' — " + (desc ? desc : "unknown error");
+		FFGLLog::LogToHost(msg.c_str());
 		return false;
 	}
 
 	result = TEInstanceSetFrameRate(instance, 60, 1);
 
 	if (result != TEResultSuccess) {
+		const char* desc = TEResultGetDescription(result);
+		std::string msg = std::string("FFGLTouchEngine: TEInstanceSetFrameRate failed — ") +
+			(desc ? desc : "unknown error");
+		FFGLLog::LogToHost(msg.c_str());
 		return false;
 	}
 
 
 	result = TEInstanceLoad(instance);
 	if (result != TEResultSuccess) {
+		const char* desc = TEResultGetDescription(result);
+		std::string msg = std::string("FFGLTouchEngine: TEInstanceLoad failed for '") +
+			FilePath + "' — " + (desc ? desc : "unknown error") +
+			". The tox may have been authored in a newer TouchDesigner build than this engine.";
+		FFGLLog::LogToHost(msg.c_str());
 		return false;
 	}
 
+	isLoadPending = true;
 
 	return true;
 }
@@ -294,6 +333,7 @@ void FFGLTouchEnginePluginBase::LoadTouchEngine() {
 }
 
 FFResult FFGLTouchEnginePluginBase::SetFloatParameter(unsigned int dwIndex, float value) {
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 
 	if (dwIndex == 1 && value == 1) {
 		LoadTouchEngine();
@@ -306,11 +346,28 @@ FFResult FFGLTouchEnginePluginBase::SetFloatParameter(unsigned int dwIndex, floa
 			TEInstanceSuspend(instance);
 			TEInstanceUnload(instance);
 		}
+		// Unload keeps the instance alive (unlike Clear, which resets it and is
+		// therefore covered by ProcessOpenGL's `instance == nullptr` guard), so
+		// these flags are the only thing between the render thread and a
+		// suspended, unloaded instance. ResetBaseParameters() empties the
+		// parameter maps but does not touch them, so the per-frame TE section
+		// kept running after an Unload.
+		isTouchEngineLoaded = false;
+		isTouchEngineReady = false;
+		// An Unload can land while a load is still in flight, in which case
+		// DidLoad may never arrive to clear these. Left set, isLoadPending would
+		// queue every later load behind one that can no longer complete.
+		isLoadPending = false;
+		isReloadQueued = false;
 		ResetBaseParameters();
 		return FF_SUCCESS;
 	}
 
 	if (dwIndex == 3 && value == 1) {
+		isTouchEngineLoaded = false;
+		isTouchEngineReady = false;
+		isLoadPending = false;
+		isReloadQueued = false;
 		ResetBaseParameters();
 		ClearTouchInstance();
 		return FF_SUCCESS;
@@ -349,6 +406,7 @@ FFResult FFGLTouchEnginePluginBase::SetFloatParameter(unsigned int dwIndex, floa
 }
 
 FFResult FFGLTouchEnginePluginBase::SetTextParameter(unsigned int dwIndex, const char* value) {
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 	switch (dwIndex) {
 	case 0:
 		// Open file dialog
@@ -369,6 +427,7 @@ FFResult FFGLTouchEnginePluginBase::SetTextParameter(unsigned int dwIndex, const
 }
 
 float FFGLTouchEnginePluginBase::GetFloatParameter(unsigned int dwIndex) {
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 
 	if (dwIndex == 1) {
 		return 0;
@@ -397,6 +456,7 @@ float FFGLTouchEnginePluginBase::GetFloatParameter(unsigned int dwIndex) {
 }
 
 char* FFGLTouchEnginePluginBase::GetTextParameter(unsigned int dwIndex) {
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 	if (dwIndex == 0) {
 		return (char*)FilePath.c_str();
 	}
@@ -481,6 +541,7 @@ void FFGLTouchEnginePluginBase::ResetBaseParameters() {
 }
 
 void FFGLTouchEnginePluginBase::GetAllParameters() {
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 	ResetBaseParameters();
 
 	TouchObject<TEStringArray> groupLinkInfo;
@@ -492,6 +553,10 @@ void FFGLTouchEnginePluginBase::GetAllParameters() {
 	TEResult result = TEInstanceGetLinkGroups(instance, TEScopeInput, groupLinkInfo.take());
 
 	if (result != TEResultSuccess) {
+		const char* desc = TEResultGetDescription(result);
+		std::string msg = std::string("FFGLTouchEngine: failed to enumerate input link groups — ") +
+			(desc ? desc : "unknown error");
+		FFGLLog::LogToHost(msg.c_str());
 		return;
 	}
 
@@ -500,7 +565,10 @@ void FFGLTouchEnginePluginBase::GetAllParameters() {
 		result = TEInstanceLinkGetChildren(instance, groupLinkInfo->strings[i], links.take());
 
 		if (result != TEResultSuccess) {
-			return;
+			// Skip only this group; keep walking the rest so one bad group can't
+			// drop every parameter that follows it.
+			LogLinkSkip(groupLinkInfo->strings[i], "failed to read group children");
+			continue;
 		}
 
 		for (int j = 0; j < links->count; j++) {
@@ -508,13 +576,14 @@ void FFGLTouchEnginePluginBase::GetAllParameters() {
 			result = TEInstanceLinkGetInfo(instance, links->strings[j], linkInfo.take());
 
 			if (result != TEResultSuccess) {
+				LogLinkSkip(links->strings[j], "failed to read link info");
 				continue;
 			}
 
 
 			if (linkInfo->domain == TELinkDomainParameter) {
 
-				if (ActiveParams.size() > MaxParamsByType * 6) {
+				if (ActiveParams.size() >= MaxParamsByType * 7) {
 					FFGLLog::LogToHost("Too many parameters, skipping");
 					continue;
 				}
@@ -543,7 +612,8 @@ void FFGLTouchEnginePluginBase::GetAllParameters() {
 		result = TEInstanceLinkGetChildren(instance, groupLinkInfo->strings[i], links.take());
 
 		if (result != TEResultSuccess) {
-			return;
+			LogLinkSkip(groupLinkInfo->strings[i], "failed to read output group children");
+			continue;
 		}
 
 		for (int j = 0; j < links->count; j++) {
@@ -551,6 +621,7 @@ void FFGLTouchEnginePluginBase::GetAllParameters() {
 			result = TEInstanceLinkGetInfo(instance, links->strings[j], linkInfo.take());
 
 			if (result != TEResultSuccess) {
+				LogLinkSkip(links->strings[j], "failed to read output link info");
 				continue;
 			}
 
@@ -568,22 +639,37 @@ void FFGLTouchEnginePluginBase::GetAllParameters() {
 		}
 
 	}
+
+	// Re-raise value events now that the walk is complete. Enumeration runs on
+	// the TE callback thread while the host UI polls in parallel, so the host
+	// can consume a slot's event and cache a stale display string before that
+	// slot's registration finished; a final sweep forces a fresh query of every
+	// active parameter.
+	for (auto& ParamID : ActiveParams) {
+		RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
+	}
 }
 
 void FFGLTouchEnginePluginBase::CreateIndividualParameter(const TouchObject<TELinkInfo>& linkInfo) {
 
+	// Robustness contract for this whole function: every early-out must SKIP only
+	// the current link (log + return), never leave a half-registered parameter
+	// behind. To guarantee that, each branch reads all TE values FIRST and only
+	// registers the parameter (Parameters / ActiveParams / ParameterMap*) once the
+	// reads have succeeded. A read failure therefore leaves no dangling slot for
+	// PushParametersToTouchEngine to trip over.
 	switch (linkInfo->type) {
 	case TELinkTypeTexture:
 	case TELinkTypeGroup:
 	case TELinkTypeSeparator:
 	{
+		// Not user-facing scalar parameters — nothing to enumerate here.
 		return;
 	}
 
-	TEResult result;
-
 	case TELinkTypeDouble:
 	{
+		TEResult result;
 		if (linkInfo->intent == TELinkIntentColorRGBA || linkInfo->intent == TELinkIntentPositionXYZW || linkInfo->intent == TELinkIntentSizeWH) {
 			std::string Suffix;
 			switch (linkInfo->intent) {
@@ -601,17 +687,20 @@ void FFGLTouchEnginePluginBase::CreateIndividualParameter(const TouchObject<TELi
 			double value[4] = { 0, 0, 0, 0 };
 			result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueCurrent, value, linkInfo->count);
 			if (result != TEResultSuccess) {
+				LogLinkSkip(linkInfo->identifier, "failed to read vector value");
 				return;
 			}
 
 			double max[4] = { 0, 0, 0, 0 };
 			result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueUIMaximum, max, linkInfo->count);
 			if (result != TEResultSuccess) {
+				LogLinkSkip(linkInfo->identifier, "failed to read vector max");
 				return;
 			}
 			double min[4] = { 0, 0, 0, 0 };
 			result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueUIMinimum, min, linkInfo->count);
 			if (result != TEResultSuccess) {
+				LogLinkSkip(linkInfo->identifier, "failed to read vector min");
 				return;
 			}
 
@@ -663,34 +752,33 @@ void FFGLTouchEnginePluginBase::CreateIndividualParameter(const TouchObject<TELi
 
 			return;
 		}
-		uint32_t ParamID = Parameters.size() + OffsetParamsByType;
-		Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
-		ActiveParams.insert(ParamID);
-		ParameterMapType[ParamID] = FF_TYPE_STANDARD;
 
-		//SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_STANDARD);
-
-		SetParamDisplayName(ParamID, linkInfo->label, true);
-
+		// Scalar double — read value + range before registering.
 		double value = 0;
 		result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
 		if (result != TEResultSuccess) {
+			LogLinkSkip(linkInfo->identifier, "failed to read double value");
 			return;
 		}
-		//SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_STANDARD, static_cast<float>(value));
-		ParameterMapFloat[ParamID] = value;
-
 		double max = 0;
 		result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueUIMaximum, &max, 1);
 		if (result != TEResultSuccess) {
+			LogLinkSkip(linkInfo->identifier, "failed to read double max");
 			return;
 		}
 		double min = 0;
 		result = TEInstanceLinkGetDoubleValue(instance, linkInfo->identifier, TELinkValueUIMinimum, &min, 1);
 		if (result != TEResultSuccess) {
+			LogLinkSkip(linkInfo->identifier, "failed to read double min");
 			return;
 		}
 
+		uint32_t ParamID = Parameters.size() + OffsetParamsByType;
+		Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
+		ActiveParams.insert(ParamID);
+		ParameterMapType[ParamID] = FF_TYPE_STANDARD;
+		ParameterMapFloat[ParamID] = value;
+		SetParamDisplayName(ParamID, linkInfo->label, true);
 		SetParamRange(ParamID, min, max);
 		RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
 		SetParamVisibility(ParamID, true, true);
@@ -700,13 +788,28 @@ void FFGLTouchEnginePluginBase::CreateIndividualParameter(const TouchObject<TELi
 	}
 	case TELinkTypeInt:
 	{
+		TEResult result;
 		if (TEInstanceLinkHasChoices(instance, linkInfo->identifier)) {
 			TouchObject<TEStringArray> labels;
-			uint32_t ParamID = (ParameterMapInt.size() + OffsetParamsByType) + (MaxParamsByType * 5);
 			result = TEInstanceLinkGetChoiceLabels(instance, linkInfo->identifier, labels.take());
 			if (result != TEResultSuccess && !labels) {
+				LogLinkSkip(linkInfo->identifier, "failed to read choice labels");
 				return;
 			}
+
+			int32_t value = 0;
+			result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
+			if (result != TEResultSuccess) {
+				LogLinkSkip(linkInfo->identifier, "failed to read menu value");
+				return;
+			}
+
+			// NOTE: upstream ParamID arithmetic, kept as-is on this branch. It
+			// derives the menu slot from ParameterMapInt.size() while the menu
+			// branch never writes that map, so a second menu collapses onto the
+			// first. Fixing it requires the per-family counters, which are a
+			// breaking naming change — see the feat/slot-naming-ranges branch.
+			uint32_t ParamID = (ParameterMapInt.size() + OffsetParamsByType) + (MaxParamsByType * 5);
 
 			std::vector<std::string> labelsVector;
 			std::vector<float> valuesVector;
@@ -718,12 +821,6 @@ void FFGLTouchEnginePluginBase::CreateIndividualParameter(const TouchObject<TELi
 
 			SetParamElements(ParamID, labelsVector, valuesVector, true);
 
-			int32_t value = 0;
-			result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
-			if (result != TEResultSuccess) {
-				return;
-			}
-
 			Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
 			ActiveParams.insert(ParamID);
 			SetParamDisplayName(ParamID, linkInfo->label, true);
@@ -733,32 +830,31 @@ void FFGLTouchEnginePluginBase::CreateIndividualParameter(const TouchObject<TELi
 			SetParamVisibility(ParamID, true, true);
 			break;
 		} else {
+			int32_t value = 0;
+			result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
+			if (result != TEResultSuccess) {
+				LogLinkSkip(linkInfo->identifier, "failed to read int value");
+				return;
+			}
+			int32_t max = 0;
+			result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueUIMaximum, &max, 1);
+			if (result != TEResultSuccess) {
+				LogLinkSkip(linkInfo->identifier, "failed to read int max");
+				return;
+			}
+			int32_t min = 0;
+			result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueUIMinimum, &min, 1);
+			if (result != TEResultSuccess) {
+				LogLinkSkip(linkInfo->identifier, "failed to read int min");
+				return;
+			}
+
 			uint32_t ParamID = (ParameterMapInt.size() + OffsetParamsByType) + MaxParamsByType;
 			Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
 			ActiveParams.insert(ParamID);
 			ParameterMapType[ParamID] = FF_TYPE_INTEGER;
-
-			int32_t value = 0;
-			result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueCurrent, &value, 1);
-			if (result != TEResultSuccess) {
-				return;
-			}
 			SetParamDisplayName(ParamID, linkInfo->label, true);
 			ParameterMapInt[ParamID] = value;
-
-
-			int32_t max = 0;
-			result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueUIMaximum, &max, 1);
-			if (result != TEResultSuccess) {
-				return;
-			}
-
-			int32_t min = 0;
-			result = TEInstanceLinkGetIntValue(instance, linkInfo->identifier, TELinkValueUIMinimum, &min, 1);
-			if (result != TEResultSuccess) {
-				return;
-			}
-
 			SetParamRange(ParamID, static_cast<float>(min), static_cast<float>(max));
 			RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
 			SetParamVisibility(ParamID, true, true);
@@ -768,8 +864,15 @@ void FFGLTouchEnginePluginBase::CreateIndividualParameter(const TouchObject<TELi
 	}
 	case TELinkTypeBoolean:
 	{
-
+		TEResult result;
 		if (linkInfo->intent == TELinkIntentMomentary || linkInfo->intent == TELinkIntentPulse) {
+			bool value = false;
+			result = TEInstanceLinkGetBooleanValue(instance, linkInfo->identifier, TELinkValueCurrent, &value);
+			if (result != TEResultSuccess) {
+				LogLinkSkip(linkInfo->identifier, "failed to read event value");
+				return;
+			}
+
 			uint32_t ParamID = (ParameterMapBool.size() + OffsetParamsByType) + (MaxParamsByType * 4);
 			Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
 			ActiveParams.insert(ParamID);
@@ -779,30 +882,22 @@ void FFGLTouchEnginePluginBase::CreateIndividualParameter(const TouchObject<TELi
 				PulseParameters.insert(ParamID);
 			}
 
-			bool value = false;
-			result = TEInstanceLinkGetBooleanValue(instance, linkInfo->identifier, TELinkValueCurrent, &value);
-			if (result != TEResultSuccess) {
-				return;
-			}
-
 			SetParamDisplayName(ParamID, linkInfo->label, true);
 			ParameterMapBool[ParamID] = value;
 			RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
 			SetParamVisibility(ParamID, true, true);
 		} else {
-			//SetParamInfof(Parameters[j].second, linkInfo->name, FF_TYPE_BOOLEAN);
+			bool value = false;
+			result = TEInstanceLinkGetBooleanValue(instance, linkInfo->identifier, TELinkValueCurrent, &value);
+			if (result != TEResultSuccess) {
+				LogLinkSkip(linkInfo->identifier, "failed to read boolean value");
+				return;
+			}
+
 			uint32_t ParamID = (ParameterMapBool.size() + OffsetParamsByType) + MaxParamsByType * 2;
 			Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
 			ActiveParams.insert(ParamID);
 			ParameterMapType[ParamID] = FF_TYPE_BOOLEAN;
-
-			bool value = false;
-			result = TEInstanceLinkGetBooleanValue(instance, linkInfo->identifier, TELinkValueCurrent, &value);
-			if (result != TEResultSuccess) {
-				return;
-			}
-
-			//SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_BOOLEAN, value);
 			SetParamDisplayName(ParamID, linkInfo->label, true);
 			ParameterMapBool[ParamID] = value;
 			RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
@@ -813,25 +908,34 @@ void FFGLTouchEnginePluginBase::CreateIndividualParameter(const TouchObject<TELi
 	}
 	case TELinkTypeString:
 	{
-		uint32_t ParamID = (ParameterMapString.size() + OffsetParamsByType) + MaxParamsByType * 3; //(MaxParamsByType * 3) + OffsetParamsByType
+		TouchObject<TEString> value;
+		TEResult result = TEInstanceLinkGetStringValue(instance, linkInfo->identifier, TELinkValueCurrent, value.take());
+		if (result != TEResultSuccess) {
+			LogLinkSkip(linkInfo->identifier, "failed to read string value");
+			return;
+		}
+
+		uint32_t ParamID = (ParameterMapString.size() + OffsetParamsByType) + MaxParamsByType * 3;
 		Parameters.push_back(std::make_pair(linkInfo->identifier, ParamID));
 		ActiveParams.insert(ParamID);
 		ParameterMapType[ParamID] = FF_TYPE_TEXT;
-
-		TouchObject<TEString> value;
-		result = TEInstanceLinkGetStringValue(instance, linkInfo->identifier, TELinkValueCurrent, value.take());
-		if (result != TEResultSuccess) {
-			return;
-		}
 		SetParamDisplayName(ParamID, linkInfo->label, true);
 		ParameterMapString[ParamID] = value->string;
 		RaiseParamEvent(ParamID, FF_EVENT_FLAG_VALUE);
 		SetParamVisibility(ParamID, true, true);
-		//SetParamInfo(Parameters[j].second, linkInfo->name, FF_TYPE_TEXT, value);
-
-
 
 		break;
+	}
+	default:
+	{
+		// Unknown / future TELinkType (e.g. par types added in newer TouchDesigner
+		// builds). Ignore it gracefully instead of silently aborting the walk, and
+		// log so the gap is visible rather than surfacing as "params just missing".
+		std::string msg = std::string("FFGLTouchEngine: unsupported link type ") +
+			std::to_string(static_cast<int>(linkInfo->type)) + " for '" +
+			(linkInfo->identifier ? linkInfo->identifier : "?") + "' — skipping";
+		FFGLLog::LogToHost(msg.c_str());
+		return;
 	}
 	}
 
@@ -843,20 +947,21 @@ void FFGLTouchEnginePluginBase::CreateParametersFromGroup(const TouchObject<TELi
 	TEResult result = TEInstanceLinkGetChildren(instance, linkInfo->identifier, links.take());
 
 	if (result != TEResultSuccess) {
+		LogLinkSkip(linkInfo->identifier, "failed to read group children");
 		return;
 	}
 
 	for (int j = 0; j < links->count; j++) {
-		TouchObject<TELinkInfo> linkInfo;
-		result = TEInstanceLinkGetInfo(instance, links->strings[j], linkInfo.take());
+		TouchObject<TELinkInfo> childLinkInfo;
+		result = TEInstanceLinkGetInfo(instance, links->strings[j], childLinkInfo.take());
 
 		if (result != TEResultSuccess) {
+			// Skip this child but keep walking the rest of the group.
+			LogLinkSkip(links->strings[j], "failed to read group child link info");
 			continue;
-			FFGLLog::LogToHost("Failed to get link info");
-
 		}
 
-		CreateIndividualParameter(linkInfo);
+		CreateIndividualParameter(childLinkInfo);
 	}
 
 
@@ -865,6 +970,7 @@ void FFGLTouchEnginePluginBase::CreateParametersFromGroup(const TouchObject<TELi
 
 FFResult FFGLTouchEnginePluginBase::PushParametersToTouchEngine()
 {
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
 	if (instance == nullptr) {
 		return FF_SUCCESS;
 	}
@@ -925,7 +1031,7 @@ FFResult FFGLTouchEnginePluginBase::PushParametersToTouchEngine()
 		TEResult result = TEInstanceLinkSetDoubleValue(instance, param.identifier.c_str(), values, param.count);
 		if (result != TEResultSuccess) {
 			isTouchFrameBusy = false;
-			return FailAndLog("Failed to set int value");
+			return FailAndLog("Failed to set vector value");
 		}
 
 	}
@@ -942,49 +1048,90 @@ void FFGLTouchEnginePluginBase::eventCallback(TEEvent event, TEResult result, in
 		return;
 	}
 
-	if (result == TEResultComponentErrors) {
+	// Atomic-only fast path: never let frame completion wait on the state
+	// mutex while the render thread holds it through a frame section.
+	if (event == TEEventFrameDidFinish) {
+		isTouchFrameBusy = false;
+		return;
+	}
+
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
+
+	// Only log here, never return: the switch below must still see the event,
+	// or a DidLoad carrying an error would leave isLoadPending set and queue
+	// every later load behind one that already finished.
+	if (result == TEResultComponentErrors || result == TEResultComponentWarnings) {
 		TouchObject<TEErrorArray> errors;
-		TEResult result = TEInstanceGetErrors(instance, errors.take());
-		if (result != TEResultSuccess) {
-			return;
+		if (TEInstanceGetErrors(instance, errors.take()) == TEResultSuccess && errors) {
+			for (int i = 0; i < errors->count; i++) {
+				std::string error =
+					"TouchEngine Error: Severity: " +
+					GetSeverityString(errors->errors[i].severity) +
+					", Location: " + errors->errors[i].location +
+					", Description: " + errors->errors[i].description;
+
+				FFGLLog::LogToHost(error.c_str());
+			}
 		}
-
-		if (!errors) {
-			return;
-		}
-
-		for (int i = 0; i < errors->count; i++) {
-			std::string error =
-				"TouchEngine Error: Severity: " +
-				GetSeverityString(errors->errors[i].severity) +
-				", Location: " + errors->errors[i].location +
-				", Description: " + errors->errors[i].description;
-
-			FFGLLog::LogToHost(error.c_str());
-		}
-
-		// The TouchEngine has encountered an error
-		// You can get the error message with TEInstanceGetError
 	}
 
 	if (result == TEResultNoKey || result == TEResultKeyError || result == TEResultExpiredKey) {
 		FFGLLog::LogToHost("TouchEngine License Error");
-		return;
 	}
+
+	// TEResult.h: component errors and warnings "do not prevent further use of
+	// TouchEngine", so a tox that reports them is still loaded and must run.
+	bool loadSucceeded = result == TEResultSuccess ||
+		result == TEResultComponentWarnings ||
+		result == TEResultComponentErrors;
+
 	switch (event) {
 	case TEEventInstanceDidLoad:
+		isLoadPending = false;
+		if (isReloadQueued) {
+			// A newer load request (tox path change or reload pulse) arrived
+			// while this load was in flight — supersede it immediately instead
+			// of resuming a stale comp.
+			isReloadQueued = false;
+			LoadTEFile();
+			break;
+		}
+		if (!loadSucceeded) {
+			// Surface load failures (bad tox, or a tox authored in a newer TD build
+			// than this engine) instead of silently showing nothing. Do NOT resume
+			// or enumerate a failed load — that used to register parameters against
+			// a dead instance and push into it every frame.
+			const char* desc = TEResultGetDescription(result);
+			std::string msg = std::string("FFGLTouchEngine: instance failed to load — ") +
+				(desc ? desc : "unknown error") +
+				". Check the tox path and that the TouchEngine build is new enough for this tox.";
+			FFGLLog::LogToHost(msg.c_str());
+			break;
+		}
 		if (LoadTEGraphicsContext(false)) {
 			isTouchEngineLoaded = true;
 			ResumeTouchEngine();
+			// Render-ready only now: comp loaded, resumed, links enumerated.
+			isTouchEngineReady = true;
 		} else {
 			FFGLLog::LogToHost("Failed to load TE graphics context");
 		}
 		break;
-	case TEEventFrameDidFinish:
-		isTouchFrameBusy = false;
-		break;
 	case TEEventInstanceReady:
-		isTouchEngineReady = true;
+		// NOT render-readiness. Per TEInstanceConfigure docs this event means
+		// "configure completed, ready to load" — and during a reload the
+		// previously loaded comp has just been UNLOADED at this point. Treating
+		// it as render-ready resumed per-frame texture pushes into links that
+		// no longer exist and segfaulted the host inside TE (the Reload crash).
+		if (!loadSucceeded && TEResultGetSeverity(result) == TESeverityError) {
+			// Configure itself failed (no usable engine, bad path), so the load
+			// queued behind it cannot complete; don't let it block later loads.
+			isLoadPending = false;
+			isReloadQueued = false;
+			const char* desc = TEResultGetDescription(result);
+			FFGLLog::LogToHost((std::string("FFGLTouchEngine: instance failed to configure — ") +
+				(desc ? desc : "unknown error")).c_str());
+		}
 		break;
 	case TEEventInstanceDidUnload:
 		isTouchEngineLoaded = false;
@@ -1000,7 +1147,34 @@ void FFGLTouchEnginePluginBase::linkCallback(TELinkEvent event, const char* iden
 	case TELinkEventAdded:
 		// A link has been added
 		break;
+	case TELinkEventRemoved:
+	{
+		// Safety net: if TE tears down a link we hold an identifier for (an
+		// engine-side rebuild we didn't initiate), stop the render thread from
+		// pushing into it. Readiness returns with the next enumeration
+		// (TEEventInstanceDidLoad). Holding the last frame beats a segfault
+		// inside TE's link table.
+		if (!isTouchEngineReady || identifier == nullptr) {
+			break;
+		}
+		std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
+		bool held = (InputOpName == identifier) || (OutputOpName == identifier);
+		if (!held) {
+			for (auto& param : Parameters) {
+				if (param.first == identifier) { held = true; break; }
+			}
+		}
+		if (held) {
+			isTouchEngineReady = false;
+			std::string msg = std::string("FFGLTouchEngine: link '") + identifier +
+				"' removed by engine — pausing output until parameters are re-enumerated";
+			FFGLLog::LogToHost(msg.c_str());
+		}
+		break;
+	}
 	case TELinkEventValueChange:
+		break;
+	default:
 		break;
 	}
 }

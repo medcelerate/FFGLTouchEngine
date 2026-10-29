@@ -19,29 +19,6 @@ public:
 	FFResult DeInitGL() override;
 
 private:
-#ifdef _WIN32
-	HANDLE dxInteropHandle = 0;
-
-	HANDLE InputSharedHandle = nullptr;
-	HANDLE dxInteropInputObject = 0;
-
-	HANDLE OutputSharedHandle = nullptr;
-	HANDLE dxInteropOutputObject = 0;
-
-	std::unordered_map<int, IDXGIKeyedMutex*> MutexMap;
-
-	//Spout Configs
-	std::string SpoutIDInput;
-	std::string SpoutIDOutput;
-
-	Spout InputInterop;
-	Spout OutputInterop;
-
-	uint32_t SpoutSenderID = 0;
-	GLuint SpoutTextureOutput = 0;
-	GLuint SpoutTextureInput = 0;
-#endif
-
 #ifdef __APPLE__
 	GLuint OutputTextureGL = 0;
 	id<MTLTexture> OutputMetalTexture = nil;
@@ -56,7 +33,6 @@ private:
 	bool InputInteropInitialized = false;
 	bool OutputInteropInitialized = false;
 
-	std::string InputOpName;
 
 	int InputWidth = 0;
 	int InputHeight = 0;

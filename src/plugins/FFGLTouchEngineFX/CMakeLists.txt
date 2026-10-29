@@ -21,6 +21,8 @@ target_sources(FFGLTouchEngineFX PRIVATE
     ../../lib/FFGL/FFGLSDK.cpp
     ../shared/TouchEnginePluginBase.h
     ../shared/TouchEnginePluginBase.cpp
+    ../shared/EnginePool.h
+    ../shared/EnginePool.cpp
 )
 
 if (WIN32)
@@ -85,6 +87,7 @@ if (APPLE)
     set_source_files_properties(
         TouchEngineFX.cpp
         ../shared/TouchEnginePluginBase.cpp
+        ../shared/EnginePool.cpp
         ../../lib/FFGL/FFGLSDK.cpp
         PROPERTIES COMPILE_FLAGS "-x objective-c++"
     )

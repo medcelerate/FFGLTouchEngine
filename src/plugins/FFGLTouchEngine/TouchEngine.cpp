@@ -10,7 +10,9 @@ static CFFGLPluginInfo PluginInfo(
 	000,                           // Plugin minor version number
 	FF_SOURCE,                     // Plugin type
 	"Loads tox files from TouchDesigner",// Plugin description
-	"TouchEngine Loader made by Evan Clark"        // About
+	"TouchEngine Loader made by Evan Clark",       // About
+	0, nullptr, nullptr,
+	EnginePoolDeinitialise         // Releases the pool's engines
 );
 
 static CFFGLThumbnailInfo ThumbnailInfo(160, 120, thumbnail);
@@ -138,6 +140,7 @@ FFResult FFGLTouchEngine::InitGL(const FFGLViewportStruct* vp)
 FFResult FFGLTouchEngine::ProcessOpenGL(ProcessOpenGLStruct* pGL)
 {
 	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
+	DrainEngineEvents();
 
 	if (instance == nullptr || !isTouchEngineLoaded || !isTouchEngineReady || isTouchFrameBusy)
 	{
@@ -256,16 +259,8 @@ FFResult FFGLTouchEngine::DeInitGL()
 	OutputGL.Release();
 #endif
 
-	if (instance != nullptr)
-	{
-		if (isTouchEngineLoaded)
-		{
-			isTouchEngineLoaded = false;
-			isTouchEngineReady = false;
-			TEInstanceSuspend(instance);
-			TEInstanceUnload(instance);
-		}
-	}
+	// Back to the pool, which unloads the tox; InitGL takes one again.
+	ReleaseEngine();
 
 #ifdef __APPLE__
 	if (OutputTextureGL != 0) {
@@ -393,11 +388,6 @@ void FFGLTouchEngine::ClearTouchInstance() {
 		// Before the unload: the imports hold TouchEngine textures.
 		OutputGL.DropImports();
 #endif
-		if (isTouchEngineLoaded)
-		{
-			TEInstanceSuspend(instance);
-			TEInstanceUnload(instance);
-		}
 #ifdef __APPLE__
 		MetalContext.reset();
 		if (OutputTextureGL != 0) {
@@ -410,8 +400,7 @@ void FFGLTouchEngine::ClearTouchInstance() {
 			OutputIOSurface = nullptr;
 		}
 #endif
-		instance.reset();
-		isGraphicsContextLoaded = false;
+		ReleaseEngine();
 	}
 	return;
 }

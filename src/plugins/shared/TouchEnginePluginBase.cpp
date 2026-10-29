@@ -119,15 +119,7 @@ FFGLTouchEnginePluginBase::~FFGLTouchEnginePluginBase()
 	InputGL.Release();
 #endif
 
-	if (instance != nullptr) {
-		if (isTouchEngineLoaded) {
-			isTouchEngineLoaded = false;
-			isTouchEngineReady = false;
-			TEInstanceSuspend(instance);
-			TEInstanceUnload(instance);
-		}
-		instance.reset();
-	}
+	ReleaseEngine();
 #ifdef __APPLE__
 	MetalContext.reset();
 	MetalCommandQueue = nil;
@@ -233,22 +225,9 @@ bool FFGLTouchEnginePluginBase::LoadTEGraphicsContext(bool reload) {
 	isGraphicsContextLoaded = true;
 #endif
 #ifdef __APPLE__
-	if (MetalDevice == nil) {
-		FFGLLog::LogToHost("Metal Device Not Available");
-		return false;
-	}
-
-	TEResult result = TEMetalContextCreate(MetalDevice, MetalContext.take());
-	if (result != TEResultSuccess) {
-		FFGLLog::LogToHost("Failed to create TEMetalContext");
-		return false;
-	}
-
-	result = TEInstanceAssociateGraphicsContext(instance, MetalContext);
-	if (result != TEResultSuccess) {
-		FFGLLog::LogToHost("Failed to associate Metal graphics context");
-		return false;
-	}
+	// The pool associated its one Metal context when the engine started.
+	// Associating this plugin's own with a pooled engine would crash the
+	// host the first time the engine moved to another clip.
 	isGraphicsContextLoaded = true;
 #endif
 	return isGraphicsContextLoaded;
@@ -261,15 +240,21 @@ bool FFGLTouchEnginePluginBase::LoadTEFile()
 	// 1. Create a TouchEngine object
 
 
-	if (instance == nullptr) {
-		return false;
-	}
-
 	// No tox assigned yet (fresh instance): nothing to load, and attempting it
 	// would log a spurious "TEInstanceLoad failed for ''".
 	if (FilePath.empty()) {
 		return false;
 	}
+
+	if (!AcquireEngine()) {
+		return false;
+	}
+	if (!Engine.IsReady()) {
+		// The pool handed out an engine that is still starting.
+		isLoadWaitingForEngine = true;
+		return true;
+	}
+	isLoadWaitingForEngine = false;
 
 	if (isLoadPending) {
 		// Queue instead of dropping: replayed from the in-flight load's DidLoad.
@@ -317,23 +302,83 @@ bool FFGLTouchEnginePluginBase::LoadTEFile()
 }
 
 void FFGLTouchEnginePluginBase::LoadTouchEngine() {
-
-	if (instance == nullptr) {
-
-		FFGLLog::LogToHost("Loading TouchEngine");
-		TEResult result = TEInstanceCreate(eventCallbackStatic, linkCallbackStatic, this, instance.take());
-		if (result != TEResultSuccess) {
-			FFGLLog::LogToHost("Failed to create TouchEngine instance");
-			instance.reset();
-			return;
-		}
-
+	// A clip with no tox takes no engine: the pool's are a few hundred MB of
+	// GPU memory each.
+	if (!FilePath.empty()) {
+		AcquireEngine();
 	}
+}
 
+bool FFGLTouchEnginePluginBase::AcquireEngine()
+{
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
+	std::string key = EnginePool::KeyForTox(FilePath);
+	if (Engine && (Engine.Key() != key || Engine.IsDead())) {
+		// This tox runs on another TouchDesigner, and loading it on this
+		// engine would replace its process anyway; or this engine failed.
+		ReleaseEngine();
+	}
+	if (!Engine) {
+		Engine = EnginePool::Shared().Acquire(key);
+		instance = Engine.Instance();
+		if (instance == nullptr) {
+			FFGLLog::LogToHost("FFGLTouchEngine: no TouchEngine instance available");
+		}
+	}
+	return instance != nullptr;
+}
+
+void FFGLTouchEnginePluginBase::ReleaseEngine()
+{
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
+	Engine.Release();
+	instance = nullptr;
+	isTouchEngineLoaded = false;
+	isTouchEngineReady = false;
+	isLoadPending = false;
+	isReloadQueued = false;
+	isLoadWaitingForEngine = false;
+	// A frame in flight never reports back once the engine is handed over.
+	isTouchFrameBusy = false;
+	isGraphicsContextLoaded = false;
+}
+
+void FFGLTouchEnginePluginBase::DrainEngineEvents()
+{
+	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
+	EnginePool::Shared().Tick();
+	if (!Engine) {
+		return;
+	}
+	if (Engine.IsDead()) {
+		// The pool gave this engine up (it failed, or never finished
+		// unloading). Never touch its instance again; load on a new one.
+		FFGLLog::LogToHost("FFGLTouchEngine: this clip's engine went away; loading the tox on another");
+		ReleaseEngine();
+		ResetBaseParameters();
+		if (!FilePath.empty()) {
+			LoadTEFile();
+		}
+		return;
+	}
+	std::vector<EngineEvent> events;
+	Engine.TakeEvents(events);
+	for (const EngineEvent& e : events) {
+		if (e.isLinkEvent) {
+			linkCallback(e.linkEvent, e.identifier.c_str());
+		}
+		else {
+			eventCallback(e.event, e.result, 0, 0, 0, 0);
+		}
+	}
+	if (isLoadWaitingForEngine && Engine.IsReady()) {
+		LoadTEFile();
+	}
 }
 
 FFResult FFGLTouchEnginePluginBase::SetFloatParameter(unsigned int dwIndex, float value) {
 	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
+	DrainEngineEvents();
 
 	if (dwIndex == 1 && value == 1) {
 		LoadTouchEngine();
@@ -407,6 +452,7 @@ FFResult FFGLTouchEnginePluginBase::SetFloatParameter(unsigned int dwIndex, floa
 
 FFResult FFGLTouchEnginePluginBase::SetTextParameter(unsigned int dwIndex, const char* value) {
 	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
+	DrainEngineEvents();
 	switch (dwIndex) {
 	case 0:
 		// Open file dialog
@@ -428,6 +474,7 @@ FFResult FFGLTouchEnginePluginBase::SetTextParameter(unsigned int dwIndex, const
 
 float FFGLTouchEnginePluginBase::GetFloatParameter(unsigned int dwIndex) {
 	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
+	DrainEngineEvents();
 
 	if (dwIndex == 1) {
 		return 0;
@@ -457,6 +504,7 @@ float FFGLTouchEnginePluginBase::GetFloatParameter(unsigned int dwIndex) {
 
 char* FFGLTouchEnginePluginBase::GetTextParameter(unsigned int dwIndex) {
 	std::lock_guard<std::recursive_mutex> lock(TEStateMutex);
+	DrainEngineEvents();
 	if (dwIndex == 0) {
 		return (char*)FilePath.c_str();
 	}
@@ -1177,14 +1225,6 @@ void FFGLTouchEnginePluginBase::linkCallback(TELinkEvent event, const char* iden
 	default:
 		break;
 	}
-}
-
-void FFGLTouchEnginePluginBase::eventCallbackStatic(TEInstance* instance, TEEvent event, TEResult result, int64_t start_time_value, int32_t start_time_scale, int64_t end_time_value, int32_t end_time_scale, void* info) {
-	static_cast<FFGLTouchEnginePluginBase*>(info)->eventCallback(event, result, start_time_value, start_time_scale, end_time_value, end_time_scale);
-}
-
-void FFGLTouchEnginePluginBase::linkCallbackStatic(TEInstance* instance, TELinkEvent event, const char* identifier, void* info) {
-	static_cast<FFGLTouchEnginePluginBase*>(info)->linkCallback(event, identifier);
 }
 
 #ifdef __APPLE__
